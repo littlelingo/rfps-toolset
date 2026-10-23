@@ -91,7 +91,7 @@ claude plugin test .
 claude --plugin-dir .
 ```
 
-See [CLAUDE.md](CLAUDE.md) and [BACKLOG.md](BACKLOG.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [BACKLOG.md](BACKLOG.md).
 
 ## License
 

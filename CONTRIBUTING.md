@@ -1,6 +1,6 @@
-# CLAUDE.md
+# Contributing
 
-Contributor notes for the rfps plugin. A plugin cannot ship a CLAUDE.md that loads into a user's context, so behavior rules live in `skills/solution-guide/references/conventions.md` and each skill.
+Contributor notes for the rfps plugin. A plugin cannot ship a CLAUDE.md that loads into a user's context (the validator warns), so behavior rules live in `skills/solution-guide/references/conventions.md` and each skill.
 
 - This repo is the generic tool. No solicitation, agency or bidder data belongs here; it lives in each solicitation's `active-solution/` folder.
 - Skills are in `skills/<name>/SKILL.md`; the plugin namespace is `rfps` (`/rfps:<name>`). Do not prefix skill names with `rfps-`.

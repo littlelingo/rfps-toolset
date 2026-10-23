@@ -86,15 +86,21 @@ bin/               rfps-* wrappers that run tools/*.py with uv
 tools/             Python tools, templates, flow.toml, defaults.toml
 hooks/, types/     status pane mod
 docs/              status pane notes
+fixtures/          fictional sample solicitation and an end-to-end smoke test
 ```
 
 Shared rules (sources of truth, no invented bidder facts, evidence register, outside sources) are in `skills/solution-guide/references/conventions.md`.
+
+## Try It With the Sample
+
+`fixtures/` holds a fictional solicitation, template and bidder, so the whole flow can be tried with no real data. See [fixtures/README.md](fixtures/README.md).
 
 ## Development
 
 ```bash
 claude plugin validate .
 claude plugin test .
+fixtures/smoke.sh
 claude --plugin-dir .
 ```
 

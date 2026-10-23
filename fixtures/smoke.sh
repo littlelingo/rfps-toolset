@@ -24,6 +24,16 @@ x = zipfile.ZipFile(sys.argv[1]).read("word/document.xml").decode()
 sys.exit("no tracked insertions after the push" if x.count("<w:ins ") < 10 else 0)
 PY
 rfps-sync-docx --status | grep -q "0 section(s) with response changes" || { echo "FAIL: WIP not in sync after push" >&2; exit 1; }
+# locators: every heading has a bookmark, and open items link to the document section with text to search for
+uv run --quiet --with python-docx python3 - "$WIP" <<'PY'
+import sys, zipfile
+x = zipfile.ZipFile(sys.argv[1]).read("word/document.xml").decode()
+sys.exit("expected 4 heading bookmarks, found %d" % x.count("<w:bookmarkStart ") if x.count("<w:bookmarkStart ") != 4 else 0)
+PY
+rfps-open-items >/dev/null
+grep -q "WIP.docx#rfps_Technical_Approach_" active-solution/open-items.md || { echo "FAIL: open items do not link to the document section" >&2; exit 1; }
+grep -q 'Search: `\[ASSERTION' active-solution/open-items.md || { echo "FAIL: open items lack the search text" >&2; exit 1; }
+rfps-open-doc --section "Technical Approach" --find "[ASSERTION: x" --print | grep -q "bookmark rfps_Technical_Approach_" || { echo "FAIL: open-doc did not print the bookmark" >&2; exit 1; }
 # reviewers edit, insert, delete and comment in the document; pull brings those into the response
 uv run --quiet --with python-docx python3 - "$WIP" <<'PY'
 import sys, copy, docx

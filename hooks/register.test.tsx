@@ -22,7 +22,7 @@ const DATA = {
     { id: 'b', group: 'G', title: 'Step B', state: 'blocking', detail: 'needs work', command: '/rfps:resources' },
   ],
   sections: [{ heading: 'Intro', level: 2, state: 'attention', notes: ['1 OPEN'], words: 10 }],
-  items: [{ kind: 'DECISION', file: 'a.md', line: 3, section: 'Intro', text: 'pick one', path: 'file:///a.md' }],
+  items: [{ kind: 'DECISION', file: 'a.md', line: 3, section: 'Intro', text: 'pick one', path: 'file:///a.md', find: '[DECISION: pick one', doc: 'file:///w.docx#rfps_Intro_abc123', open_in: 'docx' }],
   blockers: [{ id: 'C-1', req: 'Req', ref: 'WO', why: 'because', action: 'do it' }],
   register: [{ id: 'E-001', client: 'X', claim: 'c', clearance: 'cleared' }],
   files: [['progress.md', 'file:///p.md']],
@@ -80,9 +80,9 @@ test('pressing Open items then Work on this puts a prompt in the box', async ($,
   expect(work).toBeDefined()
   await ui.press({ key: work?.key as string })
   expect(fills[0]).toContain('Resolve the DECISION in response/a.md line 3')
-  const open = await ui.find({ type: 'Button', text: /Open a.md:3/ })
+  const open = await ui.find({ type: 'Button', text: /Open in document/ })
   expect(open).toBeDefined()
   await ui.press({ key: open?.key as string })
-  expect(submits[0]).toContain('Open response/a.md at line 3')
+  expect(submits[0]).toContain('rfps-open-doc --section "Intro"')
   await ui.unmount()
 })

@@ -28,6 +28,7 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 import build_response as br
 import sync_core
+import locator
 
 AUTHOR = "rfps"
 PH_FALLBACK = {"[text]", "text", "[insert table or graphic]"}
@@ -148,6 +149,22 @@ def track_replace_inplace(old, new, rev):
     for r in [c for c in new if c.tag == qn("w:r")]:
         ins = rev.el("ins"); ins.append(r); old.append(ins)
 
+def ensure_bookmarks(wip, rev):
+    """A bookmark on every heading (invisible, not a tracked change) so links and Word's Go To can find sections."""
+    have = {b.get(qn("w:name")) for b in wip.body.iter(qn("w:bookmarkStart"))}
+    added = 0
+    for title, hel in wip.sections:
+        name = locator.bookmark_name(title)
+        if name in have: continue
+        bid = str(rev.n); rev.n += 1
+        start = OxmlElement("w:bookmarkStart"); start.set(qn("w:id"), bid); start.set(qn("w:name"), name)
+        end = OxmlElement("w:bookmarkEnd"); end.set(qn("w:id"), bid)
+        ppr = hel.find(qn("w:pPr"))
+        if ppr is not None: ppr.addnext(start)
+        else: hel.insert(0, start)
+        hel.append(end); added += 1
+    return added
+
 # ---------- helpers ----------
 
 def wip_path(sol, cfg, template, name):
@@ -190,6 +207,7 @@ def create_wip(sol, e, path, report):
     path.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(built, path)
     wip = Wip(path, e["tcfg"])
+    if ensure_bookmarks(wip, Rev(wip.doc)): wip.doc.save(str(path))
     st = {"wip": os.path.relpath(path, sol), "sections": snapshot_of(wip), "synced": datetime.datetime.now().isoformat(timespec="seconds")}
     save_state(sol, st)
     report.append(f"Created {path} from the template and the current response text ({len(st['sections'])} sections).")
@@ -255,6 +273,7 @@ def push(sol, e, path, st, dry, force):
     wip, resp, problems, rows = analyse(sol, e, path, st)
     if problems: sys.exit("Heading mismatch (headings must match exactly):\n  " + "\n  ".join(problems))
     rev = Rev(wip.doc)
+    added_bm = 0 if dry else ensure_bookmarks(wip, rev)
     new_state = dict(st); new_state["sections"] = dict(st.get("sections", {}))
     applied = skipped = 0; notes = []
     for r in rows:
@@ -286,7 +305,7 @@ def push(sol, e, path, st, dry, force):
     print(f"{'Would push' if dry else 'Pushed'} {applied} change(s) as tracked changes (author {AUTHOR}); {skipped} skipped because the document was edited there.")
     print("\n".join(notes) if notes else "  Nothing to push: the WIP docx already matches the response text.")
     print("\n".join(evidence_notes(e)))
-    if dry or not applied and not any(new_state["sections"].get(k) != st.get("sections", {}).get(k) for k in new_state["sections"]):
+    if dry or not applied and not added_bm and not any(new_state["sections"].get(k) != st.get("sections", {}).get(k) for k in new_state["sections"]):
         if not dry: save_state(sol, new_state)
         return
     if (path.stat().st_size, path.stat().st_mtime_ns) != stat0:

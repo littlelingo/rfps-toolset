@@ -331,7 +331,12 @@ export const register: Register = on => {
                   <Text>{i.text.length > 240 ? `${i.text.slice(0, 237)}...` : i.text}</Text>
                   <Box flexDirection="row" gap="sm" flexWrap="wrap">
                     <Button onPress={() => fill(`Resolve the ${i.kind} in response/${i.file} line ${i.line} (${i.section}): ${i.text}`)}>Work on this</Button>
-                    <Button onPress={() => ask(`Open response/${i.file} at line ${i.line} in the file pane.`)}>{`Open ${i.file}:${i.line}`}</Button>
+                    {i.doc ? (
+                      <Button onPress={() => ask(`Run rfps-open-doc --section "${i.section}" --find "${(i.find ?? '').replace(/"/g, "'")}" to open the shared WIP docx; the text to search for goes on the clipboard.`)}>Open in document</Button>
+                    ) : (
+                      <Button onPress={() => ask(`Open response/${i.file} at line ${i.line} in the file pane.`)}>{`Open ${i.file}:${i.line}`}</Button>
+                    )}
+                    {i.doc && i.find && <Button onPress={p => void $.ui.copy({ text: i.find as string, surface: p.surface })}>Copy search text</Button>}
                   </Box>
                 </Box>,
               ),

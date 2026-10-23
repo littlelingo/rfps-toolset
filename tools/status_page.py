@@ -41,6 +41,10 @@ def build(sol):
     cfg = tomllib.loads((sol / "solution.toml").read_text())
     fj = flow_json(sol)
     items = oi.scan(sol / cfg.get("response_dir", "response"))
+    try:
+        import locator
+        locator.decorate(sol, cfg, items)
+    except Exception: pass
     for x in items: x["path"] = (sol / cfg.get("response_dir", "response") / x["file"]).as_uri()
     reg = csv_rows(sol / cfg.get("register", "evidence/register.csv"), ["id", "client", "engagement", "claim", "clearance", "ban_phrases"])
     for r in reg: r["claim"] = r["claim"][:140]
@@ -86,7 +90,7 @@ def render(d):
     kinds = [("all", "All", len(d["items"])), ("DECISION", "Decision", 0), ("OPEN", "Open", 0), ("EVIDENCE NEEDED", "Evidence", 0), ("ASSERTION", "Assertion", 0)]
     kc = {k: sum(1 for x in d["items"] if x["kind"] == k) for k, _, _ in kinds}
     itemchips = "".join(f'<span class="chip{" on" if k == "all" else ""}" data-k="{E(k)}">{lab} ({len(d["items"]) if k == "all" else kc.get(k, 0)})</span>' for k, lab, _ in kinds)
-    rows = "".join(f'<tr class="item" data-kind="{E(x["kind"])}"><td><span class="k k-{"EVIDENCE" if x["kind"] == "EVIDENCE NEEDED" else x["kind"]}">{E(x["kind"])}</span></td><td><a class="lnk" href="{E(x["path"])}">{E(x["file"])}:{x["line"]}</a></td><td>{E(x["section"])}</td><td>{E(x["text"])}</td></tr>' for x in d["items"]) or '<tr><td colspan="4" class="empty">No open items.</td></tr>'
+    rows = "".join(f'<tr class="item" data-kind="{E(x["kind"])}"><td><span class="k k-{"EVIDENCE" if x["kind"] == "EVIDENCE NEEDED" else x["kind"]}">{E(x["kind"])}</span></td><td><a class="lnk" href="{E(x["path"])}">{E(x["file"])}:{x["line"]}</a>{(' <a class="lnk" href="' + E(x["doc"]) + '">In document</a> <code>' + E(x["find"]) + '</code>') if x.get("doc") else ""}</td><td>{E(x["section"])}</td><td>{E(x["text"])}</td></tr>' for x in d["items"]) or '<tr><td colspan="4" class="empty">No open items.</td></tr>'
     blk = "".join(f'<tr class="blk"><td>{E(x["id"])}</td><td>{E(x["req"])}</td><td>{E(x["ref"])}</td><td>{E(x["why"])}</td><td>{E(x["action"])}</td></tr>' for x in d["blockers"]) or '<tr><td colspan="5" class="empty">None.</td></tr>'
     reg = "".join(f'<tr><td>{E(x["id"])}</td><td>{E(x["client"])}</td><td>{E(x["claim"])}</td><td class="cl-{E(x["clearance"])}">{E(x["clearance"])}</td></tr>' for x in d["register"]) or '<tr><td colspan="4" class="empty">None.</td></tr>'
     team = "".join(f'<tr><td>{E(x["id"])}</td><td>{E(x["role"])}</td><td>{E(x["status"])}</td><td{(" style=" + chr(34) + "color:var(--blk);font-weight:600" + chr(34)) if (x["person"] or "TBD") == "TBD" and x["status"] == "KP" else ""}>{E(x["person"] or "TBD")}</td><td>{E(x["headcount"] or "1")}</td><td>{E(x["loe_pct"])}</td><td>{E(x["phases"])}</td></tr>' for x in d["roster"]) or '<tr><td colspan="7" class="empty">None.</td></tr>'

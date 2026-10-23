@@ -97,7 +97,7 @@ def main():
     sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent)); import resources as rs
     rs.write(sol / "response" / "resources.csv", [])
     (sol / "evidence" / "README.md").write_text((pathlib.Path(__file__).parent / "templates" / "evidence_README.md").read_text())
-    (sol / "past-performance" / "sources.toml").write_text('# Past-performance source locations (read in place, never copied). type = "local" | "drive".\n# [[source]]\n# type = "local"\n# path = "..."\n# label = "..."\n')
+    (sol / "past-performance" / "sources.toml").write_text('# Past-performance source locations (read in place, never copied). type = "local" | "drive".\n# [[source]]\n# type = "local"\n# path = "..."   (relative paths are relative to active-solution/; rfps-add-source writes them)\n# label = "..."\n')
     (sol / ".state").mkdir(); (sol / ".state" / "integrated.json").write_text("{}\n")
     (sol / "external-sources.md").write_text("# Outside sources added\n\nThe tools work from the selected sources. If you approve looking anywhere else (web, an unlisted folder or drive), record it here.\n\n| Date | What was added | Why | Approved by |\n|------|----------------|-----|-------------|\n")
     (sol / "amendments" / "README.md").write_text((pathlib.Path(__file__).parent / "templates" / "amendments_README.md").read_text())

@@ -8,6 +8,8 @@ T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 uv run --quiet "$HERE/build_sample.py" "$T/capture" >/dev/null
 cd "$T/capture"
 rfps-new-engagement --source "$T/capture" --title "Sample" >/dev/null
+rfps-add-source "$T/capture/past-performance" --label notes >/dev/null
+grep -q 'path = "../past-performance"' active-solution/past-performance/sources.toml || { echo "FAIL: source path is not relative" >&2; exit 1; }
 cp "$HERE"/seed/response/*.md active-solution/response/
 cp "$HERE/seed/register.csv" active-solution/evidence/register.csv
 rfps-refresh-reports --solution >/dev/null

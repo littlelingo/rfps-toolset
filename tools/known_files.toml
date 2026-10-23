@@ -1,0 +1,7 @@
+# Files a solution is expected to contain (globs relative to the solution folder).
+# Anything else is "unlisted" until it is recorded in the solution's provenance.md.
+expected = [
+  "solution.toml", ".gitignore", ".DS_Store", "progress.md", "external-sources.md", "provenance.md",
+  "brief.md", "gap-report.md", "coverage-matrix.md", "compliance-report.md", "resource-plan.md", "review-notes.md", "open-items.md",
+  ".state/**", ".git/**", "response/*.md", "response/resources.csv", "review/*.md", "evidence/**", "past-performance/**", "amendments/**", "build/**",
+]

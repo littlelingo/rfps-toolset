@@ -1,0 +1,68 @@
+# Conventions
+
+Rules every rfps skill follows. Read this before working on a solution. (Shared reference: a plugin cannot ship a CLAUDE.md that loads into context.)
+
+## Purpose
+
+This is not a code project. The rfps plugin is a generic, reusable flow for working through solicitation documents (SOW, RFP, SOO and similar) to put together a proposal response. Nothing in the plugin is specific to any one agency, contract, or bidder: skills, commands, `tools/`, and templates are generic and configurable, and everything specific to one solicitation lives in that solicitation's `active-solution/` folder (see "Where things live").
+
+## Input model
+
+- The user provides a source file or a folder of files. Everything in it is read as "the request": the solicitation, amendments, Q&A, attachments, templates and so on.
+- Nothing about the engagement is assumed up front. Derive it from the provided documents, and record where each fact came from:
+  - who issued the solicitation (agency, office, contacting officer) and who it is for
+  - contract type, scope, period, deliverables, evaluation criteria, due dates and submission rules
+  - which document is the primary one and which amend or supplement it
+- Handle mixed formats (PDF, DOCX, XLSX, plain text) and multi-file sets. If files conflict (e.g. an amendment overrides the base RFP), say which wins and why.
+- If the "who" or any key fact cannot be determined from the documents, ask the user rather than guessing. The bidder's own details (capabilities, past performance, staffing, pricing) come from material the user supplies, not from the solicitation.
+
+## Working conventions
+
+- Treat the provided documents as the source of truth. Cite the document and section (e.g. "SOW 3.2") for every requirement so claims can be traced back.
+- Keep a clear distinction between what the solicitation requires (shall/must), what it only requests (should/may), and our own assumptions. Flag assumptions and ambiguities explicitly rather than resolving them silently.
+- Do not invent facts about the bidder. Mark anything not supported by a provided source as a placeholder for the user to fill in.
+- Keep skills and commands engagement-agnostic: take the source path as an input, and keep engagement-specific outputs out of the skill definitions.
+- In prose and docs, use hyphens instead of em-dashes.
+
+
+## Where things live
+- **The plugin is the generic tool:** skills and `tools/`. Solicitation data never lives in the plugin folder.
+- **Each solicitation keeps its work in `active-solution/` inside its own source (capture) folder,** beside the numbered folders (`01 Solicitation Docs`, `05 Draft Response`, `11 Final Submission`, and so on). The response template docx stays in `05 Draft Response`; FINAL builds are also copied to `11 Final Submission`. Past-performance material stays where it is and is referenced, never copied.
+- Paths in `active-solution/solution.toml` are relative to `active-solution/`, so the same folder works on a local disk and on a synced Google Drive mount.
+- **Version control:** on a local disk `active-solution/` is its own git repo; on a Google Drive folder Drive's version history applies and git is not used. Commit before running anything that regenerates files.
+- The active solution is found from the current directory (a folder at or above it that holds `solution.toml` or `active-solution/solution.toml`), else from `.claude/active-solution` in the current project; `/rfps:use-solution <folder>` sets that pointer. Skills default to it.
+- **Google Drive folders are expected to be connector-based** (no local mount). That needs a pull-and-push step that is not built yet; until it is, run against a local or mounted copy. Two people editing `response/` or the register in a shared Drive folder can conflict (Drive keeps versions but does not merge); this is noted, not solved.
+- **Amendments and Q&A answers** are logged in `active-solution/amendments/log.md` with the requirement IDs they affect; a new one triggers a re-run of the requirements analysis (see `amendments/README.md`).
+- The skills read and write `response/` (the working text) and `review/` (generated annotated copies). There is no `sections/` folder; the old `proposal-assembler` skill is superseded by the build commands.
+
+## Response build (docx is the deliverable)
+
+- The final response is a copy of the response .docx with the drafted text poured in. The template is never modified.
+- **Edit the response text in `active-solution/response/*.md`.** The headings mirror the docx headings exactly, so each docx heading has one home for its text. Do not edit `sections/*.md` (a superseded snapshot) or `*-reviewed.md` (generated annotations) to change the response.
+- `/rfps:build-wip` (default mode) keeps the Work Order and evaluation scaffold lines and replaces only the `[text]` placeholders, with internal markers highlighted. `/rfps:build-final` writes a new copy with scaffold lines removed, omitted headings dropped, and `[GROUNDED]` and `[ASSERTION]` markers stripped; it refuses while any `[DECISION]`, `[EVIDENCE NEEDED]`, `[OPEN]`, bracketed placeholder, or uncleared evidence remains. Both call `tools/build_response.py`; WIP output goes to `active-solution/build/` (git-ignored).
+- The docx heading text is the contract: renaming a heading in either place makes the build fail until both match.
+- `/rfps:new-engagement <source folder> [template.docx]` creates `active-solution/` in a source folder: config, a `response/` skeleton mirroring the template headings, an empty evidence register, an amendments log, and a past-performance manifest, and empty living `coverage-matrix.md` and `compliance-report.md` skeletons.
+- **Conventions are defaults, not rules.** `tools/defaults.toml` holds the capture-folder name patterns (solicitation, draft response, final submission) and how a response docx marks its structure (heading style prefix, scaffold styles, placeholder text). Override the docx conventions in a solution's `solution.toml` under `[docx]`, and the folder patterns with `new_engagement.py` flags.
+
+## Evidence register
+- Facts about the firm's past performance and practices live in `active-solution/evidence/register.csv`, not in the prose. The response cites them as `[GROUNDED: E-nnn]`. See `evidence/README.md` for how to add or replace evidence. Source locations are listed in `past-performance/sources.toml`.
+- Never reuse or renumber an ID. To correct a fact, add a new row and set `superseded_by` on the old one.
+- The register's `ban_phrases` column lists wording that must never appear in the response (retired figures, non-public details, wrong names).
+- The build warns (WIP) and refuses (FINAL) when a cited ID is unknown, superseded, or not `cleared`, when a grounded tag cites no ID, or when a banned phrase appears.
+
+## Reports
+- `coverage-matrix.md` and `compliance-report.md` are living markdown documents in the solution folder. Their requirement and check tables are the source: the requirements-mapper and compliance-validator skills (or a person) edit rows in place by stable ID and never regenerate or renumber. Only the blocks between `<!-- derived:... -->` markers (counts, pre-flight status, blocking list, page estimates, automated checks) belong to `tools/refresh_reports.py`; run it with `/rfps:refresh-reports` after any change. Set `page_limit` in `solution.toml` for the page check.
+- Staffing has three homes. `response/resources.csv` is the roster, one row per proposed role (status KP, Recommended, Ours or Dropped; scope, responsibilities, value added, deliverables led, headcount, level of effort, phases, person, resume, and whether the role is written up in the response). It is the only place to add, change or drop a role; a dropped row stays for history. `resource-plan.md` holds the State's role requirements, the deliverables that need an owner, the stated figures, and derived checks, maintained by the resource-planner skill (`/rfps:resources`). The response narrative for each role flagged `in_response` is hand-edited prose seeded by the skill; only the one-sentence team size (people and FTE, where two people at 50 percent is one FTE) between `<!-- derived:team-size -->` markers is regenerated.
+- The staffing workbook (`staffing_xlsx` in `solution.toml`, normally `09 Pricing/Staffing.xlsx`) is built from the one template `tools/templates/staffing-template.xlsx` by `rfps-staffing`. It stays in step with the roster both ways: person, resume, responsibility and allocation % carry over from whichever side changed (compared with the last agreed values in `.state/staffing-sync.json`), conflicting edits are reported and left alone, a role added in the workbook becomes a new roster row, and nothing is deleted. Labor category, rate and hours live only in the workbook; the role title and narrative fields live only in the roster. The resource checks report pending changes and conflicts. Pricing stays out of the roster and the response.
+- **Scanning for open work in the response:** `[ASSERTION: ...]`, `[DECISION: ...]`, `[OPEN: ...]` and `[EVIDENCE NEEDED: ...]` keep their bracket form because the build and reports read it. A colored icon before each one makes it easy to spot (Markdown cannot color text): 🔴 DECISION, 🟠 OPEN, 🟣 EVIDENCE NEEDED, 🟡 ASSERTION. `rfps-open-items --mark` adds or refreshes the icons; the build ignores them and removes them with the marker in FINAL. `open-items.md` in the solution folder lists every marker in one table with a link to its line, ordered decisions first; `/rfps:refresh-reports` regenerates it. Do not edit it by hand. Authors do not need to type the icons: write the bracketed marker and run `--mark`.
+- `brief.md`, `gap-report.md`, and `review-notes.md` are narrative skill outputs; edit the inputs (`response/`, the evidence register) and re-run the skill rather than hand-editing conclusions.
+- A solution does not need its own generator scripts; `tools/` has none and depends on none.
+
+## Guided flow (and using the tools on their own)
+- `tools/flow.toml` defines an ordered flow of steps. `/rfps:status` shows where the solution is (🟢 done, 🟠 needs attention, 🔴 blocking, ⚪ not started, 🔵 skipped) and writes `progress.md`, a checklist the user can tick: `[ ]` uses the detected state, `[x]` marks a step done, `[-]` skips it. `/rfps:status sections` colors every response heading; `/rfps:status <step or heading>` explains what is missing. `/rfps:next` picks the most useful open item, asks what is needed, and acts on the answer. `/rfps:step <id> done|skip|reset` sets a mark.
+- Every step is also a skill or command that works alone (`/rfps:collateral-analyzer`, `/rfps:requirements-mapper`, `/rfps:section-drafter`, `/rfps:empathy-reviewer`, `/rfps:compliance-validator`, `/rfps:refresh-reports`, `/rfps:build-wip`, `/rfps:build-final`, `/rfps:integrate`). The flow orders and tracks them; it never requires them. Natural language reaches the same tools.
+- `/rfps:integrate` (or "add this to the Phase 2 section") reviews text the user added or edited as an expert proposal writer and weaves it into its section for approval; `tools/flow_status.py --baseline` and `--changed` track what has been integrated.
+- **Outside sources:** work from the sources the user selected (the solicitation folder, listed past-performance locations, files in the solution). Never search the web, open unlisted folders or drives, or pull other material without asking first; log approved additions in `active-solution/external-sources.md`.
+- **Links:** after creating or changing a file, give the user a clickable link to it (path relative to the session working directory when possible).
+- Plugin skills are namespaced `/rfps:` (for example `/rfps:status`, `/rfps:next`, `/rfps:build-wip`) so they never collide with built-in commands. The `rfps-*` terminal tools are on the PATH while the plugin is enabled. The analysis skills keep their own names (`/rfps:collateral-analyzer` and so on). `/rfps:extract`, `/rfps:open-items` and `/rfps:file-audit` wrap the extract, open-items and file-audit tools. The status pane (`hooks/`, a mod) shows that shows a live status pane beside the chat in Claude Desktop (`/rfps-pane` or `/rfps-status-pane`; it reads `rfps-status-page --json` and its buttons put the next action in the prompt). `/rfps:status-page` writes `build/status.html`, a local one-file status page (steps, response sections, open items with links, blockers, evidence, team) with filters and search; nothing is uploaded. `/rfps:help` lists the terminal tools (`rfps-<name>`) and the skills with what each is for; a new tool shows up there automatically (add a row to `HINTS` in `tools/list_tools.py` for its "use it when" line). The status view is the markdown table layout from `rfps-flow-status --table` (stable, no widget needed); the inline visual checklist is optional.
+- **File provenance:** the standard files a solution holds are listed in `tools/known_files.toml`. Any other file is reported by `rfps-file-audit` until it is recorded in the solution's `provenance.md` (who or what made it, when, why, and a verdict of Needed, Review or Remove). Skills and sessions that create a non-standard file should record it with `--record` and say why it is needed; the flow shows a step until every file has a known origin.

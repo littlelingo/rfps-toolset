@@ -1,0 +1,3 @@
+#!/bin/sh
+# Runs tools/status_page.py with its inline dependencies via uv. On PATH while the rfps plugin is enabled.
+exec uv run --quiet "$(dirname "$0")/../tools/status_page.py" "$@"

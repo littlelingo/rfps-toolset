@@ -1,0 +1,18 @@
+# Defaults for the generic tools. Nothing here is specific to one solicitation.
+# A solution can override the [docx] table in its own solution.toml; the folder patterns can be
+# overridden with flags on new_engagement.py.
+
+[folders]
+# Regular expressions matched against folder names inside a source (capture) folder.
+solicitation = '^0?1\b.*solicit'
+draft_response = '^0?5\b.*draft'
+final_submission = '^11\b.*final'
+pricing = '^0?9\b.*(pric|cost)'
+# Candidate template files whose names match this are ignored when auto-detecting the response template.
+template_exclude = 'resume|key personnel|evidence|redline|original|updated'
+
+[docx]
+# How the response docx marks its structure. Adjust per solution in solution.toml if a template differs.
+heading_prefix = "Heading"            # paragraph styles "Heading 1", "Heading 2", ...
+scaffold_styles = ["Subtitle"]        # paragraph styles holding requirement or instruction lines (removed in FINAL)
+placeholders = ["[text]", "text", "[insert table or graphic]"]   # paragraphs replaced by drafted text (case-insensitive)

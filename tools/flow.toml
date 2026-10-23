@@ -1,0 +1,177 @@
+# The guided flow. Generic: no step refers to any one solicitation.
+# Each step can be run on its own (its command or skill works outside the flow). The flow only orders
+# them, tracks where you are, and asks what to do next.
+#
+# kind = "auto"   state is detected from files by rfps-flow-status (check = detector name)
+# kind = "manual" cannot be detected; the user checks it off in progress.md or says so
+# group order is the display order. A user can mark any step done ([x]) or skipped / not applicable ([-])
+# in the solution's progress.md; that choice wins over detection.
+
+[[step]]
+id = "solution"
+group = "Set up"
+title = "Solution folder created beside the source folders"
+command = "/rfps:new-engagement"
+check = "solution_exists"
+help = "Run /rfps:new-engagement <source folder> to create active-solution/ with its config, response skeleton, evidence register and report skeletons."
+ask = "Which source (capture) folder is this solicitation in?"
+
+[[step]]
+id = "solicitation"
+group = "Set up"
+title = "Solicitation documents located"
+command = "/rfps:use-solution"
+check = "solicitation_found"
+help = "Put the solicitation, attachments and any amendments in the solicitation folder named in solution.toml (solicitation_dir)."
+ask = "Where are the solicitation documents? Are the amendments and Q&A answers in the same place?"
+
+[[step]]
+id = "template"
+group = "Set up"
+title = "Response template matches the response files"
+command = "/rfps:new-engagement"
+check = "template_ok"
+help = "The response/ headings must match the template docx exactly. Fix the template or the files so both match."
+ask = "Is the response template docx the right one? If there is none, should I generate one from the solicitation's response instructions?"
+
+[[step]]
+id = "analyze"
+group = "Understand"
+title = "Collateral analyzed (brief and gap report)"
+command = "/rfps:collateral-analyzer"
+check = "brief_exists"
+help = "Run the collateral analyzer on the solicitation and your supporting material to produce brief.md and gap-report.md."
+ask = "Is there other supporting material (prior proposals, org documents, notes) I should include, besides what is already selected?"
+
+[[step]]
+id = "requirements"
+group = "Understand"
+title = "Requirements recorded in the coverage matrix"
+command = "/rfps:requirements-mapper"
+check = "requirements_recorded"
+help = "Run the requirements mapper so coverage-matrix.md lists every requirement with its source, class and action."
+ask = "Do you want me to map the requirements now?"
+
+[[step]]
+id = "amendments"
+group = "Understand"
+title = "Amendments and Q&A answers logged (or confirmed none)"
+kind = "manual"
+command = "see amendments/README.md"
+help = "Log each amendment or Q&A answer in amendments/log.md with the requirement IDs it affects, or confirm there are none, then check this off."
+ask = "Have any amendments or Q&A answers been issued since the solicitation?"
+
+[[step]]
+id = "sources"
+group = "Evidence"
+title = "Past-performance sources listed"
+command = "/add-past-performance (planned) or edit past-performance/sources.toml"
+check = "pp_sources"
+help = "List where your past-performance material lives (local or Drive folders) in past-performance/sources.toml. Material is read in place, never copied."
+ask = "Where does your past-performance material live? Do you want to add more locations?"
+
+[[step]]
+id = "register"
+group = "Evidence"
+title = "Evidence register has facts"
+check = "register_rows"
+help = "Add one row per approved fact to evidence/register.csv (see evidence/README.md)."
+ask = "Which past engagements best prove the evaluation criteria? I can draft register rows from the sources for your approval."
+
+[[step]]
+id = "cleared"
+group = "Evidence"
+title = "Evidence cited in the response is cleared for use"
+check = "evidence_cleared"
+help = "Every [GROUNDED: E-nnn] fact the response cites must be marked cleared in the register before the final build."
+ask = "Which clients or owners still need to approve use of their material?"
+
+[[step]]
+id = "resources"
+group = "Draft"
+title = "Roles, Key Personnel and level of effort defined"
+command = "/rfps:resource-planner"
+check = "resources_defined"
+help = "Run the resource planner so response/resources.csv lists each role (KP, recommended or ours) with its scope, level of effort and person, resource-plan.md holds the State's requirements, and Staffing.xlsx is in step; then /rfps:refresh-reports."
+ask = "Which roles does the solicitation require or suggest, and who could fill them?"
+
+[[step]]
+id = "draft"
+group = "Draft"
+title = "Every response heading has text"
+command = "/rfps:section-drafter"
+check = "draft_complete"
+help = "Write text under each heading in response/*.md, or run the section drafter to draft it."
+ask = "Which section do you want to work on next?"
+
+[[step]]
+id = "integrated"
+group = "Draft"
+title = "Your added or edited text woven into its sections"
+command = "/rfps:integrate"
+check = "integrated"
+help = "Run /rfps:integrate so text you added or edited is reviewed as an expert proposal writer would and folded in cleanly."
+ask = "You changed some sections. Should I weave your edits in now?"
+
+[[step]]
+id = "markers"
+group = "Draft"
+title = "Decisions, evidence-needed notes and placeholders resolved"
+check = "markers_resolved"
+command = "/rfps:open-items"
+help = "Resolve every [DECISION], [EVIDENCE NEEDED], [OPEN] note and bracketed placeholder in response/*.md. open-items.md lists them all with links (decisions first); rfps-open-items --mark adds the colored icons."
+ask = "Do you want to work through the open decisions one at a time?"
+
+[[step]]
+id = "empathy"
+group = "Review"
+title = "Tone and client-centricity reviewed"
+command = "/rfps:empathy-reviewer"
+check = "empathy_reviewed"
+help = "Run the empathy reviewer after the text changes; it writes annotated copies to review/ and review-notes.md."
+ask = "Do you want a tone and client-centricity review now?"
+
+[[step]]
+id = "files"
+group = "Review"
+title = "Every file in the solution has a known origin"
+command = "/rfps:file-audit"
+check = "files_tracked"
+help = "Files that are not part of the standard set are listed until recorded in provenance.md (who or what made them, why, needed or not). Record with rfps-file-audit --record."
+ask = "These files were not made by the standard steps. Where did each come from, and do you need it?"
+
+[[step]]
+id = "compliance"
+group = "Review"
+title = "Compliance checks recorded, none blocking"
+command = "/rfps:compliance-validator"
+check = "compliance_ok"
+help = "Run the compliance validator so compliance-report.md has check rows, then /rfps:refresh-reports. Resolve every blocking item."
+ask = "Do you want me to run the compliance checks and refresh the report?"
+
+[[step]]
+id = "attachments"
+group = "Package"
+title = "Separate attachments ready (resumes, price form, evidence, signatures)"
+kind = "manual"
+command = "see the compliance report's attachment rows"
+help = "The response narrative is built by this tool. Resumes, the price form, the supporting evidence and signature pages are prepared separately; check this off when they are ready."
+ask = "Which attachments are still open?"
+
+[[step]]
+id = "wip"
+group = "Package"
+title = "Work-in-progress copy built from the latest text"
+command = "/rfps:build-wip"
+check = "wip_current"
+help = "Run /rfps:build-wip after changing response text to get a current work-in-progress docx."
+ask = "Do you want a fresh work-in-progress build?"
+
+[[step]]
+id = "final"
+group = "Package"
+title = "Final copy built and placed in the final submission folder"
+command = "/rfps:build-final"
+check = "final_current"
+help = "Run /rfps:build-final once nothing blocks it. It writes a new finished copy and also places one in final_copy_dir."
+ask = "Ready to try the final build?"

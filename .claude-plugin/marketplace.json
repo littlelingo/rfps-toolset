@@ -1,0 +1,12 @@
+{
+  "name": "rfps-toolset",
+  "description": "Plugins for working through solicitations to a proposal response",
+  "owner": { "name": "Clint Little" },
+  "plugins": [
+    {
+      "name": "rfps",
+      "source": "./",
+      "description": "Solicitation analysis, evidence-grounded drafting, compliance checks and docx build for RFP responses"
+    }
+  ]
+}

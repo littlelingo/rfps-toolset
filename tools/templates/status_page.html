@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITLE__ - status</title>
+<style>
+:root{--bg:#f7f6f2;--card:#fff;--ink:#1d1d1b;--mut:#5f5e5a;--line:#e3e1d8;--done:#3b8a3e;--att:#c27a0e;--blk:#c0392b;--todo:#8a8880;--skip:#2f6fb5;--chip:#efede6;--acc:#2f6fb5}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1b19;--card:#262624;--ink:#ecebe6;--mut:#a9a79f;--line:#3a3a36;--done:#6fbf73;--att:#e3a33a;--blk:#ee7a6c;--todo:#9b998f;--skip:#6fa8e6;--chip:#33332f;--acc:#6fa8e6}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+header{padding:20px 24px 12px;border-bottom:1px solid var(--line);background:var(--card);position:sticky;top:0;z-index:5}
+h1{font-size:20px;margin:0 0 2px;font-weight:600}h2{font-size:17px;margin:0 0 10px;font-weight:600}h3{font-size:14px;margin:0 0 6px;font-weight:600;color:var(--mut)}
+.sub{color:var(--mut);font-size:13px}nav{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:13px}nav a{color:var(--acc);text-decoration:none}nav a:hover{text-decoration:underline}
+main{max-width:1180px;margin:0 auto;padding:18px 24px 60px}section{margin:0 0 28px;scroll-margin-top:110px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}.grow{flex:1}
+.bar{height:10px;border-radius:5px;background:var(--chip);overflow:hidden;min-width:200px}.bar>i{display:block;height:100%;background:var(--done)}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--chip);border-radius:999px;padding:3px 10px;font-size:12.5px;cursor:pointer;border:1px solid transparent;color:var(--ink)}
+.chip.on{border-color:var(--acc)}.dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
+.s-done{background:var(--done)}.s-attention{background:var(--att)}.s-blocking{background:var(--blk)}.s-todo{background:var(--todo)}.s-skipped{background:var(--skip)}
+input[type=search]{padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);min-width:240px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.next{border-left:4px solid var(--att)}.next.blocking{border-left-color:var(--blk)}.next h3{color:var(--ink);font-size:15px}
+button.copy{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;padding:3px 9px;font-size:12px;cursor:pointer}button.copy:hover{border-color:var(--acc)}
+code{background:var(--chip);padding:1px 6px;border-radius:5px;font-size:12.5px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--mut);font-weight:600;font-size:12.5px}
+.step{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}.step:last-child{border:none}.step .t{font-weight:500}.step .d{color:var(--mut);font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.tile{border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:12.5px;background:var(--card);border-left:5px solid var(--todo);line-height:1.3}
+.tile.done{border-left-color:var(--done)}.tile.attention{border-left-color:var(--att)}.tile small{color:var(--mut);display:block}
+a.lnk{color:var(--acc);text-decoration:none}a.lnk:hover{text-decoration:underline}
+.k{font-size:12px;border-radius:5px;padding:1px 7px;white-space:nowrap}.k-DECISION{background:#f6d4d0;color:#7a1f14}.k-OPEN{background:#fbe2c0;color:#6b3d00}.k-EVIDENCE{background:#e6d7f3;color:#4a2370}.k-ASSERTION{background:#f6efb3;color:#5b520a}
+.cl-cleared{color:var(--done)}.cl-hold,.cl-needs-permission{color:var(--att)}.cl-do-not-use{color:var(--blk)}
+.empty{color:var(--mut);font-style:italic}
+</style>
+</head>
+<body>
+<header>
+  <div class="row"><div class="grow"><h1>__TITLE__</h1><div class="sub">__GEN__</div></div>
+  <input type="search" id="q" placeholder="Search steps, sections, open items..." aria-label="Search"></div>
+  <nav><a href="#overview">Overview</a><a href="#steps">Steps</a><a href="#sections">Sections</a><a href="#items">Open items</a><a href="#blockers">Blockers</a><a href="#evidence">Evidence</a><a href="#team">Team</a><a href="#files">Files</a></nav>
+</header>
+<main>
+<section id="overview"><div class="card"><div class="row"><div class="bar grow"><i style="width:__PCT__%"></i></div><b>__PTXT__</b></div><div class="row" style="margin-top:10px">__COUNTS__</div></div>
+<h2 style="margin:18px 0 8px">Next up</h2><div class="cards">__NEXT__</div></section>
+<section id="steps"><h2>Steps</h2><div class="row" id="stepchips" style="margin-bottom:10px">__STEPCHIPS__</div><div class="cards" id="stepcards">__STEPS__</div></section>
+<section id="sections"><h2>Response sections</h2><div class="sub" style="margin-bottom:8px">Each tile is a heading in the response. Orange means it still carries open decisions, questions or evidence notes.</div><div id="secwrap">__SECTIONS__</div></section>
+<section id="items"><h2>Open items</h2><div class="row" id="itemchips" style="margin-bottom:10px">__ITEMCHIPS__</div><div class="card" style="padding:0;overflow:auto"><table id="itemtbl"><thead><tr><th>Type</th><th>Where</th><th>Section</th><th>What it says</th></tr></thead><tbody>__ITEMROWS__</tbody></table></div></section>
+<section id="blockers"><h2>Blocking compliance checks</h2><div class="card" style="padding:0;overflow:auto"><table id="blktbl"><thead><tr><th>Check</th><th>Requirement</th><th>Reference</th><th>Why blocking</th><th>Action</th></tr></thead><tbody>__BLOCKROWS__</tbody></table></div></section>
+<section id="evidence"><h2>Evidence register</h2><div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>ID</th><th>Client</th><th>Claim</th><th>Clearance</th></tr></thead><tbody>__REGROWS__</tbody></table></div></section>
+<section id="team"><h2>Team roster</h2><div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>ID</th><th>Role</th><th>Type</th><th>Person</th><th>People</th><th>Effort %</th><th>Phases</th></tr></thead><tbody>__TEAMROWS__</tbody></table></div></section>
+<section id="files"><h2>Files</h2><div class="row">__FILES__</div></section>
+</main>
+<script>
+(function(){
+function $(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))}
+var stepF='all',itemF='all',q='';
+function apply(){
+ $('.step').forEach(function(e){var ok=(stepF==='all'||e.dataset.state===stepF)&&(!q||e.textContent.toLowerCase().indexOf(q)>-1);e.style.display=ok?'':'none'});
+ $('.grp').forEach(function(g){var any=$('.step',g).some(function(e){return e.style.display!=='none'});g.style.display=any?'':'none'});
+ $('.tile').forEach(function(e){e.style.display=(!q||e.textContent.toLowerCase().indexOf(q)>-1)?'':'none'});
+ $('tr.item').forEach(function(e){var ok=(itemF==='all'||e.dataset.kind===itemF)&&(!q||e.textContent.toLowerCase().indexOf(q)>-1);e.style.display=ok?'':'none'});
+ $('tr.blk').forEach(function(e){e.style.display=(!q||e.textContent.toLowerCase().indexOf(q)>-1)?'':'none'});
+}
+$('#stepchips .chip').forEach(function(c){c.addEventListener('click',function(){stepF=c.dataset.f;$('#stepchips .chip').forEach(function(x){x.classList.remove('on')});c.classList.add('on');apply()})});
+$('#itemchips .chip').forEach(function(c){c.addEventListener('click',function(){itemF=c.dataset.k;$('#itemchips .chip').forEach(function(x){x.classList.remove('on')});c.classList.add('on');apply()})});
+document.getElementById('q').addEventListener('input',function(e){q=e.target.value.trim().toLowerCase();apply()});
+$('button.copy').forEach(function(b){b.addEventListener('click',function(){var txt=b.dataset.cmd;var done=function(){b.textContent='Copied';setTimeout(function(){b.textContent='Copy command'},1200)};
+ if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done,function(){})}else{var t=document.createElement('textarea');t.value=txt;document.body.appendChild(t);t.select();try{document.execCommand('copy')}catch(e){}document.body.removeChild(t);done()}})});
+})();
+</script>
+</body>
+</html>

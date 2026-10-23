@@ -24,12 +24,15 @@ If there is no active solution, tell the user to run `/rfps:new-engagement` or `
 4. Optionally send `build/gdoc-style.json` with `update_doc` (direct edit; it marks the template's evaluation lines as Subtitle). Give the user the link (`rfps-sync-gdoc --url`). The template's page design (cover, headers, fonts) is not in this document; the FINAL submission still comes from the Word template through `/rfps:build-final`.
 
 **Document exists:**
-1. Read it with `read_doc` and save the JSON to a file. Run `rfps-sync-gdoc --status <file>`. Show the per-section result.
+1. Read it with `read_doc` and save the JSON to a file (see the note on trimming below). Run `rfps-sync-gdoc --status <file>`. Show the per-section result.
 2. If any section was edited in the doc, run the `/rfps:pull-wip` steps first so the response text is current. If nothing has changed, say so and stop.
 3. Tell the user what will change and ask for approval (use the question tool): push, or skip. Then run `rfps-sync-gdoc --push <file>` (add `--direct` only if asked). It writes `build/gdoc-push.json`.
 4. Read `build/gdoc-push.json` and send it unchanged with `update_doc` (its `documentId`, `requests` and `writeControl`). Never reorder the requests and never drop `requiredRevisionId`. On a 400 revision mismatch, read the doc again and redo steps 1 to 4. If the connector says "Unsupported WriteControl mode", make no direct edits: tell the user suggestions are unavailable and offer the list of changes or a direct push.
 5. Run `rfps-sync-gdoc --commit`. Read the doc again and run `rfps-sync-gdoc --status <file>`; it should show everything in sync. Say that the changes are suggestions waiting in the doc for someone to accept or reject, and link the doc.
 6. Report conflicts (a response change that touches text someone edited in the doc is skipped and left pending; show the paragraphs so the user can decide which version wins) and the evidence warnings (`rfps-build-response --solution --mode wip` prints them in a scratch build). When markers remain, link `open-items.md` (run `rfps-open-items` first; do not use `--mark`, which edits response files).
+
+Saving `read_doc` output:
+`read_doc` returns a very large JSON (about 25 KB for a three-page doc). If the tool result was saved to a file, use that path. If it came back inline, write a trimmed copy to a file and use that: keep `documentId`, `revisionId`, and for `tabs[].documentTab.body.content[]` only each element's `startIndex`/`endIndex`, `paragraph.elements[]` (`startIndex`, `endIndex`, `textRun.content`, `textRun.suggestedInsertionIds`, `textRun.suggestedDeletionIds`), `paragraph.paragraphStyle.namedStyleType` and `headingId`, `paragraph.bullet`, and `table.tableRows[].tableCells[].content[]` the same way. Drop every other style field. Keep indexes and text exactly as returned.
 
 Tables, bullets and paragraphs are inserted as suggestions; inserted text is plain, so bold from the markdown is not carried into a Google Doc.
 

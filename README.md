@@ -41,7 +41,7 @@ Then, in the solicitation's source folder (the one with `01 Solicitation Docs`, 
 1. `/rfps:new-engagement` creates `active-solution/` beside the numbered capture folders: config, a `response/` skeleton mirroring the template docx headings, an evidence register, an amendments log and living report skeletons.
 2. Analysis skills read the solicitation: `collateral-analyzer`, `requirements-mapper`, `resource-planner`.
 3. `section-drafter` writes `response/*.md`; `empathy-reviewer` and `compliance-validator` review it.
-4. `/rfps:build-wip` pours the text into a copy of the template docx. `/rfps:build-final` writes the submission copy and refuses while decisions, placeholders or uncleared evidence remain.
+4. `/rfps:build-wip` creates one shared WIP docx in `05 Draft Response` and then updates it in place as tracked changes, so reviewers' comments and edits are kept. `/rfps:build-final` writes the submission copy and refuses while decisions, placeholders or uncleared evidence remain.
 5. `/rfps:status` and `/rfps:next` show where you are and what to do; the status pane keeps that beside the chat.
 
 The solution is found from the current directory (a folder at or above it holding `solution.toml`), else from the `.claude/active-solution` pointer in the current project. `/rfps:use-solution <folder>` sets the pointer.
@@ -72,7 +72,7 @@ The solution is found from the current directory (a folder at or above it holdin
 
 ## Terminal Tools
 
-The `rfps-*` commands in `bin/` are on the PATH while the plugin is enabled: `rfps-flow-status`, `rfps-build-response`, `rfps-new-engagement`, `rfps-refresh-reports`, `rfps-open-items`, `rfps-staffing`, `rfps-extract-docs`, `rfps-file-audit`, `rfps-status-page`, `rfps-use-solution` and `rfps-list-tools`. Run `/rfps:help` for what each is for.
+The `rfps-*` commands in `bin/` are on the PATH while the plugin is enabled: `rfps-flow-status`, `rfps-build-response`, `rfps-new-engagement`, `rfps-refresh-reports`, `rfps-open-items`, `rfps-staffing`, `rfps-sync-docx`, `rfps-extract-docs`, `rfps-add-source`, `rfps-file-audit`, `rfps-status-page`, `rfps-use-solution` and `rfps-list-tools`. Run `/rfps:help` for what each is for.
 
 ## Status Pane
 

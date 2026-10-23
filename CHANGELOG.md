@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Shared WIP docx: `/rfps:build-wip` now creates one WIP docx in `05 Draft Response` and updates it in place with `rfps-sync-docx`. Approved response changes go in as tracked changes (author "rfps"), only for paragraphs whose text changed, so other people's comments and edits are kept; a response change that touches text someone edited in the document is reported and left pending. `--status` shows drift, `--dry-run` previews, `--rebuild` regenerates (with a backup). `rfps-build-response --mode wip` remains the stateless regeneration into `build/`.
+- `tools/sync_core.py` plans changes from block texts, separate from the docx backend, so a Google Docs backend can be added later.
+- `/rfps:build-final` checks for edits made in the shared document before building.
+
 ## 0.1.1 (2026-10-23)
 
 - Added `fixtures/`: a fictional sample solicitation, a seed response and register, `smoke.sh` (tools end to end, no model calls) and `trial.sh` (runs the analysis and drafting skills with Claude on a throwaway copy).

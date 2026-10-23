@@ -12,7 +12,7 @@ Creates in active-solution/:
   past-performance/        sources.toml (locations of past-performance material, read in place, never copied)
   amendments/              README.md and log.md for State amendments and Q&A answers
   coverage-matrix.md, compliance-report.md, resource-plan.md   living report skeletons (rows added by the analysis skills; derived blocks by /rfps:refresh-reports)
-  .gitignore               build/
+  .gitignore               build/ and .state/text/
 and runs `git init` there when the folder is on a local disk (skipped on a Google Drive mount, where Drive's
 own version history applies). Sets the active-solution pointer (<current directory>/.claude/active-solution) so the build commands default to it.
 
@@ -106,7 +106,7 @@ def main():
     for fn, srcf in (("coverage-matrix.md", tdir / "coverage-matrix.md"), ("compliance-report.md", tdir / "compliance-report.md"),
                      ("resource-plan.md", PLUGIN_ROOT / "skills" / "resource-planner" / "assets" / "resource-plan-template.md")):
         (sol / fn).write_text(srcf.read_text().replace("{title}", a.title or src.name))
-    (sol / ".gitignore").write_text("build/\n.DS_Store\n")
+    (sol / ".gitignore").write_text("build/\n.state/text/\n.DS_Store\n")
     git = "skipped (--no-git)"
     if not a.no_git:
         if DRIVE.search(str(sol)): git = "skipped (Google Drive folder: Drive version history applies)"

@@ -9,7 +9,8 @@ A fictional solicitation so the whole rfps flow can be tried or tested with no r
 | `sample-capture/` | A ready capture folder: `01 Solicitation Docs` (RFP DPW-2026-017 and Amendment 1), `05 Draft Response` (the response template), `11 Final Submission`, and `past-performance` (the bidder's notes) |
 | `seed/` | A finished `response/*.md` and `evidence/register.csv` for the sample, to copy into `active-solution/` when you want to skip drafting |
 | `build_sample.py` | Regenerates `sample-capture/` (`uv run fixtures/build_sample.py [folder]`) |
-| `smoke.sh` | Runs the flow end to end in a temp folder and checks the results |
+| `smoke.sh` | Runs the tools end to end in a temp folder and checks the results (no model calls) |
+| `trial.sh` | Runs the extract, collateral, past-performance, requirements and drafting skills with Claude on a throwaway copy (model calls; a few minutes) |
 
 ## Try the flow by hand
 

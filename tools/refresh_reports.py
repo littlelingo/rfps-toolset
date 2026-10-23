@@ -41,6 +41,11 @@ def replace_block(text, name, new, fname):
     if not pat.search(text): sys.exit(f"{fname}: missing <!-- derived:{name} --> block (add the markers or re-scaffold)")
     return pat.sub(lambda m: m.group(1) + new.rstrip("\n") + "\n" + m.group(2), text, count=1)
 
+def rng(words):
+    """Page range at 450 to 550 words per page; one number when both ends round to the same value."""
+    lo, hi = words / 550, words / 450
+    return f"{lo:.1f}" if f"{lo:.1f}" == f"{hi:.1f}" else f"{lo:.1f} to {hi:.1f}"
+
 def response_facts(sol, cfg):
     resp, order = br.parse_response(sol / cfg.get("response_dir", "response"))
     groups, cur = collections.OrderedDict(), None
@@ -111,8 +116,8 @@ def refresh_compliance(sol, cfg):
             "**Internal markers still in the text:** " + ", ".join(f"{tags[k]} [{k}]" for k in TAGS[:5]) + f" (and about {brackets} other bracketed values). Grounded notes: {tags['GROUNDED']}."]
     t = replace_block(t, "summary", "\n".join(summ), f.name)
     pc = ["| Response section | Estimated Pages | RFP Limit | Status | Notes |", "|------------------|----------------|-----------|--------|-------|"]
-    for name, w in pages: pc.append(f"| {name} | {w/550:.1f} to {w/450:.1f} ({w:,} words) | None per section | Within | |")
-    pc.append(f"| **Total** | {lo:.1f} to {hi:.1f} ({tw:,} words) | {lim if lim else 'Not set'} | {pl} | Words after removing internal tags; 450 to 550 words per page; tables and graphics add pages and graphics inside the response count. |")
+    for name, w in pages: pc.append(f"| {name} | {rng(w)} ({w:,} words) | None per section | Within | |")
+    pc.append(f"| **Total** | {rng(tw)} ({tw:,} words) | {lim if lim else 'Not set'} | {pl} | Words after removing internal tags; 450 to 550 words per page; tables and graphics add pages and graphics inside the response count. |")
     t = replace_block(t, "pagecount", "\n".join(pc), f.name)
     # automated checks
     auto = []

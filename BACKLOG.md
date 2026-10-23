@@ -16,7 +16,7 @@ Deferred or agreed-but-not-built items, so they are not lost. Newest decisions f
 
 Goal: make building a response feel guided and less overwhelming, not a pile of separate tools.
 
-Built (first pass, 2026-10-21): `tools/flow.toml` and `tools/flow_status.py`; `/rfps-status`, `/rfps-next`, `/rfps-step`, `/rfps-integrate`; the `solution-guide` and `integrate-edits` skills; `progress.md`; change tracking in `.state/integrated.json`; the outside-sources rule and `external-sources.md`. Still to do: `/add-past-performance`, a persistent inline checklist view, real-world tuning of the step list and questions, and a requirement-to-heading view if wanted.
+Built (first pass, 2026-10-21): `tools/flow.toml` and `tools/flow_status.py`; `/rfps-status`, `/rfps-next`, `/rfps-step`, `/rfps-integrate`; the `solution-guide` and `integrate-edits` skills; `progress.md`; change tracking in `.state/integrated.json`; the outside-sources rule and `external-sources.md`. Still to do: a persistent inline checklist view, real-world tuning of the step list and questions, and a requirement-to-heading view if wanted.
 
 
 - Procedural flow: an explicit ordered list of steps, each backed by a slash command and also reachable in natural language.
@@ -29,7 +29,7 @@ Built (first pass, 2026-10-21): `tools/flow.toml` and `tools/flow_status.py`; `/
 
 ## Next (agreed, not built)
 
-- **`/add-past-performance`:** takes one or more local or Google Drive locations (several at once or over repeated calls), appends them to `past-performance/sources.toml`, scans for new or changed files, extracts text, writes a digest, and proposes register rows as `needs-permission` or `hold`. Never marks a row cleared. Drive access is connector-based and needs a confirmation before any download. Artifacts are referenced in place, not copied into `active-solution`.
+- **`/add-past-performance`, remaining parts** (a first version exists, 2026-10-23: local folders, sources.toml, extraction, proposed rows). Still to do: several locations in one call, scanning for new or changed files, a written digest, and the Google Drive connector with a confirmation before any download.
 - **Template generation and `/update-template`:** generate a response template docx from the Work Order's response instructions when none exists; `/update-template` compares a new or changed template's headings with `response/`, adds new headings, flags renamed or removed ones, and never deletes text.
 - **Google Drive adapter (connector-based):** pull inputs to a local working copy, build locally, push outputs back. Open points: native Google Docs versus `.docx`, the register as a Sheet versus CSV, per-download confirmations.
 

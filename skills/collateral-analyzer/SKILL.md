@@ -19,7 +19,8 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/solution-guide/references/conventions.md` fir
   - Prior proposals or response excerpts
   - Case study notes or drafts
   - Raw notes, emails, or meeting summaries from the capture team
-- Files may be `.md`, `.txt`, `.pdf`, or pasted text. Accept whatever is provided.
+- Files may be `.md`, `.txt`, `.pdf`, `.docx`, `.xlsx`, `.pptx`, or pasted text. Accept whatever is provided.
+- Word, Excel, PowerPoint and PDF files are read as text. Run `rfps-extract-docs "<folder>" "<solution>/.state/text/<folder name>"` first (the same as `/rfps:extract`), then read the `.txt` copies. Do not parse the binary files by hand.
 
 ## Outputs
 
@@ -48,6 +49,10 @@ Read every file the user provides. Categorize each into one of these types:
 | **Raw notes** | Emails, meeting notes, capture call summaries. Unstructured but often contain signals about client priorities, relationship context, and competitive intelligence. |
 
 Record each file, its type, and a one-line summary in the Collateral Inventory section of the brief.
+
+**Amendments and Q&A.** If a file is an amendment or a Q&A answer, add a row to `amendments/log.md` for it (number, type, date received, file name, a plain summary of what changed). Leave "Requirement IDs affected" to say "set by the requirements mapper"; the mapper fills it in. State in the brief which document wins where they conflict and why.
+
+**Past-performance material.** If the collateral includes the bidder's own past-performance files, tell the user and offer `/rfps:add-past-performance <folder>` to list them in `past-performance/sources.toml` (read in place, never copied).
 
 ### Step 2: Extract from the RFP
 

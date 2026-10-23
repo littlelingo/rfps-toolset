@@ -53,6 +53,7 @@ The solution is found from the current directory (a folder at or above it holdin
 | `/rfps:new-engagement` | Start a solicitation: create `active-solution/` |
 | `/rfps:use-solution` | Show or set the active solution |
 | `/rfps:status`, `/rfps:next`, `/rfps:step` | Where you are, the next best action, mark a step done or skipped |
+| `/rfps:add-past-performance` | List where past-performance material lives and draft evidence rows for approval |
 | `/rfps:extract` | Turn PDF, Word, Excel and PowerPoint files into searchable text |
 | `/rfps:collateral-analyzer` | Brief and gap report from the provided collateral |
 | `/rfps:requirements-mapper` | Coverage matrix of requirements to evidence |

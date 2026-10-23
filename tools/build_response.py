@@ -193,6 +193,11 @@ def load_defaults():
 def is_heading(p): return p.style.name.startswith(HP[0])
 def hlevel(p): return int(p.style.name.split()[-1])
 
+def pages_text(words):
+    """'about 3 pages' when the low and high estimates round to the same number, else 'about 3 to 4 pages'."""
+    lo, hi = round(words / 550), round(words / 450)
+    return f"about {lo} pages" if lo == hi else f"about {lo} to {hi} pages"
+
 def build(template, response, out, mode, name, force, register=None, final_copy=None, tcfg=None):
     tcfg = tcfg or load_defaults()["docx"]
     HP[0] = tcfg.get("heading_prefix", "Heading"); SCAF.clear(); SCAF.update(tcfg.get("scaffold_styles", ["Subtitle"]))
@@ -263,7 +268,7 @@ def build(template, response, out, mode, name, force, register=None, final_copy=
     rep = [f"# Build report ({suffix})", "", f"- Template: `{template}`", f"- Response source: `{response}`",
            f"- Headings poured: {len(poured)} of {len(doc_heads)}", f"- Omitted headings removed: {len(removed)} ({', '.join(removed) or 'none'})",
            f"- Markers stripped: {found['stripped']}",
-           f"- Response body words (cover and scaffold excluded): {words:,} (about {words/550:.0f} to {words/450:.0f} pages at 450 to 550 words per page; tables and graphics add pages; the State counts graphics inside the response)"]
+           f"- Response body words (cover and scaffold excluded): {words:,} ({pages_text(words)} at 450 to 550 words per page; tables and graphics add pages; the State counts graphics inside the response)"]
     if mode == "wip":
         left = [p.text for p in d.paragraphs if p.text.strip().lower() in PH]
         rep.append(f"- Placeholders still in the document: {len(left)}")

@@ -16,6 +16,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/solution-guide/references/conventions.md` fir
 - **`brief.md`** — collateral brief from the collateral-analyzer, including Evidence Map and Confidence Map
 - **`gap-report.md`** — gap report from the collateral-analyzer
 - **RFP document(s)** — the original RFP for direct requirement extraction (re-read, do not rely solely on the brief's summary)
+- **`amendments/log.md`** — amendments and Q&A answers. Apply them over the base RFP, and fill in each row's "Requirement IDs affected" and "Analysis re-run" once the matrix reflects it
 
 ## Outputs
 

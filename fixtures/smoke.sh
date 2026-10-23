@@ -24,23 +24,50 @@ x = zipfile.ZipFile(sys.argv[1]).read("word/document.xml").decode()
 sys.exit("no tracked insertions after the push" if x.count("<w:ins ") < 10 else 0)
 PY
 rfps-sync-docx --status | grep -q "0 section(s) with response changes" || { echo "FAIL: WIP not in sync after push" >&2; exit 1; }
+# reviewers edit, insert, delete and comment in the document; pull brings those into the response
+uv run --quiet --with python-docx python3 - "$WIP" <<'PY'
+import sys, copy, docx
+from docx.oxml.ns import qn
+d = docx.Document(sys.argv[1]); body = d.element.body
+for t in body.iter(qn("w:t")):
+    if t.text and "Supervisors create" in t.text: t.text = t.text.replace("Supervisors create", "Garage supervisors create")
+for par in body.iter(qn("w:p")):
+    if "A Project Manager" in "".join(t.text or "" for t in par.iter(qn("w:t"))):
+        new = copy.deepcopy(par)
+        for t in new.iter(qn("w:t")): t.text = ""
+        next(new.iter(qn("w:t"))).text = "We will hold a kickoff meeting within 10 days of the Notice to Proceed."
+        par.addnext(new); break
+for par in list(body.iter(qn("w:p"))):
+    if "Reporting (RFP 2.5)" in "".join(t.text or "" for t in par.iter(qn("w:t"))): par.getparent().remove(par); break
+for par in d.paragraphs:
+    if par.style.name == "Subtitle" and "approach to RFP" in par.text:
+        d.add_comment(runs=par.runs, text="Cite the SLA", author="Reviewer", initials="R"); break
+d.save(sys.argv[1])
+PY
+rfps-sync-docx --pull | grep -q "3 change(s)" || { echo "FAIL: pull did not find the document edits" >&2; exit 1; }
+grep -q "Cite the SLA" active-solution/review/doc-comments.md || { echo "FAIL: comment not read" >&2; exit 1; }
+rfps-sync-docx --pull --apply >/dev/null
+grep -q "Garage supervisors" active-solution/response/02-technical-approach.md || { echo "FAIL: edit not written to the response" >&2; exit 1; }
+grep -q "kickoff meeting" active-solution/response/03-management-plan.md || { echo "FAIL: inserted paragraph not written" >&2; exit 1; }
+if grep -q "Reporting (RFP 2.5)" active-solution/response/02-technical-approach.md; then echo "FAIL: deleted bullet still in the response" >&2; exit 1; fi
+rfps-sync-docx --status | grep -q "0 section(s) with response changes to push, 0 with edits" || { echo "FAIL: not in step after pull" >&2; exit 1; }
 # a reviewer edits one paragraph in the document; the response then changes the same paragraph and another one
 uv run --quiet --with python-docx python3 - "$WIP" <<'PY'
 import sys, docx
 from docx.oxml.ns import qn
 d = docx.Document(sys.argv[1]); n = 0
 for t in d.element.body.iter(qn("w:t")):
-    if t.text and "monthly utilization report" in t.text: t.text = t.text.replace("monthly utilization report", "monthly fleet utilization report"); n += 1
+    if t.text and "Every public and staff page" in t.text: t.text = t.text.replace("Every public and staff page", "Every public and every staff page"); n += 1
 assert n, "reviewer edit target not found"
 d.save(sys.argv[1])
 PY
-sed -i.bak 's/to the Fleet Manager\./to the Fleet Manager and post it online./; s/in three parts/in four parts/' active-solution/response/02-technical-approach.md && rm active-solution/response/02-technical-approach.md.bak
+sed -i.bak 's/tested to WCAG 2.1 AA\./tested to WCAG 2.1 AA and post it online./; s/in three parts/in four parts/' active-solution/response/02-technical-approach.md && rm active-solution/response/02-technical-approach.md.bak
 OUT=$(rfps-sync-docx)
 echo "$OUT" | grep -q "1 skipped" || { echo "FAIL: collision with a reviewer edit was not reported" >&2; echo "$OUT" >&2; exit 1; }
 uv run --quiet --with python-docx python3 - "$WIP" <<'PY'
 import sys, zipfile
 x = zipfile.ZipFile(sys.argv[1]).read("word/document.xml").decode()
-assert "fleet utilization" in x, "reviewer edit was lost"
+assert "every staff page" in x, "reviewer edit was lost"
 assert "four parts" in x, "non-colliding change was not pushed"
 assert "post it online" not in x, "colliding change overwrote the reviewer"
 PY

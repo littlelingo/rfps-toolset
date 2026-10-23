@@ -65,6 +65,7 @@ The solution is found from the current directory (a folder at or above it holdin
 | `/rfps:refresh-reports` | Recompute counts, pre-flight status and page estimates |
 | `/rfps:open-items` | List every decision, open question and evidence gap |
 | `/rfps:file-audit` | Check every file has a known origin |
+| `/rfps:pull-docx` | Bring edits and comments made in the shared WIP docx back into the response, for approval |
 | `/rfps:build-wip`, `/rfps:build-final` | Build the work-in-progress or final docx |
 | `/rfps:status-page` | Write a local one-file HTML status page |
 | `/rfps:solution-guide` | Natural-language status and guidance |

@@ -191,6 +191,14 @@ def newest_build(c, suffix):
     fs = [f for d in ds if d.is_dir() for f in d.glob(f"*_{suffix}.docx")]
     return max(fs, key=lambda f: f.stat().st_mtime) if fs else None
 def d_wip_current(c):
+    try:
+        import sync_docx as sd
+        s = sd.summary(c.sol)
+    except Exception: s = {"exists": False}
+    if s.get("exists"):
+        if s["doc_edits"]: return "attention", f"{s['doc_edits']} section(s) edited in the shared WIP docx are not in the response yet (/rfps:pull-docx)"
+        if s["md_ahead"]: return "attention", f"{s['md_ahead']} section(s) have response changes not in the shared WIP docx yet (/rfps:build-wip)"
+        return "done", f"{s['path'].name} is in sync with the response"
     f = newest_build(c, "WIP")
     if not f: return "todo", "no work-in-progress build yet"
     return ("done", f"{f.name} is current") if f.stat().st_mtime >= c.newest else ("attention", "response changed since the last build")

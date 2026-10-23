@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Shared WIP docx: `/rfps:build-wip` now creates one WIP docx in `05 Draft Response` and updates it in place with `rfps-sync-docx`. Approved response changes go in as tracked changes (author "rfps"), only for paragraphs whose text changed, so other people's comments and edits are kept; a response change that touches text someone edited in the document is reported and left pending. `--status` shows drift, `--dry-run` previews, `--rebuild` regenerates (with a backup). `rfps-build-response --mode wip` remains the stateless regeneration into `build/`.
+- `/rfps:pull-docx` (`rfps-sync-docx --pull`): lists edits others made in the shared WIP docx that the response lacks (changed words, new and deleted paragraphs, tables, removed markers) and writes their comments to `review/doc-comments.md`; after approval `--pull --apply` writes them into `response/*.md`, keeping bold and tags on unchanged words. Changes both sides touched are reported as conflicts. The flow's WIP step now shows whether the document or the response is ahead.
 - `tools/sync_core.py` plans changes from block texts, separate from the docx backend, so a Google Docs backend can be added later.
 - `/rfps:build-final` checks for edits made in the shared document before building.
 

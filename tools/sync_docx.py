@@ -9,16 +9,19 @@ created once from the template. After that it is never regenerated: other people
 push changes only the paragraphs whose response/*.md text changed, as Word tracked changes (author "rfps") that
 reviewers accept or reject. Text others edited in the same paragraph is not overwritten; the change is reported instead.
 
-Usage: rfps-sync-docx [--status | --push | --rebuild] [--solution <folder>] [--force] [--dry-run]
+Usage: rfps-sync-docx [--status | --push | --pull [--apply] | --rebuild] [--solution <folder>] [--force] [--dry-run]
   (no mode)   push: create the WIP docx if it does not exist, else apply markdown changes as tracked changes
   --status    show, per section, whether the markdown or the document has changes; write nothing
   --push      same as no mode
+  --pull      list edits others made in the document that the response text does not have yet, and write their
+              comments to review/doc-comments.md; changes nothing else
+  --pull --apply [--sections "A;B"]   write those edits into response/*.md (only after the user has approved them)
   --rebuild   regenerate the WIP from the template (a backup of the old one goes to the solution's build/ folder);
               this discards everyone's edits and comments in the old file
   --dry-run   with push: report what would change, write nothing
   --force     push even if Word's lock file shows the document is open
 """
-import argparse, contextlib, copy, datetime, io, hashlib, json, os, pathlib, shutil, sys, tomllib
+import argparse, contextlib, copy, datetime, io, re, hashlib, json, os, pathlib, shutil, sys, tomllib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import docx
 from docx.oxml import OxmlElement
@@ -238,7 +241,7 @@ def status(sol, e, path, st):
         p = plan_section(wip, resp, r)
         notes = []
         if p["ops"] or p["conflicts"]: notes.append(f"response ahead: {len(p['ops'])} change(s) to push" + (f", {len(p['conflicts'])} blocked" if p["conflicts"] else "")); n_md += 1
-        if p["drift"]: notes.append(f"document edited: {len(p['drift'])} block(s) differ from the last sync"); n_doc += 1
+        if p["drift"]: notes.append(f"edited in the document: {len(p['drift'])} block(s) not in the response yet (rfps-sync-docx --pull)"); n_doc += 1
         print(f"  {'✓' if not notes else '•'} {r['title']}" + (": " + "; ".join(notes) if notes else ": in sync"))
         for c in p["conflicts"]: print(f"      conflict: {c}")
     print(f"{n_md} section(s) with response changes to push, {n_doc} with edits made in the document.")
@@ -294,9 +297,158 @@ def push(sol, e, path, st, dry, force):
     save_state(sol, new_state)
     print(f"Wrote {path}")
 
+# ---------- pull: bring edits and comments made in the document back into response/*.md ----------
+
+def doc_kind(el, text):
+    if el.tag == qn("w:tbl"): return "tbl"
+    if text.startswith("\u2022 ") or el.find(qn("w:pPr") + "/" + qn("w:numPr")) is not None: return "li"
+    return "p"
+
+def md_sections(folder):
+    """heading -> {path, head, body: (first line, end line)} for every heading in response/*.md."""
+    out = {}
+    for f in sorted(pathlib.Path(folder).glob("*.md")):
+        lines = f.read_text().split("\n")
+        heads = [(n, m.group(2).strip()) for n, l in enumerate(lines) if (m := re.match(r"^(#{1,3}) (.+?)\s*$", l))]
+        for k, (n, title) in enumerate(heads):
+            out[title] = dict(path=f, head=n, body=(n + 1, heads[k + 1][0] if k + 1 < len(heads) else len(lines)))
+    return out
+
+def _tags(text): return [t.strip() for t in br.TAG_RE.findall(text)]
+
+def pull_section(wip, resp, r, sec, lines):
+    """-> (proposals, edits, conflicts, result) for one section. edits: (start, end, new lines) on the markdown file."""
+    text = resp[r["title"]][1]
+    snap = r["snap"] if r["snap"] is not None else [t for _, t in r["cur"]]
+    cur_texts = [t for _, t in r["cur"]]; kinds = [doc_kind(el, t) for el, t in r["cur"]]
+    b0, b1 = sec["body"]; mblocks = sync_core.md_blocks(lines[b0:b1])
+    for b in mblocks: b["start"] += b0; b["end"] += b0
+    if not text.strip():                       # empty section: the document's real text fills it
+        real = [k for k, t in enumerate(cur_texts) if t.lower() not in br.PH and t.lower() not in PH_FALLBACK]
+        if not real or [t for t in snap if t.lower() not in br.PH and t.lower() not in PH_FALLBACK]: return [], [], [], snap
+        blocks_md = [sync_core.block_md(kinds[k], cur_texts[k]) for k in real]
+        return ([dict(kind="insert", old="", new="\n".join("\n".join(b) for b in blocks_md), removed=[], added=[], simplified=False)],
+                [(b0, b0, [""] + [x for k, b in enumerate(blocks_md) for x in (b + [""])])], [], cur_texts)
+    _, mdnew = render_new(wip, text, snap)
+    if len(mdnew) != len(mblocks): return [], [], [f"could not align the markdown blocks with the rendered text ({len(mblocks)} vs {len(mdnew)})"], snap
+    changes, conflicts, result = sync_core.plan_pull(snap, cur_texts, mdnew)
+    proposals, edits = [], []
+    for c in changes:
+        olds = [mblocks[m] for m in c["md"]]
+        if len(olds) > 1 and any(c["md"][k + 1] != c["md"][k] + 1 for k in range(len(olds) - 1)):
+            conflicts.append("the response has other text between these blocks; not brought in: " + "; ".join(snap[i][:40] for i in range(*c["snap"])))
+            continue
+        js = list(range(*c["cur"])); old_txt = " ".join(o["text"] if isinstance(o["text"], str) else " ".join(o["text"]) for o in olds)
+        simplified = False
+        paired = c["kind"] == "replace" and len(olds) == len(js) and all(
+            olds[k]["kind"] in ("p", "li") and kinds[j] in ("p", "li") or (olds[k]["kind"] == "table" and kinds[j] == "tbl") for k, j in enumerate(js))
+        if paired:
+            new_lines = []
+            for k, j in enumerate(js):
+                if kinds[j] == "tbl": nl = sync_core.table_md(cur_texts[j])
+                else:
+                    merged, simp = sync_core.merge_text(olds[k]["text"], snap[c["snap"][0] + k], cur_texts[j]); nl = [merged]; simplified |= simp
+                edits.append((olds[k]["start"], olds[k]["end"] + 1, nl)); new_lines += nl
+        else:
+            blocks_md = [sync_core.block_md(kinds[j], cur_texts[j]) for j in js]
+            new_lines = [x for b in blocks_md for x in b]
+            body = []
+            for k, b in enumerate(blocks_md):
+                if k and not (kinds[js[k]] == "li" == kinds[js[k - 1]]): body.append("")
+                body += b
+            if c["kind"] == "insert":
+                if c["after_md"] is None:
+                    pos = mblocks[0]["start"] if mblocks else b0
+                    edits.append((pos, pos, body + [""]))
+                else:
+                    prev = mblocks[c["after_md"]]
+                    glue = [] if (prev["kind"] == "li" and kinds[js[0]] == "li") else [""]
+                    edits.append((prev["end"] + 1, prev["end"] + 1, glue + body))
+            else:
+                edits.append((olds[0]["start"], olds[-1]["end"] + 1, body))
+        new_txt = " ".join(new_lines)
+        old_t, new_t = _tags(old_txt), _tags(new_txt)
+        proposals.append(dict(kind=c["kind"], old=old_txt, new=new_txt, removed=[t for t in old_t if t not in new_t],
+                              added=[t for t in new_t if t not in old_t], simplified=simplified))
+    return proposals, edits, conflicts, result
+
+def read_comments(wip):
+    """Comments in the document -> [{id, author, date, text, section, on}]."""
+    try: found = {str(c.comment_id): c for c in wip.doc.comments}
+    except Exception: return []
+    out, title = [], ""
+    for p in wip.body.iter(qn("w:p")):
+        if wip.is_head(p): title = par_text(p)
+        for st in p.iter(qn("w:commentRangeStart")):
+            c = found.get(st.get(qn("w:id")))
+            if c is None: continue
+            out.append(dict(id=st.get(qn("w:id")), author=c.author or "", date=str(c.timestamp or "")[:16], text=" ".join(c.text.split()),
+                            section=title, on=par_text(p)[:80]))
+    return out
+
+def write_comments(sol, comments, seen):
+    f = sol / "review" / "doc-comments.md"; f.parent.mkdir(parents=True, exist_ok=True)
+    rows = ["| New | Section | Author | Date | Comment | On text |", "|-----|---------|--------|------|---------|---------|"]
+    for c in comments:
+        rows.append(f"| {'yes' if c['id'] not in seen else ''} | {c['section']} | {c['author']} | {c['date']} | {c['text'].replace('|', '/')} | {c['on'].replace('|', '/')} |")
+    f.write_text("# Comments in the shared WIP docx\n\nGenerated by `rfps-sync-docx --pull`; do not edit. Replies and resolved state are not shown.\n\n"
+                 + ("\n".join(rows) if comments else "No comments.") + "\n")
+    return f
+
+def pull(sol, e, path, st, apply, only):
+    wip, resp, problems, rows = analyse(sol, e, path, st)
+    if problems: sys.exit("Heading mismatch (headings must match exactly):\n  " + "\n  ".join(problems))
+    secs = md_sections(e["response"]); files = {}
+    new_state = dict(st); new_state["sections"] = dict(st.get("sections", {}))
+    report, edits_by_file, props_all, nconf = [], {}, 0, 0
+    for r in rows:
+        if r["omit"] or r["title"] not in secs: continue
+        if only and r["title"] not in only: continue
+        sec = secs[r["title"]]
+        lines = files.setdefault(sec["path"], sec["path"].read_text().split("\n"))
+        props, edits, conflicts, result = pull_section(wip, resp, r, sec, lines)
+        if not props and not conflicts: continue
+        report.append(f"## {r['title']}")
+        for pr in props:
+            props_all += 1
+            report.append(f"- {pr['kind']}:" + (f"\n    was: {pr['old'][:160]}" if pr["old"] else "") + (f"\n    now: {pr['new'][:160]}" if pr["new"] else "\n    now: (removed)"))
+            if pr["removed"]: report.append(f"    markers removed in the document: {'; '.join(t[:80] for t in pr['removed'])}")
+            if pr["added"]: report.append(f"    markers added in the document: {'; '.join(t[:80] for t in pr['added'])}")
+            if pr["simplified"]: report.append("    note: some bold or italic formatting in this paragraph was simplified")
+        for c in conflicts: report.append(f"- conflict: {c}"); nconf += 1
+        if apply and edits:
+            edits_by_file.setdefault(sec["path"], []).extend(edits)
+            new_state["sections"][r["title"]] = result
+    comments = read_comments(wip); seen = set(st.get("comments_seen", []))
+    cf = write_comments(sol, comments, seen)
+    new_c = [c for c in comments if c["id"] not in seen]
+    print(f"Document edits not yet in the response: {props_all} change(s) in {sum(1 for x in report if x.startswith('## '))} section(s); {nconf} conflict(s). Comments: {len(comments)} ({len(new_c)} new) -> {cf}")
+    print("\n".join(report) if report else "Nothing to bring in: the response already has everything in the document.")
+    if not apply: return
+    for f, edits in edits_by_file.items():
+        lines = files[f]
+        for a, b, new in sorted(edits, key=lambda x: (x[0], x[1]), reverse=True): lines[a:b] = new
+        f.write_text("\n".join(lines))
+    new_state["comments_seen"] = [c["id"] for c in comments]
+    save_state(sol, new_state)
+    print(f"Applied {props_all} change(s) to {len(edits_by_file)} response file(s). Run rfps-open-items --mark if markers changed, then rfps-sync-docx --status.")
+
+def summary(sol):
+    """For the flow: {'exists', 'md_ahead', 'doc_edits', 'path'} for the shared WIP docx, or exists False."""
+    e = br.load_engagement(str(sol)); cfg = tomllib.loads((sol / "solution.toml").read_text())
+    path = wip_path(sol, cfg, e["template"], e["name"]); st = load_state(sol)
+    if not path.is_file() or not st.get("sections"): return dict(exists=False, path=path)
+    wip, resp, problems, rows = analyse(sol, e, path, st); md = dc = 0
+    for r in rows:
+        if r["omit"]: continue
+        p = plan_section(wip, resp, r); md += bool(p["ops"] or p["conflicts"]); dc += bool(p["drift"])
+    return dict(exists=True, path=path, md_ahead=md, doc_edits=dc, problems=problems)
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--status", action="store_true"); ap.add_argument("--push", action="store_true")
+    ap.add_argument("--pull", action="store_true"); ap.add_argument("--apply", action="store_true")
+    ap.add_argument("--sections", help="with --pull --apply: only these headings, separated by ;")
     ap.add_argument("--rebuild", action="store_true"); ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--force", action="store_true"); ap.add_argument("--solution", nargs="?", const="", default=None)
     a = ap.parse_args()
@@ -312,14 +464,14 @@ if __name__ == "__main__":
         report.append(f"Backed up the old WIP to {bak / (path.stem + '.' + stamp + '.bak.docx')}")
         path.unlink(); st = {}
     if not path.is_file():
-        if a.status: sys.exit(f"No shared WIP docx yet ({path}). Run rfps-sync-docx to create it.")
+        if a.status or a.pull: sys.exit(f"No shared WIP docx yet ({path}). Run rfps-sync-docx to create it.")
         if a.dry_run: sys.exit(f"Would create {path} from the template.")
         if (path.parent / ("~$" + path.name[2:])).exists() and not a.force: sys.exit("The WIP location has a Word lock file; use --force.")
         st = create_wip(sol, e, path, report)
         print("\n".join(report + evidence_notes(e))); sys.exit(0)
     if not st.get("sections"):
-        wip = Wip(path, e["tcfg"])
         sys.exit(f"{path} exists but has no sync record ({state_file(sol)}). Use --rebuild to regenerate it from the template (backs up the old file), or restore .state/docx-sync.json.")
     if report: print("\n".join(report))
-    if a.status: status(sol, e, path, st)
+    if a.pull: pull(sol, e, path, st, a.apply, set(x.strip() for x in a.sections.split(";")) if a.sections else None)
+    elif a.status: status(sol, e, path, st)
     else: push(sol, e, path, st, a.dry_run, a.force)

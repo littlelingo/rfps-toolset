@@ -21,7 +21,7 @@ HINTS = {
     "open_items.py": ("Finding every decision, open question, evidence gap and assertion in the response; add --mark to put the colored icons in the files", "/rfps:open-items"),
     "build_response.py": ("Pouring the response text into the Word template: a work-in-progress copy, or the final submission copy", "/rfps:build-wip, /rfps:build-final"),
     "staffing.py": ("Creating the staffing and pricing workbook and keeping it in step with the roster", "/rfps:resources"),
-    "sync_docx.py": ("Pushing approved response changes into the shared WIP docx as tracked changes, without overwriting other people's edits and comments", "/rfps:build-wip"),
+    "sync_docx.py": ("Pushing approved response changes into the shared WIP docx as tracked changes, and reading edits and comments others made there back into the response; never overwrites their work", "/rfps:build-wip, /rfps:pull-docx"),
     "add_source.py": ("Listing where past-performance material lives, so it is read in place and never copied", "/rfps:add-past-performance"),
     "file_audit.py": ("Checking that every file in the solution folder has a known origin, and recording the ones that do not", "/rfps:file-audit"),
     "status_page.py": ("Seeing the whole picture on one local web page: steps, sections, open items, blockers, evidence and team, with filters and search", "/rfps:status-page"),

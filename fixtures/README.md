@@ -10,6 +10,7 @@ A fictional solicitation so the whole rfps flow can be tried or tested with no r
 | `seed/` | A finished `response/*.md` and `evidence/register.csv` for the sample, to copy into `active-solution/` when you want to skip drafting |
 | `build_sample.py` | Regenerates `sample-capture/` (`uv run fixtures/build_sample.py [folder]`) |
 | `smoke.sh` | Runs the tools end to end in a temp folder and checks the results (no model calls) |
+| `gdoc_sim.py`, `gdoc_test.py` | A simulated Google Docs API and an end-to-end test of the Google Docs route against it (create, suggestions, word-level edits, pull, collisions, bullets, tables); `smoke.sh` runs it. No Google involved |
 | `trial.sh` | Runs the extract, collateral, past-performance, requirements and drafting skills with Claude on a throwaway copy (model calls; a few minutes) |
 
 ## Try the flow by hand

@@ -158,3 +158,66 @@ def plan_pull(snap, cur, mdnew):
                             "md": [md_of[i] for i in old], "after_md": md_of[old[-1]]})
         result += cur[j1:j2]
     return changes, conflicts, result
+
+
+TAG_RE = re.compile(r"(?:[\U0001F7E1\U0001F534\U0001F7E0\U0001F7E3]\uFE0F?[ \t]*)?\[(?:GROUNDED|ASSERTION|EVIDENCE NEEDED|DECISION|OPEN|SOLUTIONING)[^\]]*\]", re.S)
+
+def _tags(text): return [t.strip() for t in TAG_RE.findall(text)]
+
+def pull_edits(title, text, snap, cur_texts, kinds, sec, lines, render_md, is_placeholder):
+    """Edits made in a shared document, as proposals and edits to a section of the response markdown.
+    snap/cur_texts/kinds: block texts at the last sync / in the document now / their kinds ('p', 'li', 'tbl').
+    sec: {'body': (first line, end line)} of the section in the markdown file whose lines are `lines`.
+    render_md(text) -> the block texts the markdown renders to. -> (proposals, edits, conflicts, result);
+    edits are (start, end, new lines) on the markdown file."""
+    b0, b1 = sec["body"]; mblocks = md_blocks(lines[b0:b1])
+    for b in mblocks: b["start"] += b0; b["end"] += b0
+    if not text.strip():                       # empty section: the document's real text fills it
+        real = [k for k, t in enumerate(cur_texts) if not is_placeholder(t)]
+        if not real or [t for t in snap if not is_placeholder(t)]: return [], [], [], snap
+        blocks_md = [block_md(kinds[k], cur_texts[k]) for k in real]
+        return ([dict(kind="insert", old="", new="\n".join("\n".join(b) for b in blocks_md), removed=[], added=[], simplified=False)],
+                [(b0, b0, [""] + [x for k, b in enumerate(blocks_md) for x in (b + [""])])], [], cur_texts)
+    mdnew = render_md(text)
+    if len(mdnew) != len(mblocks): return [], [], [f"could not align the markdown blocks with the rendered text ({len(mblocks)} vs {len(mdnew)})"], snap
+    changes, conflicts, result = plan_pull(snap, cur_texts, mdnew)
+    proposals, edits = [], []
+    for c in changes:
+        olds = [mblocks[m] for m in c["md"]]
+        if len(olds) > 1 and any(c["md"][k + 1] != c["md"][k] + 1 for k in range(len(olds) - 1)):
+            conflicts.append("the response has other text between these blocks; not brought in: " + "; ".join(snap[i][:40] for i in range(*c["snap"])))
+            continue
+        js = list(range(*c["cur"])); old_txt = " ".join(o["text"] if isinstance(o["text"], str) else " ".join(o["text"]) for o in olds)
+        simplified = False
+        paired = c["kind"] == "replace" and len(olds) == len(js) and all(
+            olds[k]["kind"] in ("p", "li") and kinds[j] in ("p", "li") or (olds[k]["kind"] == "table" and kinds[j] == "tbl") for k, j in enumerate(js))
+        if paired:
+            new_lines = []
+            for k, j in enumerate(js):
+                if kinds[j] == "tbl": nl = table_md(cur_texts[j])
+                else:
+                    merged, simp = merge_text(olds[k]["text"], snap[c["snap"][0] + k], cur_texts[j]); nl = [merged]; simplified |= simp
+                edits.append((olds[k]["start"], olds[k]["end"] + 1, nl)); new_lines += nl
+        else:
+            blocks_md = [block_md(kinds[j], cur_texts[j]) for j in js]
+            new_lines = [x for b in blocks_md for x in b]
+            body = []
+            for k, b in enumerate(blocks_md):
+                if k and not (kinds[js[k]] == "li" == kinds[js[k - 1]]): body.append("")
+                body += b
+            if c["kind"] == "insert":
+                if c["after_md"] is None:
+                    pos = mblocks[0]["start"] if mblocks else b0
+                    edits.append((pos, pos, body + [""]))
+                else:
+                    prev = mblocks[c["after_md"]]
+                    glue = [] if (prev["kind"] == "li" and kinds[js[0]] == "li") else [""]
+                    edits.append((prev["end"] + 1, prev["end"] + 1, glue + body))
+            else:
+                edits.append((olds[0]["start"], olds[-1]["end"] + 1, body))
+        new_txt = " ".join(new_lines)
+        old_t, new_t = _tags(old_txt), _tags(new_txt)
+        proposals.append(dict(kind=c["kind"], old=old_txt, new=new_txt, removed=[t for t in old_t if t not in new_t],
+                              added=[t for t in new_t if t not in old_t], simplified=simplified))
+    return proposals, edits, conflicts, result
+

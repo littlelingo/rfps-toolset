@@ -8,6 +8,7 @@ T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 uv run --quiet "$HERE/build_sample.py" "$T/capture" >/dev/null
 cd "$T/capture"
 rfps-new-engagement --source "$T/capture" --title "Sample" >/dev/null
+printf 'wip_format = "docx"\n' >> active-solution/solution.toml   # this script tests the Word route; gdoc_test.py tests Google
 rfps-add-source "$T/capture/past-performance" --label notes >/dev/null
 grep -q 'path = "../past-performance"' active-solution/past-performance/sources.toml || { echo "FAIL: source path is not relative" >&2; exit 1; }
 # shared WIP docx: created from the (still empty) template, then the seed text arrives as tracked changes
@@ -96,4 +97,5 @@ sys.exit('markers left in FINAL: %s' % bad if bad else 0)"
 rm "11 Final Submission"/*_FINAL.docx active-solution/build/*_FINAL.docx
 printf '\nAlso: accessibility work for Northgate Water [GROUNDED: E-003].\n' >> active-solution/response/04-past-performance.md
 if rfps-build-response --solution --mode final >/dev/null 2>&1; then echo "FAIL: FINAL accepted uncleared evidence" >&2; exit 1; fi
+uv run --quiet "$HERE/gdoc_test.py"
 echo "smoke test passed"

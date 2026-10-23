@@ -192,6 +192,14 @@ def newest_build(c, suffix):
     return max(fs, key=lambda f: f.stat().st_mtime) if fs else None
 def d_wip_current(c):
     try:
+        import sync_gdoc as sg
+        g = sg.summary(c.sol)
+    except Exception: g = {"exists": False}
+    if g.get("exists"):
+        when = g["synced"][:16].replace("T", " ")
+        if g["md_ahead"]: return "attention", f"{g['md_ahead']} section(s) have response changes not in the shared Google Doc yet (/rfps:build-wip); last synced {when}"
+        return "done", f"shared Google Doc matches the response as of {when}; run /rfps:pull-wip to check for edits made in it"
+    try:
         import sync_docx as sd
         s = sd.summary(c.sol)
     except Exception: s = {"exists": False}

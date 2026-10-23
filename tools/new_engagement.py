@@ -83,6 +83,8 @@ def main():
     lines += ['response_dir = "response"', '# Work from the selected sources only; ask before looking anywhere else.', 'external_sources = "ask"', 'register = "evidence/register.csv"', 'build_dir = "build"',
               "# Pages allowed for the narrative response (excludes cover, table of contents, and supporting evidence). Set it, then run /rfps:refresh-reports.", "# page_limit = 30",
               "# Roster of proposed roles and people (see resource-plan.md for the State's requirements).", 'roster = "response/resources.csv"',
+              "# Shared work-in-progress document: \"gdoc\" (Google Docs, the default) or \"docx\" (Word; the WIP skills also take --word).",
+              "# wip_format = \"gdoc\"",
               "# Staffing and pricing workbook built from tools/templates/staffing-template.xlsx; create or refresh it with rfps-staffing."]
     lines.append(f'staffing_xlsx = "{rel(pricing / "Staffing.xlsx", sol)}"' if pricing else '# staffing_xlsx = "../09 Pricing/Staffing.xlsx"')
     (sol / "solution.toml").write_text("\n".join(lines) + "\n")

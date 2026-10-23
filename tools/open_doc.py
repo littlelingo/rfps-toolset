@@ -2,11 +2,11 @@
 # requires-python = ">=3.11"
 # dependencies = ["python-docx"]
 # ///
-"""Open the shared WIP docx for the active solution and show where to look.
+"""Open the shared WIP document for the active solution and show where to look.
 
-Word has no way for another program to jump to a spot inside a document, so this opens the file and puts the text to
-search for on the clipboard. In Word, use the Navigation Pane (View > Navigation Pane) to jump to a heading, or search
-(Ctrl/Cmd+F) and paste. Each heading also carries a bookmark (Ctrl+G > Bookmark) named as printed below.
+Google Docs (the default): opens the heading's link in your browser. Word (wip_format = "docx"): opens the file and puts
+the text to search for on the clipboard; Word cannot be driven to a spot from outside, so use the Navigation Pane
+(View > Navigation Pane) to jump to a heading, then paste to search.
 
 Usage: rfps-open-doc [--section "Heading"] [--find "[DECISION: text"] [--print] [--solution <folder>]
   --print   only print the location; open nothing and copy nothing
@@ -16,6 +16,12 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import build_response as br
 import locator
 
+def copy(text):
+    for cmd in (["pbcopy"], ["xclip", "-selection", "clipboard"], ["clip"]):
+        if shutil.which(cmd[0]):
+            subprocess.run(cmd, input=text.encode(), check=False); return True
+    return False
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--section"); ap.add_argument("--find"); ap.add_argument("--print", action="store_true")
@@ -23,16 +29,18 @@ if __name__ == "__main__":
     a = ap.parse_args()
     sol = br.resolve_solution(a.solution or None)
     cfg = tomllib.loads((sol / "solution.toml").read_text())
-    path, exists = locator.wip_location(sol, cfg)
-    if not exists: sys.exit(f"No shared WIP docx yet ({path}). Run /rfps:build-wip to create it.")
-    print(f"Document: {path}")
-    if a.section: print(f"Section: {a.section}  (bookmark {locator.bookmark_name(a.section)})")
+    loc = locator.wip_location(sol, cfg)
+    if not loc["exists"]: sys.exit("No shared WIP document yet. Run /rfps:build-wip to create it.")
+    if loc["format"] == "gdoc":
+        import sync_gdoc as sg
+        target = sg.doc_url(loc["state"], a.section)
+        print(f"Google Doc: {target}")
+    else:
+        target = str(loc["path"]); print(f"Document: {target}")
+        if a.section: print(f"Section: {a.section}  (bookmark {locator.bookmark_name(a.section)})")
     if a.find: print(f"Search for: {a.find}")
     if a.print: sys.exit(0)
-    if a.find:
-        for cmd in (["pbcopy"], ["xclip", "-selection", "clipboard"], ["clip"]):
-            if shutil.which(cmd[0]):
-                subprocess.run(cmd, input=a.find.encode(), check=False); print("The search text is on the clipboard."); break
+    if a.find and loc["format"] == "docx" and copy(a.find): print("The search text is on the clipboard.")
     opener = shutil.which("open") or shutil.which("xdg-open")
-    if opener: subprocess.run([opener, str(path)], check=False); print("Opened in your default app. In Word: Navigation Pane to jump to the heading, then paste to search.")
-    else: print("Open the file yourself; no opener was found.")
+    if opener: subprocess.run([opener, target], check=False); print("Opened." + (" In Word: Navigation Pane to jump to the heading, then paste to search." if loc["format"] == "docx" else ""))
+    else: print("Open it yourself; no opener was found.")

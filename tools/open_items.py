@@ -69,13 +69,13 @@ def write(sol, cfg=None):
     for k, i, d in KINDS:
         rows = [x for x in items if x["kind"] == k]
         if not rows: continue
-        head = "| # | Open in the document | Source | Section | What it says |" if mode == "docx" else "| # | Where | Section | What it says |"
-        out += [f"## {i} {k} ({len(rows)})", "", head, ("|---|---|---|---|---|" if mode == "docx" else "|---|-------|---------|--------------|")]
+        head = "| # | Open in the document | Source | Section | What it says |" if mode in ("docx", "gdoc") else "| # | Where | Section | What it says |"
+        out += [f"## {i} {k} ({len(rows)})", "", head, ("|---|---|---|---|---|" if mode in ("docx", "gdoc") else "|---|-------|---------|--------------|")]
         for n, x in enumerate(rows, 1):
             link = f"[{x['file']}:{x['line']}](response/{x['file']}:{x['line']})"
             txt = x["text"].replace("|", "/")
             txt = txt if len(txt) <= 220 else txt[:217] + "..."
-            if mode == "docx":
+            if mode in ("docx", "gdoc"):
                 find = x["find"].replace("|", "/").replace("`", "'")
                 out.append(f"| {n} | [{x['section'].replace('|', '/')}]({x['doc']})<br>Search: `{find}` | {link} | {x['section'].replace('|', '/')} | {txt} |")
             else:

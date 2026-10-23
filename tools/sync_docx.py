@@ -333,63 +333,13 @@ def md_sections(folder):
             out[title] = dict(path=f, head=n, body=(n + 1, heads[k + 1][0] if k + 1 < len(heads) else len(lines)))
     return out
 
-def _tags(text): return [t.strip() for t in br.TAG_RE.findall(text)]
-
 def pull_section(wip, resp, r, sec, lines):
-    """-> (proposals, edits, conflicts, result) for one section. edits: (start, end, new lines) on the markdown file."""
+    """-> (proposals, edits, conflicts, result) for one section of the Word document (see sync_core.pull_edits)."""
     text = resp[r["title"]][1]
     snap = r["snap"] if r["snap"] is not None else [t for _, t in r["cur"]]
     cur_texts = [t for _, t in r["cur"]]; kinds = [doc_kind(el, t) for el, t in r["cur"]]
-    b0, b1 = sec["body"]; mblocks = sync_core.md_blocks(lines[b0:b1])
-    for b in mblocks: b["start"] += b0; b["end"] += b0
-    if not text.strip():                       # empty section: the document's real text fills it
-        real = [k for k, t in enumerate(cur_texts) if t.lower() not in br.PH and t.lower() not in PH_FALLBACK]
-        if not real or [t for t in snap if t.lower() not in br.PH and t.lower() not in PH_FALLBACK]: return [], [], [], snap
-        blocks_md = [sync_core.block_md(kinds[k], cur_texts[k]) for k in real]
-        return ([dict(kind="insert", old="", new="\n".join("\n".join(b) for b in blocks_md), removed=[], added=[], simplified=False)],
-                [(b0, b0, [""] + [x for k, b in enumerate(blocks_md) for x in (b + [""])])], [], cur_texts)
-    _, mdnew = render_new(wip, text, snap)
-    if len(mdnew) != len(mblocks): return [], [], [f"could not align the markdown blocks with the rendered text ({len(mblocks)} vs {len(mdnew)})"], snap
-    changes, conflicts, result = sync_core.plan_pull(snap, cur_texts, mdnew)
-    proposals, edits = [], []
-    for c in changes:
-        olds = [mblocks[m] for m in c["md"]]
-        if len(olds) > 1 and any(c["md"][k + 1] != c["md"][k] + 1 for k in range(len(olds) - 1)):
-            conflicts.append("the response has other text between these blocks; not brought in: " + "; ".join(snap[i][:40] for i in range(*c["snap"])))
-            continue
-        js = list(range(*c["cur"])); old_txt = " ".join(o["text"] if isinstance(o["text"], str) else " ".join(o["text"]) for o in olds)
-        simplified = False
-        paired = c["kind"] == "replace" and len(olds) == len(js) and all(
-            olds[k]["kind"] in ("p", "li") and kinds[j] in ("p", "li") or (olds[k]["kind"] == "table" and kinds[j] == "tbl") for k, j in enumerate(js))
-        if paired:
-            new_lines = []
-            for k, j in enumerate(js):
-                if kinds[j] == "tbl": nl = sync_core.table_md(cur_texts[j])
-                else:
-                    merged, simp = sync_core.merge_text(olds[k]["text"], snap[c["snap"][0] + k], cur_texts[j]); nl = [merged]; simplified |= simp
-                edits.append((olds[k]["start"], olds[k]["end"] + 1, nl)); new_lines += nl
-        else:
-            blocks_md = [sync_core.block_md(kinds[j], cur_texts[j]) for j in js]
-            new_lines = [x for b in blocks_md for x in b]
-            body = []
-            for k, b in enumerate(blocks_md):
-                if k and not (kinds[js[k]] == "li" == kinds[js[k - 1]]): body.append("")
-                body += b
-            if c["kind"] == "insert":
-                if c["after_md"] is None:
-                    pos = mblocks[0]["start"] if mblocks else b0
-                    edits.append((pos, pos, body + [""]))
-                else:
-                    prev = mblocks[c["after_md"]]
-                    glue = [] if (prev["kind"] == "li" and kinds[js[0]] == "li") else [""]
-                    edits.append((prev["end"] + 1, prev["end"] + 1, glue + body))
-            else:
-                edits.append((olds[0]["start"], olds[-1]["end"] + 1, body))
-        new_txt = " ".join(new_lines)
-        old_t, new_t = _tags(old_txt), _tags(new_txt)
-        proposals.append(dict(kind=c["kind"], old=old_txt, new=new_txt, removed=[t for t in old_t if t not in new_t],
-                              added=[t for t in new_t if t not in old_t], simplified=simplified))
-    return proposals, edits, conflicts, result
+    return sync_core.pull_edits(r["title"], text, snap, cur_texts, kinds, sec, lines,
+                                lambda t: render_new(wip, t, snap)[1], lambda t: t.lower() in br.PH or t.lower() in PH_FALLBACK)
 
 def read_comments(wip):
     """Comments in the document -> [{id, author, date, text, section, on}]."""

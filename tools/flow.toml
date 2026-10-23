@@ -161,10 +161,10 @@ ask = "Which attachments are still open?"
 [[step]]
 id = "wip"
 group = "Package"
-title = "Shared work-in-progress docx in step with the response"
+title = "Shared work-in-progress document in step with the response"
 command = "/rfps:build-wip"
 check = "wip_current"
-help = "Run /rfps:pull-docx to bring in edits others made in the shared WIP docx, then /rfps:build-wip to push response changes into it as tracked changes."
+help = "Run /rfps:pull-wip to bring in edits others made in the shared WIP document (a Google Doc by default), then /rfps:build-wip to push response changes into it as suggestions (Word: tracked changes)."
 ask = "Do you want to bring in edits from the shared document, or push the latest response changes into it?"
 
 [[step]]

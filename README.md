@@ -8,7 +8,14 @@ A Claude Code plugin that guides a solicitation (RFP, SOW, SOO and similar) to a
 
 Requirements: Claude Code, [`uv`](https://docs.astral.sh/uv/) (each tool declares its own Python dependencies inline), and Python 3.11 or later.
 
-Local, from a clone (not published yet):
+From GitHub (the repo is private for now; you need read access and git set up for GitHub, for example `gh auth login`):
+
+```bash
+claude plugin marketplace add littlelingo/rfps-toolset
+claude plugin install rfps@rfps-toolset
+```
+
+Local, from a clone:
 
 ```bash
 claude plugin marketplace add /path/to/rfps-toolset

@@ -6,8 +6,6 @@ import type { StatusData } from '../types'
 const PANE = 'rfps-status'
 const UV = [
   'uv',
-  '/Users/clittle/.local/share/mise/installs/uv/latest/uv-aarch64-apple-darwin/uv',
-  '/Users/clittle/.local/bin/uv',
   '/opt/homebrew/bin/uv',
 ]
 

@@ -14,6 +14,7 @@ ROOT = pathlib.Path(__file__).resolve().parent
 SKIP = {"resources.py"}   # helper module imported by other tools, not run on its own
 HINTS = {
     "new_engagement.py": ("Starting a new solicitation", "/rfps:new-engagement"),
+    "worklist.py": ("One ranked list of markers, requirement gaps and compliance failures left after the first WIP, with the choice made on each", "/rfps:walk"),
     "use_solution.py": ("Switching between solicitations, or checking which one is active", "/rfps:use-solution"),
     "flow_status.py": ("Seeing where you are, what is next, and which sections changed since last integrated", "/rfps:status, /rfps:next, /rfps:step"),
     "extract_docs.py": ("Turning PDFs, Word, Excel and PowerPoint files into searchable text for the analysis skills", "/rfps:extract"),

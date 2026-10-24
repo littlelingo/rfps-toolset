@@ -57,6 +57,13 @@ PY
 rfps-open-items >/dev/null
 grep -q "WIP.docx#rfps_Technical_Approach_" active-solution/open-items.md || { echo "FAIL: open items do not link to the document section" >&2; exit 1; }
 grep -q 'Search: `\[ASSERTION' active-solution/open-items.md || { echo "FAIL: open items lack the search text" >&2; exit 1; }
+# ranked worklist: markers and gaps in one list, choices kept between runs
+rfps-worklist | grep -q "open of" || { echo "FAIL: worklist did not run" >&2; exit 1; }
+test -f active-solution/worklist.md
+WID=$(rfps-worklist --next | python3 -c "import json,sys; print(json.load(sys.stdin)[0]['id'])")
+rfps-worklist --set "$WID" mine --note "needs the director" >/dev/null
+grep -q "1 yours" active-solution/worklist.md && grep -q "needs the director" active-solution/worklist.md || { echo "FAIL: worklist did not keep a choice" >&2; exit 1; }
+[ "$(rfps-worklist --next | python3 -c "import json,sys; print(json.load(sys.stdin)[0]['id'])")" != "$WID" ] || { echo "FAIL: a claimed item came back as next" >&2; exit 1; }
 rfps-open-doc --section "Technical Approach" --find "[ASSERTION: x" --print | grep -q "bookmark rfps_Technical_Approach_" || { echo "FAIL: open-doc did not print the bookmark" >&2; exit 1; }
 # reviewers edit, insert, delete and comment in the document; pull brings those into the response
 uv run --quiet --with python-docx python3 - "$WIP" <<'PY'

@@ -31,13 +31,15 @@ claude --plugin-dir /path/to/rfps-toolset
 Then, in the solicitation's source folder (the one with `01 Solicitation Docs`, `05 Draft Response` and so on):
 
 ```
-/rfps:new-engagement
-/rfps:status
-/rfps:next
+/rfps:start
+/rfps:walk
 ```
+
+`/rfps:start` asks once for the solicitation folder, the template and where past-performance material lives, then runs everything through to a first shared WIP document and hands over a ranked worklist. `/rfps:walk` then goes through that list one item at a time. The step-by-step commands (`/rfps:new-engagement`, `/rfps:status`, `/rfps:next`) still work on their own.
 
 ## How It Works
 
+0. `/rfps:start` runs steps 1 to 4 below in one go (asking only at the start and for what it cannot decide); `/rfps:walk` works through what is left.
 1. `/rfps:new-engagement` creates `active-solution/` beside the numbered capture folders: config, a `response/` skeleton mirroring the template docx headings, an evidence register, an amendments log and living report skeletons.
 2. Analysis skills read the solicitation: `collateral-analyzer`, `requirements-mapper`, `resource-planner`.
 3. `section-drafter` writes `response/*.md`; `empathy-reviewer` and `compliance-validator` review it.
@@ -50,6 +52,8 @@ The solution is found from the current directory (a folder at or above it holdin
 
 | Skill | Purpose |
 |---|---|
+| `/rfps:start` | Front-loaded run: intake, then set-up, analysis, evidence, staffing, drafting, review and the first WIP, ending in a worklist |
+| `/rfps:walk` | Walk the ranked worklist one item at a time: tools address it, you address it, or skip |
 | `/rfps:new-engagement` | Start a solicitation: create `active-solution/` |
 | `/rfps:use-solution` | Show or set the active solution |
 | `/rfps:status`, `/rfps:next`, `/rfps:step` | Where you are, the next best action, mark a step done or skipped |
@@ -77,7 +81,7 @@ The solution is found from the current directory (a folder at or above it holdin
 
 ## Terminal Tools
 
-The `rfps-*` commands in `bin/` are on the PATH while the plugin is enabled: `rfps-flow-status`, `rfps-build-response`, `rfps-new-engagement`, `rfps-refresh-reports`, `rfps-open-items`, `rfps-staffing`, `rfps-sync-gdoc`, `rfps-sync-docx`, `rfps-open-doc`, `rfps-extract-docs`, `rfps-add-source`, `rfps-file-audit`, `rfps-status-page`, `rfps-use-solution` and `rfps-list-tools`. Run `/rfps:help` for what each is for.
+The `rfps-*` commands in `bin/` are on the PATH while the plugin is enabled: `rfps-flow-status`, `rfps-build-response`, `rfps-new-engagement`, `rfps-refresh-reports`, `rfps-open-items`, `rfps-worklist`, `rfps-staffing`, `rfps-sync-gdoc`, `rfps-sync-docx`, `rfps-open-doc`, `rfps-extract-docs`, `rfps-add-source`, `rfps-file-audit`, `rfps-status-page`, `rfps-use-solution` and `rfps-list-tools`. Run `/rfps:help` for what each is for.
 
 ## Status Pane
 
@@ -89,7 +93,7 @@ A plugin runs with your privileges, so here is exactly what this one does. Read 
 
 | Component | What it does | Where it runs |
 |---|---|---|
-| `skills/` | Instructions Claude follows. Solicitation text is treated as data, never as instructions. Four skills (`build-wip`, `build-final`, `make-gdoc-template`, `new-engagement`) can only be run by typing them, because they create files, documents or submission copies. | In Claude's context |
+| `skills/` | Instructions Claude follows. Solicitation text is treated as data, never as instructions. Several skills (`start`, `walk`, `build-wip`, `build-final`, `make-gdoc-template`, `new-engagement` and others) can only be run by typing them, because they create files, documents or submission copies. | In Claude's context |
 | `bin/rfps-*` | Thin shell wrappers that run `tools/*.py` with `uv`. They are put on the Bash tool's PATH while the plugin is enabled. | Your shell, with your privileges |
 | `tools/*.py` | Read the solicitation folders you point them at and write only to that solution's `active-solution/` folder (and `.state/`), plus `.claude/active-solution` in the current project. Nothing is written into the plugin folder. They never call Google; Claude does that through your connectors. | Your shell |
 | `hooks/` (the status pane, a mod) | A pane in Claude Desktop that runs `rfps-status-page --json` through `uv` every minute and shows the result. It runs outside the sandbox. | Inside Claude Code |

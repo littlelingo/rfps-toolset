@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- New `/rfps:start`: a front-loaded run. It asks once for the solicitation folder, template, past-performance locations and the WIP format, then sets up, analyzes, maps requirements, proposes evidence rows (as `hold`, never `cleared`), plans staffing, drafts, reviews and builds the first shared WIP document, then hands over a worklist.
+- New `/rfps:walk` and `rfps-worklist`: one ranked list of markers, requirement gaps and compliance failures (blockers first), worked one item at a time (tool addresses it, you address it, or skip); choices are kept in `.state/worklist.json` and the list in `worklist.md`.
+
 ## 0.3.2 (2026-10-24)
 
 - Google route: a bullet that is still a pending suggestion (`suggestedBulletChange`) is now read as a list item, the likely cause of the second suggested bullet reading back as a plain paragraph.

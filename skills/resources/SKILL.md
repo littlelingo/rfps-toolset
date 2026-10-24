@@ -2,6 +2,7 @@
 name: resources
 description: Build or update the roster of roles and people, the State's role requirements, and the staffing workbook for the active solution
 argument-hint: [role name, or what to add, change or drop]
+disable-model-invocation: true
 allowed-tools: Bash(rfps-refresh-reports:*), Bash(rfps-staffing:*), Bash(rfps-flow-status:*), Read, Edit, Write
 ---
 

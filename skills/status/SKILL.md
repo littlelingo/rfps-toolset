@@ -2,6 +2,7 @@
 name: status
 description: Show where the solution is in the flow (color-coded steps and sections), or drill into one step or section
 argument-hint: [sections | step id | part of a heading]
+disable-model-invocation: true
 allowed-tools: Bash(rfps-flow-status:*), Read
 ---
 

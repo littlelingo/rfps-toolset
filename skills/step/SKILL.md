@@ -2,6 +2,7 @@
 name: step
 description: Mark a flow step done, skipped / not applicable, or back to detected
 argument-hint: <step id> done|skip|reset
+disable-model-invocation: true
 allowed-tools: Bash(rfps-flow-status:*)
 ---
 

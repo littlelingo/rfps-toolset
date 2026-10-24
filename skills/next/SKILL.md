@@ -2,6 +2,7 @@
 name: next
 description: Guide the next step: pick the most useful open item, ask what is needed, then do it with the user's answers
 argument-hint: [step id to focus on]
+disable-model-invocation: true
 allowed-tools: Bash(rfps-flow-status:*), Bash(rfps-open-items:*), Read
 ---
 

@@ -2,6 +2,7 @@
 name: integrate
 description: Weave text the user added or edited into its section as an expert proposal writer would, shown for approval
 argument-hint: [part of a heading] or paste "add this to <section>: ..."
+disable-model-invocation: true
 allowed-tools: Bash(rfps-flow-status:*), Bash(rfps-open-items:*), Read, Edit
 ---
 

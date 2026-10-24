@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Google route: a bullet that is still a pending suggestion (`suggestedBulletChange`) is now read as a list item, the likely cause of the second suggested bullet reading back as a plain paragraph.
+- `rfps-sync-gdoc --style-plan` reports what the connector cannot carry over from the Word template (page-number fields, table of contents, content controls, images); `/rfps:make-gdoc-template --update` re-styles the existing Google template in place when only the look changed.
+- Two more eval cases (`pull-wip-fires`, `word-route-uses-docx-sync`); BACKLOG brought in line with what is built.
+
 ## 0.3.1 (2026-10-24)
 
 - Best-practice audit follow-ups: `integrate`, `resources`, `status`, `next` and `step` are typed-only shortcuts (the `integrate-edits`, `resource-planner` and `solution-guide` skills keep the plain-wording entry, so there is one natural-language route for each and a smaller always-on listing); standard `rfps--vX.Y.Z` tags for 0.1.1, 0.2.0 and 0.3.0 (the older `vX.Y.Z` tags stay), `claude plugin tag --push` for later releases; a release checklist in CONTRIBUTING; a new eval case for marking a step done in plain words. The directory-listing fields (icon, support and privacy URLs) are left unset until the repository is public and a directory submission is planned.

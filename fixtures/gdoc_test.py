@@ -174,6 +174,12 @@ try:
     (T / "comments.json").write_text(json.dumps([{"author": "Reviewer", "date": "2026-10-23", "text": "Cite the SLA", "section": "Technical Approach", "on": "RFP 2.5"}]))
     run("rfps-sync-gdoc", "--comments", str(T / "comments.json"), cwd=cap)
     need("Cite the SLA" in (sol / "review" / "doc-comments.md").read_text(), "comments file missing")
+    sys.path.insert(0, str(HERE.parent / "tools"))
+    import sync_gdoc
+    def _par(i, text, **kw): return {"startIndex": i, "endIndex": i + len(text) + 1, "paragraph": {"elements": [{"startIndex": i, "endIndex": i + len(text) + 1, "textRun": {"content": text + "\n"}}], "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"}, **kw}}
+    d = {"body": {"content": [_par(1, "Plain"), _par(7, "First", bullet={"listId": "k"}), _par(14, "Second", suggestedBulletChange={"bullet": {"listId": "k"}})]}}
+    kinds = [b["type"] for b in sync_gdoc.parse_doc(d)["blocks"]] if "blocks" in sync_gdoc.parse_doc(d) else None
+    need(kinds == ["p", "li", "li"], "pending bullet read as plain paragraph", str(kinds))
     print("gdoc test passed")
 finally:
     if not os.environ.get("KEEP"): shutil.rmtree(T, ignore_errors=True)

@@ -126,6 +126,15 @@ def _words(par):
             idx += w
     return [tuple(w) for w in words]
 
+def _bullet_of(par):
+    """The bullet of a paragraph, including one that is still a pending suggestion (the API then
+    reports it under suggestedBulletChange and may leave `bullet` unset)."""
+    b = par.get("bullet")
+    if b: return b
+    sb = par.get("suggestedBulletChange")
+    if isinstance(sb, dict): return sb.get("bullet") or {"listId": "suggested"}
+    return None
+
 def parse_doc(doc, scaffold_texts=(), tab=None):
     """-> dict(revision, tab, blocks, sections). blocks: every heading/paragraph/table in order with positions.
     sections: title -> {'heading': block, 'blocks': content blocks after it (scaffold and blank lines excluded)}."""
@@ -146,8 +155,9 @@ def parse_doc(doc, scaffold_texts=(), tab=None):
             elif style == "SUBTITLE" or text in scaffold:
                 blocks.append(dict(base, type="scaffold", text=text, words=ws))
             else:
-                blocks.append(dict(base, type="li" if par.get("bullet") else "p", text=text, words=ws,
-                                   ordered="glyphType" in str(par.get("bullet", {}))))
+                bul = _bullet_of(par)
+                blocks.append(dict(base, type="li" if bul else "p", text=text, words=ws,
+                                   ordered="glyphType" in str(bul)))
         elif "table" in el:
             tbase = dict(base, is_table=True)
             rows = []
@@ -868,6 +878,20 @@ def _text_style(f, extra=None):
     for k, v in (extra or {}).items(): ts[k] = v; fields.append(k)
     return ts, ",".join(fields)
 
+def docx_gaps(e):
+    """Features of the Word template the connector cannot add to the Google copy, found by scanning the template's parts."""
+    import zipfile
+    found = set()
+    with zipfile.ZipFile(e["template"]) as z:
+        for name in z.namelist():
+            if not name.startswith("word/") or not name.endswith(".xml"): continue
+            x = z.read(name).decode("utf8", "ignore")
+            if re.search(r"<w:instrText[^>]*>\s*(PAGE|NUMPAGES|SECTIONPAGES)\b|<w:fldSimple[^>]*w:instr=\"\s*(PAGE|NUMPAGES)\b", x): found.add("page-number fields (Insert > Page numbers in the doc)")
+            if re.search(r"<w:instrText[^>]*>\s*TOC\b|<w:fldSimple[^>]*w:instr=\"\s*TOC\b|w:docPartGallery w:val=\"Table of Contents\"", x): found.add("table of contents (Insert > Table of contents)")
+            if "<w:sdt>" in x or "<w:sdt " in x: found.add("content controls (become plain text)")
+        if any(n.startswith("word/media/") for n in z.namelist()): found.add("images and logos (insert by hand)")
+    return sorted(found)
+
 def op_style_plan(sol, e, doc_path, st):
     """build/gdoc-style.json: update_doc requests (page setup, fonts, line spacing) that make the Google copy look like the Word template,
     plus the header and footer text to add. Formatting only, so it is sent as a direct edit."""
@@ -895,8 +919,10 @@ def op_style_plan(sol, e, doc_path, st):
             reqs.append({"updateParagraphStyle": {"range": {"startIndex": b["start"], "endIndex": b["end"]}, "paragraphStyle": {"lineSpacing": round(100 * look["line_spacing"])}, "fields": "lineSpacing"}})
     out = pathlib.Path(e["out"]); out.mkdir(parents=True, exist_ok=True); f = out / "gdoc-style.json"
     f.write_text(json.dumps({"documentId": st.get("doc_id") or parsed["doc_id"], "requests": sorted(reqs, key=lambda r: -max(((r.get("updateTextStyle") or r.get("updateParagraphStyle") or {}).get("range") or {"startIndex": -1})["startIndex"], -1)),
-                             "writeControl": {"writeMode": "EDIT", "requiredRevisionId": parsed["revision"]}, "header": look["header"], "footer": look["footer"]}, indent=1))
+                             "writeControl": {"writeMode": "EDIT", "requiredRevisionId": parsed["revision"]}, "header": look["header"], "footer": look["footer"], "not_carried": docx_gaps(e)}, indent=1))
     n = ", ".join(x for x in (f"header '{look['header'][:40]}'" if look["header"] else "", f"footer '{look['footer'][:40]}'" if look["footer"] else "") if x)
+    gaps = docx_gaps(e)
+    if gaps: print("NOT CARRIED OVER from the Word template (add by hand in the Google doc): " + "; ".join(gaps) + ".")
     print(f"{len(reqs)} formatting request(s) (page setup, fonts, line spacing) in {f}." + (f" Also add {n} (createHeader/createFooter, then insertText with the returned id; page-number fields cannot be added through the connector)." if n else "") +
           " Formatting only, so send it as a direct edit.")
 

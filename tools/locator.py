@@ -2,7 +2,8 @@
 
 The shared WIP document is a Google Doc by default (wip_format = "gdoc" in solution.toml) or a Word file ("docx"). People
 resolve items there, so links go to the document once it exists (open_in = "gdoc" or "docx") and to response/*.md
-otherwise or when solution.toml says open_in = "md". A Google Docs location is a heading link; a Word location is the
+otherwise or when solution.toml says open_in = "md". A Google Docs location is the link to the comment rfps added on the marker (it opens the doc scrolled to
+that comment; `gdoc_comment_link` in solution.toml sets the link format), else the doc itself; a Word location is the
 heading's bookmark (added by rfps-sync-docx) plus the marker text to search for.
 """
 import hashlib, pathlib, re, sys, tomllib
@@ -45,12 +46,19 @@ def decorate(sol, cfg, items):
     """Add to each item: find, bookmark, doc (link into the document, or ''), open_in. Returns the mode used."""
     loc = wip_location(sol, cfg)
     mode = open_in(cfg, loc)
+    comments = {}
+    if mode == "gdoc":
+        import sync_gdoc as sg
+        comments = {e["item"]: e for e in sg.load_ledger(sol)["comments"].values() if e.get("item") and e.get("origin") == "rfps" and not e.get("gone")}
     for x in items:
         x["find"] = find_text(x)
         x["bookmark"] = bookmark_name(x["section"])
         if mode == "gdoc":
             import sync_gdoc as sg
-            x["doc"] = sg.doc_url(loc["state"], x["section"])
+            ent = comments.get(sg.item_key(x["kind"], x["section"], x["text"]))
+            # a comment anchored on the marker opens the doc at that spot; without one, the doc (and the text to search for)
+            x["doc"] = sg.comment_link(loc["state"], ent, cfg.get("gdoc_comment_link")) if ent else sg.doc_url(loc["state"], x["section"])
+            x["spot"] = "comment" if ent else ""
         elif mode == "docx": x["doc"] = f"{loc['path'].as_uri()}#{x['bookmark']}"
         else: x["doc"] = ""
         x["open_in"] = mode

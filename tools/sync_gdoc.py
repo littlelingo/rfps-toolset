@@ -11,15 +11,21 @@ the JSON to a file; this tool reads that file and prints or writes what to do ne
 records the result.
 
 Usage (DOC.json is a saved read_doc result):
-  rfps-sync-gdoc --html                          HTML for the first version of the doc, for Drive create_file (text/html)
+  rfps-sync-gdoc --html                          HTML skeleton of the doc (headings, evaluation lines, placeholders), for Drive create_file (text/html)
   rfps-sync-gdoc --init DOC.json --doc-id ID     record the new doc: snapshot, heading links; write style requests (build/gdoc-style.json)
   rfps-sync-gdoc --status DOC.json               per section: response changes to push, edits made in the doc
-  rfps-sync-gdoc --push DOC.json [--direct]      write the update_doc arguments to build/gdoc-push.json (suggestions unless --direct)
+  rfps-sync-gdoc --push DOC.json                 write the update_doc arguments to build/gdoc-push.json; every addition is a suggestion
   rfps-sync-gdoc --commit                        after Claude sent the push successfully: record it as synced
   rfps-sync-gdoc --pull DOC.json [--apply] [--sections "A;B"]   edits others made, for approval; --apply writes response/*.md
-  rfps-sync-gdoc --comments FILE                 write review/doc-comments.md from [{author, date, text, section, on}]
+  rfps-sync-gdoc --comments-plan DOC.json        build/gdoc-comments.json: update_doc insertComment requests for open items that have no comment yet
+  rfps-sync-gdoc --comments-commit RESULT.json   record the comments Claude created (RESULT.json = the update_doc reply)
+  rfps-sync-gdoc --comment-note ID "text" [--handled addressed|ignored|open]   note how a comment was handled
+  rfps-sync-gdoc --comments FILE                 write review/doc-comments.md from [{author, date, text, section, on}] (manual import)
   rfps-sync-gdoc --url                           print the doc link
 The doc must keep the response headings exactly; every section's text lives under its heading.
+All text this tool adds arrives as suggestions (tracked changes) that people accept or reject; the first version of the
+doc has placeholders only, so the first draft is reviewable too. Comments are tracked in .state/gdoc-comments.json and
+review/doc-comments.md, so each pull reconciles them with the response.
 """
 import argparse, datetime, html, json, os, pathlib, re, sys, tomllib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
@@ -73,6 +79,16 @@ def _tab_body(doc, tab=None):
     walk(doc["tabs"])
     t = next((x for x in flat if x["tabProperties"]["tabId"] == tab), flat[0]) if tab else flat[0]
     return t["documentTab"]["body"], t["tabProperties"]["tabId"]
+
+def _tab(doc, tab=None):
+    if "tabs" not in doc: return doc
+    flat = []
+    def walk(ts):
+        for t in ts:
+            flat.append(t); walk(t.get("childTabs", []))
+    walk(doc["tabs"])
+    t = next((x for x in flat if x["tabProperties"]["tabId"] == tab), flat[0]) if tab else flat[0]
+    return t["documentTab"]
 
 def _words(par):
     """Accepted-view words of a paragraph: [(text, start, end)] in document index space (pending deletions skipped)."""
@@ -172,12 +188,13 @@ def template_outline(e):
         elif sn in scaf and out and p.text.strip(): out[-1][2].append(p.text.strip())
     return [tuple(x) for x in out]
 
-def build_html(e, resp):
+def build_html(e, resp, skeleton=True):
+    """First version of the doc. Skeleton (default): placeholders only, so the drafted text arrives later as suggestions."""
     parts = ["<html><body>"]
     for level, title, scaffold in template_outline(e):
         parts.append(f"<h{min(level, 6)}>{html.escape(title)}</h{min(level, 6)}>")
         for s in scaffold: parts.append(f"<p><i>{html.escape(s)}</i></p>")
-        text = resp.get(title, [1, "", False])[1]
+        text = "" if skeleton else resp.get(title, [1, "", False])[1]
         parts.append(md_html(text) if text.strip() else "<p>[text]</p>")
     parts.append("</body></html>")
     return "\n".join(parts)
@@ -315,12 +332,7 @@ def op_init(sol, e, doc_path, doc_id):
     st = dict(doc_id=doc_id or parsed["doc_id"], revision=parsed["revision"], sections={t: [b["text"] for b in s["blocks"]] for t, s in parsed["sections"].items() if t in resp},
               heading_ids={t: s["heading"].get("heading_id", "") for t, s in parsed["sections"].items()}, synced=datetime.datetime.now().isoformat(timespec="seconds"))
     save_state(sol, st)
-    sty = [{"updateParagraphStyle": {"range": {"startIndex": b["start"], "endIndex": b["end"]}, "paragraphStyle": {"namedStyleType": "SUBTITLE"}, "fields": "namedStyleType"}}
-           for b in parsed["blocks"] if b["type"] == "scaffold" and b["text"] in {" ".join(t.split()) for t in scaffold_of(e)}]
-    out = pathlib.Path(e["out"]); out.mkdir(parents=True, exist_ok=True)
-    (out / "gdoc-style.json").write_text(json.dumps({"documentId": st["doc_id"], "requests": sorted(sty, key=lambda r: -r["updateParagraphStyle"]["range"]["startIndex"]),
-                                                  "writeControl": {"requiredRevisionId": parsed["revision"]}}, indent=1))
-    print(f"Recorded {doc_url(st)} ({len(st['sections'])} sections). Optional: apply build/gdoc-style.json with update_doc to mark the template's evaluation lines as Subtitle ({len(sty)} paragraph(s)).")
+    print(f"Recorded {doc_url(st)} ({len(st['sections'])} sections). Nothing was changed in the doc; the response text goes in next as suggestions (rfps-sync-gdoc --push).")
 
 def analyse(sol, e, doc_path, st):
     parsed = load_doc(doc_path, e); resp, order = br.parse_response(e["response"])
@@ -342,8 +354,12 @@ def op_status(sol, e, doc_path, st):
         print(f"  {'✓' if not notes else '•'} {title}" + (": " + "; ".join(notes) if notes else ": in sync"))
         for c in conflicts: print(f"      conflict: {c}")
     print(f"{n_md} section(s) with response changes to push, {n_doc} with edits made in the doc.")
+    led = load_ledger(sol).get("comments", {})
+    if led:
+        opn = sum(1 for x in led.values() if x.get("status") == "OPEN" and not x.get("gone")); mine = sum(1 for x in led.values() if x.get("origin") == "rfps" and x.get("status") == "OPEN" and not x.get("gone"))
+        print(f"Comments tracked: {len(led)} ({opn} open, {mine} of them added for open items). Read the doc with comments and run --pull to refresh.")
 
-def op_push(sol, e, doc_path, st, direct):
+def op_push(sol, e, doc_path, st):
     parsed, resp, probs, rows = analyse(sol, e, doc_path, st)
     if probs: sys.exit("Heading mismatch (headings must match exactly):\n  " + "\n  ".join(probs))
     actions, pending, nconf, notes = [], dict(st["sections"]), 0, []
@@ -355,14 +371,13 @@ def op_push(sol, e, doc_path, st, direct):
         for c in conflicts: notes.append(f"      conflict (left pending): {c}")
     reqs = [r for _, rs in sorted(actions, key=lambda a: -a[0]) for r in rs]
     out = pathlib.Path(e["out"]); out.mkdir(parents=True, exist_ok=True)
-    wc = {"requiredRevisionId": parsed["revision"]}
-    if not direct: wc = {**SUGGEST, **wc}
+    wc = {**SUGGEST, "requiredRevisionId": parsed["revision"]}   # always suggestions: everything added is reviewable and can be accepted or rejected
     f = out / "gdoc-push.json"
     if reqs:
         f.write_text(json.dumps({"documentId": st["doc_id"], "requests": reqs, "writeControl": wc}, indent=1))
         save_state(sol, {**st, "pending": dict(sections=pending, revision=parsed["revision"])})
     elif f.exists(): f.unlink()
-    print(f"{len(reqs)} request(s) in {len(actions)} edit(s) for {sum(1 for t,_ in rows)} section(s) checked; {nconf} conflict(s) skipped." + (f" Mode: {'direct edits' if direct else 'suggestions'}." if reqs else ""))
+    print(f"{len(reqs)} request(s) in {len(actions)} edit(s) for {sum(1 for t,_ in rows)} section(s) checked; {nconf} conflict(s) skipped." + (" Mode: suggestions." if reqs else ""))
     print("\n".join(notes) if notes else "  Nothing to push: the doc already matches the response text.")
     if reqs: print(f"Send {f} with update_doc, then run rfps-sync-gdoc --commit.")
 
@@ -400,8 +415,12 @@ def op_pull(sol, e, doc_path, st, apply, only):
             if pr["simplified"]: report.append("    note: some bold or italic formatting in this paragraph was simplified")
         for c in conflicts: report.append(f"- conflict: {c}"); nconf += 1
         if apply and edits: edits_by_file.setdefault(msec["path"], []).extend(edits); new_sections[title] = result
+    cev = sync_comments(sol, e, doc_path, st)
     print(f"Doc edits not yet in the response: {nprops} change(s) in {sum(1 for x in report if x.startswith('## '))} section(s); {nconf} conflict(s).")
     print("\n".join(report) if report else "Nothing to bring in: the response already has everything in the doc.")
+    if cev is None: print("Comments: not read (save read_doc with commentsIncluded: true to track them).")
+    else:
+        print(f"Comments: {len(cev)} change(s) since the last check -> review/doc-comments.md" + ("".join("\n  - " + x for x in cev)))
     if not apply: return
     for f, edits in edits_by_file.items():
         lines = files[f]
@@ -419,13 +438,163 @@ def op_comments(sol, path):
     save_state(sol, {**st, "comments_seen": [str(c["id"]) for c in comments]})
     print(f"{len(comments)} comment(s) -> {f}")
 
+# ---------- comments: read, track, create ----------
+MARK_RE = re.compile(r"\[(DECISION|OPEN|EVIDENCE NEEDED|ASSERTION)[^\]]*\]")
+DEFAULT_COMMENT_KINDS = ("DECISION", "OPEN", "EVIDENCE NEEDED")
+
+def item_key(kind, section, text):
+    return f"{kind}|{section}|{' '.join(text.split())[:60]}"
+
+def comments_file(sol): return sol / ".state" / "gdoc-comments.json"
+def load_ledger(sol):
+    f = comments_file(sol); return json.loads(f.read_text()) if f.is_file() else {"comments": {}, "pending": []}
+def save_ledger(sol, led):
+    f = comments_file(sol); f.parent.mkdir(parents=True, exist_ok=True); f.write_text(json.dumps(led, indent=1, ensure_ascii=False) + "\n")
+
+def parse_comments(doc, parsed, tab=None):
+    """Comments in a saved read_doc result (read with commentsIncluded) -> [{id, anchor, quote, status, author, date, text, replies, start, end, section}]."""
+    anchors = _tab(doc, tab).get("commentAnchors", {}) or doc.get("commentAnchors", {})
+    heads = [b for b in parsed["blocks"] if b["type"] == "heading"]
+    out = []
+    for c in doc.get("comments", []):
+        hp = c.get("headPost", {}); rng = (anchors.get(c.get("anchorId", ""), {}).get("ranges") or [{}])[0]
+        start, end = rng.get("startIndex"), rng.get("endIndex")
+        section = ""
+        if start is not None:
+            for h in heads:
+                if h["start"] <= start: section = h["text"]
+        out.append(dict(id=c["commentId"], anchor=c.get("anchorId", ""), quote=c.get("plainTextQuote", ""), status=c.get("status", "OPEN"),
+                        author=hp.get("author", {}).get("displayName", ""), date=(hp.get("createTime") or "")[:16].replace("T", " "),
+                        text=" ".join((hp.get("content") or "").split()),
+                        replies=[dict(author=r.get("author", {}).get("displayName", ""), date=(r.get("createTime") or "")[:16].replace("T", " "),
+                                      text=" ".join((r.get("content") or "").split())) for r in c.get("replies", [])],
+                        start=start, end=end, section=section))
+    return out
+
+def response_items(e, kinds=None):
+    """Open markers in the response: {item key: (kind, section, text)}."""
+    import open_items as oi
+    items = oi.scan(pathlib.Path(e["response"])); keep = set(kinds) if kinds else None
+    return {item_key(x["kind"], x["section"], x["text"]): (x["kind"], x["section"], x["text"]) for x in items if not keep or x["kind"] in keep}
+
+def merge_ledger(led, comments, md_items, now):
+    """Reconcile the comments in the doc with the ledger and with the response's open markers. -> (ledger, events)."""
+    events, seen = [], set()
+    ents = led["comments"]
+    for c in comments:
+        seen.add(c["id"]); e = ents.get(c["id"])
+        if e is None:
+            e = dict(id=c["id"], origin="person", item="", handled="open", first_seen=now); ents[c["id"]] = e
+            events.append(f"new comment by {c['author']} in '{c['section']}': {c['text'][:100]}")
+        elif len(c["replies"]) > e.get("replies_n", 0):
+            for r in c["replies"][e.get("replies_n", 0):]: events.append(f"new reply by {r['author']} on '{c['text'][:50]}': {r['text'][:100]}")
+        if e.get("status") and e["status"] != c["status"]:
+            events.append(f"comment {c['status'].lower()}: '{c['text'][:60]}' ({c['section']})")
+        e.update(status=c["status"], author=c["author"], date=c["date"], text=c["text"], quote=c["quote"], section=c["section"],
+                 replies=c["replies"], replies_n=len(c["replies"]), last_seen=now, gone=False)
+    for cid, e in ents.items():
+        if cid not in seen and not e.get("gone"):
+            e["gone"] = True; events.append(f"comment no longer in the doc (deleted, or its text was removed): '{e.get('text', '')[:60]}' ({e.get('section', '')})")
+    for e in ents.values():
+        if e.get("origin") != "rfps" or e.get("gone") or not e.get("item"): continue
+        if e["status"] == "OPEN" and e["item"] not in md_items:
+            events.append(f"the response no longer has this marker, but its comment is still open (a person must resolve it; the connector cannot): '{e['text'][:70]}'")
+        if e["status"] == "RESOLVED" and e["item"] in md_items:
+            events.append(f"comment resolved in the doc, but the marker is still in the response (confirm it was settled): '{e['text'][:70]}'")
+    return led, events
+
+def write_comments_md(sol, led, events):
+    f = sol / "review" / "doc-comments.md"; f.parent.mkdir(parents=True, exist_ok=True)
+    rows = ["| Status | Origin | Section | Author | Date | Comment | Replies | On text | Handling |", "|---|---|---|---|---|---|---|---|---|"]
+    esc = lambda t: (t or "").replace("|", "/")
+    for e in sorted(led["comments"].values(), key=lambda x: (x.get("status") != "OPEN", x.get("section", ""), x.get("date", ""))):
+        st = "gone" if e.get("gone") else e.get("status", "").lower()
+        reps = "; ".join(f"{r['author']}: {r['text'][:80]}" for r in e.get("replies", []))
+        rows.append(f"| {st} | {e.get('origin', '')} | {esc(e.get('section'))} | {esc(e.get('author'))} | {e.get('date', '')} | {esc(e.get('text'))} | {esc(reps)} | {esc(e.get('quote', ''))[:80]} | {esc(e.get('handled', 'open'))}{(': ' + esc(e['note'])) if e.get('note') else ''} |")
+    ev = "\n".join(f"- {x}" for x in events) or "- none"
+    f.write_text("# Comments in the shared WIP document\n\nGenerated by `rfps-sync-gdoc`; do not edit (use `--comment-note` to record how one was handled). "
+                 "Comments by `rfps` were added for open items; people reply and resolve them in the doc (the connector cannot).\n\n"
+                 "## Changes since the last check\n\n" + ev + "\n\n## All comments\n\n" + ("\n".join(rows) if led["comments"] else "No comments.") + "\n")
+    return f
+
+def comment_link(st, entry, template=None):
+    return (template or "{url}?disco={comment_id}").format(url=doc_url(st), comment_id=entry["id"], anchor_id=entry.get("anchor", ""))
+
+def op_comments_plan(sol, e, doc_path, st, kinds):
+    parsed = load_doc(doc_path, e); led = load_ledger(sol); have = {x["item"] for x in led["comments"].values() if x.get("item") and x.get("status") == "OPEN" and not x.get("gone")}
+    reqs, pend, skipped = [], [], 0
+    for b in parsed["blocks"]:
+        if b["type"] not in ("p", "li") or "words" not in b: continue
+        sec = next((h["text"] for h in reversed([x for x in parsed["blocks"] if x["type"] == "heading" and x["start"] <= b["start"]])), "")
+        text = " ".join(w[0] for w in b["words"])
+        for m in MARK_RE.finditer(text):
+            kind = m.group(1)
+            if kinds and kind not in kinds: continue
+            body = re.sub(r"^\[[A-Z ]+:?\s*", "", m.group(0)).rstrip("]").strip()
+            key = item_key(kind, sec, body)
+            if key in have or any(p["item"] == key for p in pend): skipped += 1; continue
+            toks = m.group(0).split(); ws = [w[0] for w in b["words"]]
+            i = next((k for k in range(len(ws) - len(toks) + 1) if ws[k:k + len(toks)] == toks), None)
+            if i is None: continue
+            a, z = b["words"][i][1], b["words"][i + len(toks) - 1][2]
+            content = f"{kind}: {body}" if body else kind
+            reqs.append({"insertComment": {"range": {"startIndex": a, "endIndex": z}, "content": content + " (rfps)"}})
+            pend.append(dict(item=key, kind=kind, section=sec, quote=m.group(0)))
+    out = pathlib.Path(e["out"]); out.mkdir(parents=True, exist_ok=True); f = out / "gdoc-comments.json"
+    if reqs:
+        f.write_text(json.dumps({"documentId": st["doc_id"], "requests": reqs, "writeControl": {"requiredRevisionId": parsed["revision"]}}, indent=1))
+        led["pending"] = pend; save_ledger(sol, led)
+        print(f"{len(reqs)} comment(s) to add for open items ({', '.join(sorted({p['kind'] for p in pend}))}); {skipped} already have one. Send {f} with update_doc, save the reply to a file, then run rfps-sync-gdoc --comments-commit <reply file>.")
+    else:
+        if f.exists(): f.unlink()
+        print(f"No comments to add ({skipped} open item(s) already have one).")
+
+def _threads(o):
+    if isinstance(o, dict):
+        if "insertComment" in o and isinstance(o["insertComment"], dict) and "commentThread" in o["insertComment"]: yield o["insertComment"]["commentThread"]
+        else:
+            for v in o.values(): yield from _threads(v)
+    elif isinstance(o, list):
+        for v in o: yield from _threads(v)
+
+def op_comments_commit(sol, result_path):
+    led = load_ledger(sol); pend = led.get("pending", []); threads = list(_threads(json.loads(pathlib.Path(result_path).read_text())))
+    if len(threads) != len(pend): sys.exit(f"The reply holds {len(threads)} created comment(s) but {len(pend)} were planned; nothing recorded.")
+    now = datetime.datetime.now().isoformat(timespec="seconds")
+    for p, t in zip(pend, threads):
+        hp = t.get("headPost", {})
+        led["comments"][t["commentId"]] = dict(id=t["commentId"], anchor=t.get("anchorId", ""), origin="rfps", item=p["item"], handled="open", first_seen=now, last_seen=now,
+                                              status=t.get("status", "OPEN"), author=hp.get("author", {}).get("displayName", ""), date=(hp.get("createTime") or "")[:16].replace("T", " "),
+                                              text=" ".join((hp.get("content") or "").split()), quote=t.get("plainTextQuote", p["quote"]), section=p["section"], replies=[], replies_n=0)
+    led["pending"] = []; save_ledger(sol, led)
+    e = br.load_engagement(str(sol)); f = write_comments_md(sol, led, [f"added {len(pend)} comment(s) for open items"])
+    print(f"Recorded {len(pend)} comment(s) -> {f}")
+
+def op_comment_note(sol, cid, note, handled):
+    led = load_ledger(sol); e = led["comments"].get(cid) or next((x for k, x in led["comments"].items() if k.endswith(cid)), None)
+    if not e: sys.exit(f"No comment {cid} in the ledger.")
+    e["note"] = note; e["handled"] = handled or e.get("handled", "open"); save_ledger(sol, led); write_comments_md(sol, led, [])
+    print(f"Noted on {e['id']}: {handled or 'open'}")
+
+def sync_comments(sol, e, doc_path, st, doc=None):
+    """Reconcile the comments in a saved read_doc result with the ledger; write review/doc-comments.md. -> events."""
+    doc = doc or json.loads(pathlib.Path(doc_path).read_text())
+    if "comments" not in doc: return None
+    parsed = load_doc(doc_path, e); comments = parse_comments(doc, parsed)
+    led, events = merge_ledger(load_ledger(sol), comments, response_items(e), datetime.datetime.now().isoformat(timespec="seconds"))
+    save_ledger(sol, led); write_comments_md(sol, led, events)
+    return events
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--html", action="store_true"); ap.add_argument("--init"); ap.add_argument("--doc-id")
-    ap.add_argument("--status"); ap.add_argument("--push"); ap.add_argument("--direct", action="store_true")
+    ap.add_argument("--status"); ap.add_argument("--push")
     ap.add_argument("--commit", action="store_true"); ap.add_argument("--revision")
     ap.add_argument("--pull"); ap.add_argument("--apply", action="store_true"); ap.add_argument("--sections")
     ap.add_argument("--comments"); ap.add_argument("--url", action="store_true")
+    ap.add_argument("--comments-plan"); ap.add_argument("--comments-commit"); ap.add_argument("--kinds")
+    ap.add_argument("--comment-note", nargs=2, metavar=("ID", "TEXT")); ap.add_argument("--handled", choices=["addressed", "ignored", "open"])
     ap.add_argument("--solution", nargs="?", const="", default=None)
     a = ap.parse_args()
     sol = br.resolve_solution(a.solution or None); e = br.load_engagement(str(sol)); st = load_state(sol)
@@ -441,7 +610,10 @@ if __name__ == "__main__":
     if not st.get("doc_id"): sys.exit("No Google Doc recorded yet. Run --html, create the doc, then --init DOC.json --doc-id ID.")
     if a.url: print(doc_url(st)); sys.exit(0)
     if a.commit: op_commit(sol, st, a.revision); sys.exit(0)
+    if a.comments_plan: op_comments_plan(sol, e, a.comments_plan, st, set(x.strip() for x in a.kinds.split(",")) if a.kinds else set(DEFAULT_COMMENT_KINDS)); sys.exit(0)
+    if a.comments_commit: op_comments_commit(sol, a.comments_commit); sys.exit(0)
+    if a.comment_note: op_comment_note(sol, a.comment_note[0], a.comment_note[1], a.handled); sys.exit(0)
     if a.status: op_status(sol, e, a.status, st)
-    elif a.push: op_push(sol, e, a.push, st, a.direct)
+    elif a.push: op_push(sol, e, a.push, st)
     elif a.pull: op_pull(sol, e, a.pull, st, a.apply, set(x.strip() for x in a.sections.split(";")) if a.sections else None)
     else: ap.print_help()

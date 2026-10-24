@@ -24,6 +24,7 @@ class Table:
 class Doc:
     def __init__(self, doc_id="DOC1"):
         self.id, self.rev, self.els, self.sug, self.hid = doc_id, 1, [], 0, 0
+        self.comments, self.ncomment = {}, 0
 
     # ----- creation from the HTML the tool writes -----
     @classmethod
@@ -63,7 +64,24 @@ class Doc:
                         cells.append({"startIndex": cs, "endIndex": p, "content": cont})
                     rows.append({"startIndex": rs, "endIndex": p, "tableCells": cells})
                 content.append({"startIndex": s, "endIndex": z, "table": {"rows": len(e.cells), "columns": len(e.cells[0]), "tableRows": rows}})
-        return {"documentId": self.id, "revisionId": f"rev{self.rev}", "body": {"content": content}}
+        tab = {"tabProperties": {"tabId": "t.0"}, "documentTab": {"body": {"content": content}}}
+        out = {"documentId": self.id, "revisionId": f"rev{self.rev}", "tabs": [tab]}
+        if self.comments:
+            anchors, lst = {}, []
+            for cid, c in self.comments.items():
+                rng = self._find_quote(c["quote"])
+                anchors[c["anchor"]] = {"anchorId": c["anchor"], "ranges": [rng] if rng else []}
+                head = {"author": {"displayName": c["author"]}, "content": c["content"], "createTime": c["created"], "postId": cid}
+                lst.append({"commentId": cid, "anchorId": c["anchor"], "headPost": head, "plainTextQuote": c["quote"], "status": c["status"],
+                            "replies": [{"author": {"displayName": r[0]}, "content": r[1], "createTime": "2026-10-24T16:00:00Z"} for r in c["replies"]]})
+            out["comments"] = lst; tab["documentTab"]["commentAnchors"] = anchors
+        return out
+    def _find_quote(self, quote):
+        for e, s, z in self._spans():
+            if isinstance(e, Para):
+                t = "".join(c[0] for c in e.chars)
+                if quote in t: a = t.index(quote); return {"startIndex": s + a, "endIndex": s + a + len(quote)}
+        return None
     def _par_json(self, p, start):
         els, pos, run = [], start, None
         for ch, ins, dele in p.chars:
@@ -139,9 +157,17 @@ class Doc:
         wc = args.get("writeControl", {})
         if wc.get("requiredRevisionId") and wc["requiredRevisionId"] != f"rev{self.rev}":
             raise ValueError(f"400: required revision ID {wc['requiredRevisionId']} does not match rev{self.rev}")
-        suggest = wc.get("writeMode") == "SUGGEST"
+        suggest = wc.get("writeMode") == "SUGGEST"; api = []
         for r in args["requests"]:
             k, v = next(iter(r.items()))
+            if k == "insertComment":
+                self.ncomment += 1; cid = f"doco.SIM{self.ncomment}"; a, z = v["range"]["startIndex"], v["range"]["endIndex"]
+                quote = next((("".join(c[0] for c in e.chars))[self._offset(e, a - s):self._offset(e, z - s)] for e, s, zz in self._spans() if isinstance(e, Para) and s <= a < zz), "")
+                self.comments[cid] = dict(anchor=f"kix.sim{self.ncomment}", quote=quote, status="OPEN", author="Clint Little", content=v["content"], created="2026-10-24T15:00:00Z", replies=[])
+                api.append({"insertComment": {"commentThread": {"anchorId": f"kix.sim{self.ncomment}", "commentId": cid, "plainTextQuote": quote, "status": "OPEN",
+                           "headPost": {"author": {"displayName": "Clint Little"}, "content": v["content"], "createTime": "2026-10-24T15:00:00Z"}}}})
+                continue
+            api.append({})
             if k == "insertText":
                 idx = v["location"]["index"]
                 # cell paragraphs: find in tables too
@@ -157,6 +183,7 @@ class Doc:
             elif k == "updateTextStyle": pass
             else: raise ValueError(f"request not simulated: {k}")
         self.rev += 1
+        return {"replies": [{"api_replies": api, "errors": [], "warnings": []}]}
     def _in_table_cell(self, idx, text, suggest):
         for e, s, z in self._spans():
             if isinstance(e, Table) and s <= idx < z:
@@ -188,6 +215,11 @@ class Doc:
             if isinstance(e, Para) and contains in "".join(c[0] for c in e.chars):
                 self.els.insert(self.els.index(e) + 1, Para(text, e.style if e.style == "NORMAL_TEXT" else "NORMAL_TEXT", e.bullet)); return
         raise ValueError(contains)
+    def human_comment(self, quote, text, author="Reviewer"):
+        self.ncomment += 1; cid = f"doco.SIM{self.ncomment}"
+        self.comments[cid] = dict(anchor=f"kix.sim{self.ncomment}", quote=quote, status="OPEN", author=author, content=text, created="2026-10-24T16:00:00Z", replies=[]); return cid
+    def human_reply(self, cid, text, author="Reviewer"): self.comments[cid]["replies"].append((author, text))
+    def human_resolve(self, cid): self.comments[cid]["status"] = "RESOLVED"
     def accepted_text(self):
         out = []
         for e, _, _ in self._spans():

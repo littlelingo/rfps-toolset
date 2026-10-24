@@ -1,7 +1,7 @@
 {
   "name": "rfps",
   "displayName": "RFP Toolset",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "A generic flow for working through solicitation documents (RFP, SOW, SOO) to a proposal response: analysis skills, an evidence register, a docx build, and a live status pane.",
   "author": { "name": "Clint Little", "url": "https://github.com/littlelingo" },
   "homepage": "https://github.com/littlelingo/rfps-toolset",

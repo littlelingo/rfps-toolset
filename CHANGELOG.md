@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.1 (2026-10-24)
 
 - Best-practice audit follow-ups: `integrate`, `resources`, `status`, `next` and `step` are typed-only shortcuts (the `integrate-edits`, `resource-planner` and `solution-guide` skills keep the plain-wording entry, so there is one natural-language route for each and a smaller always-on listing); standard `rfps--vX.Y.Z` tags for 0.1.1, 0.2.0 and 0.3.0 (the older `vX.Y.Z` tags stay), `claude plugin tag --push` for later releases; a release checklist in CONTRIBUTING; a new eval case for marking a step done in plain words. The directory-listing fields (icon, support and privacy URLs) are left unset until the repository is public and a directory submission is planned.
 - Followed the plugin best-practice checklist: `build-wip`, `build-final`, `make-gdoc-template` and `new-engagement` are now `disable-model-invocation: true` (typed only; they create files, documents or submission copies); added an `evals/` suite for `claude plugin eval` (collateral analyzer, requirements mapper and solution guide fire on plain wording; an unrelated request stays quiet; drafting without evidence flags gaps; clearance is never granted by the tool; the template outline cites the RFP); and a "What This Plugin Runs" section in the README (components, what each runs and where, Claude Code only).

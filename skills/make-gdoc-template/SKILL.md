@@ -2,6 +2,7 @@
 name: make-gdoc-template
 description: Build a Google Doc version of the Word response template (its headings, boilerplate, tables, page setup, fonts, header and footer) to copy for each solution's shared work-in-progress document
 argument-hint: [--update]
+disable-model-invocation: true
 allowed-tools: Bash(rfps-sync-gdoc:*), Bash(rfps-flow-status:*), Read, Write
 ---
 

@@ -2,6 +2,7 @@
 name: new-engagement
 description: Start a new solicitation: create active-solution/ inside a source folder (config, response skeleton mirroring the template docx, evidence register, past-performance manifest)
 argument-hint: <source folder> [template.docx] [title]
+disable-model-invocation: true
 allowed-tools: Bash(rfps-new-engagement:*), Bash(ls:*), Read
 ---
 

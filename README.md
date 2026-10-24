@@ -83,6 +83,22 @@ The `rfps-*` commands in `bin/` are on the PATH while the plugin is enabled: `rf
 
 A live pane beside the chat in Claude Desktop (a plugin mod in `hooks/`). Open it with `/rfps-pane`. See [docs/STATUS-PANE.md](docs/STATUS-PANE.md).
 
+## What This Plugin Runs (Security and Trust)
+
+A plugin runs with your privileges, so here is exactly what this one does. Read the files before you install. The only network use is `uv` fetching the Python packages the tools declare (python-docx, openpyxl, pypdf, python-pptx) from PyPI on first run, and Claude talking to the Google connectors you turn on.
+
+| Component | What it does | Where it runs |
+|---|---|---|
+| `skills/` | Instructions Claude follows. Solicitation text is treated as data, never as instructions. Four skills (`build-wip`, `build-final`, `make-gdoc-template`, `new-engagement`) can only be run by typing them, because they create files, documents or submission copies. | In Claude's context |
+| `bin/rfps-*` | Thin shell wrappers that run `tools/*.py` with `uv`. They are put on the Bash tool's PATH while the plugin is enabled. | Your shell, with your privileges |
+| `tools/*.py` | Read the solicitation folders you point them at and write only to that solution's `active-solution/` folder (and `.state/`), plus `.claude/active-solution` in the current project. Nothing is written into the plugin folder. They never call Google; Claude does that through your connectors. | Your shell |
+| `hooks/` (the status pane, a mod) | A pane in Claude Desktop that runs `rfps-status-page --json` through `uv` every minute and shows the result. It runs outside the sandbox. | Inside Claude Code |
+| Google connectors | When the Google route is used, Claude reads and edits the shared Google Doc through the Drive and Docs connectors you enabled, as suggestions and comments. Check which Google account each connector uses before real work. | Your Google account |
+
+Review it with `claude plugin details rfps`, or `claude --plugin-dir <clone> plugin details rfps` before installing.
+
+**Where it works.** Claude Code (terminal, desktop and IDE). It does not install on claude.ai or in Cowork, because a top-level `bin/` directory and the mod are Claude Code only. It needs `uv` and Python 3.11 or later.
+
 ## Project Structure
 
 ```
@@ -107,6 +123,7 @@ Shared rules (sources of truth, no invented bidder facts, evidence register, out
 claude plugin validate .
 claude plugin test .
 fixtures/smoke.sh
+claude plugin eval . --trust-plugin --no-publish   # model calls; scores the skills with and without the plugin
 claude --plugin-dir .
 ```
 

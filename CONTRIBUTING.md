@@ -9,3 +9,5 @@ Contributor notes for the rfps plugin. A plugin cannot ship a CLAUDE.md that loa
 - The docx heading text is the contract between the template and `response/*.md`.
 - Check before committing: `claude plugin validate .`, `claude plugin test .`, and `fixtures/smoke.sh` (end-to-end run on the fictional sample; see `fixtures/README.md`).
 - In prose and docs, use hyphens instead of em-dashes.
+- Behavior tests: `evals/` holds `claude plugin eval` cases (plain wording must reach the right skill, unrelated requests must not, drafting must not invent facts, clearance is never granted by the tool). Run `claude plugin eval . --trust-plugin --no-publish` after changing a skill description or a rule in `conventions.md`; it makes model calls and costs a few dollars. Results go to `evals/results/` (git-ignored).
+- Skills with outward effects (files, Drive documents, submission copies) set `disable-model-invocation: true` so they only run when typed; keep that for any new skill of that kind.

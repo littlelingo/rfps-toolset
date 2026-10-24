@@ -3,3 +3,4 @@ __pycache__/
 .claude/settings.local.json
 .claude/active-solution
 node_modules/
+evals/results/

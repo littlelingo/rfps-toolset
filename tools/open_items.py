@@ -57,6 +57,10 @@ def write(sol, cfg=None):
     rdir = sol / ((cfg or {}).get("response_dir", "response"))
     items = scan(rdir)
     try:
+        import worklist   # the user's choices (mine, skipped, addressed) are kept there
+        for x in items: x["choice"] = worklist.choice_of(sol, x)
+    except Exception: pass
+    try:
         import locator
         mode = locator.decorate(sol, cfg or {}, items)
     except Exception: mode = "md"
@@ -73,7 +77,7 @@ def write(sol, cfg=None):
         out += [f"## {i} {k} ({len(rows)})", "", head, ("|---|---|---|---|---|" if mode in ("docx", "gdoc") else "|---|-------|---------|--------------|")]
         for n, x in enumerate(rows, 1):
             link = f"[{x['file']}:{x['line']}](response/{x['file']}:{x['line']})"
-            txt = x["text"].replace("|", "/")
+            txt = (f"({x['choice']}) " if x.get("choice") else "") + x["text"].replace("|", "/")
             txt = txt if len(txt) <= 220 else txt[:217] + "..."
             if mode in ("docx", "gdoc"):
                 find = x["find"].replace("|", "/").replace("`", "'")

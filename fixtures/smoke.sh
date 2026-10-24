@@ -63,6 +63,9 @@ test ! -f active-solution/worklist.md || { echo "FAIL: worklist wrote a report f
 WID=$(rfps-worklist --next | python3 -c "import json,sys; print(json.load(sys.stdin)[0]['id'])")
 rfps-worklist --set "$WID" mine --note "needs the director" >/dev/null
 rfps-worklist | grep -q "1 yours" && rfps-worklist --table | grep -q "needs the director" || { echo "FAIL: worklist did not keep a choice" >&2; exit 1; }
+rfps-open-items >/dev/null; grep -q "(mine)" active-solution/open-items.md || { echo "FAIL: open-items does not show the worklist choice" >&2; exit 1; }
+rfps-worklist --set solution addressed 2>&1 | tee /dev/stderr | grep -q "solution: done" || { echo "FAIL: worklist --set did not reach a flow step" >&2; exit 1; }
+rfps-worklist --set solution open >/dev/null
 [ "$(rfps-worklist --next | python3 -c "import json,sys; print(json.load(sys.stdin)[0]['id'])")" != "$WID" ] || { echo "FAIL: a claimed item came back as next" >&2; exit 1; }
 rfps-open-doc --section "Technical Approach" --find "[ASSERTION: x" --print | grep -q "bookmark rfps_Technical_Approach_" || { echo "FAIL: open-doc did not print the bookmark" >&2; exit 1; }
 # reviewers edit, insert, delete and comment in the document; pull brings those into the response

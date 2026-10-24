@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- One collector, several views: `open-items.md` and the status page show the choice recorded on each marker (`(mine)`, `(skipped)`), and `rfps-worklist --set` also takes a flow step id (done, skip, reset in `progress.md`). No new tracking files.
+
 - New `/rfps:start`: a front-loaded run. It asks once for the solicitation folder, template, past-performance locations and the WIP format, then sets up, analyzes, maps requirements, proposes evidence rows (as `hold`, never `cleared`), plans staffing, drafts, reviews and builds the first shared WIP document, then hands over a worklist.
 - New `/rfps:walk` and `rfps-worklist`: one ranked list of markers, requirement gaps and compliance failures (blockers first), worked one item at a time (tool addresses it, you address it, or skip); it writes no report file, only your choices in `.state/worklist.json`.
 

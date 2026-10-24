@@ -42,6 +42,12 @@ def build(sol):
     fj = flow_json(sol)
     items = oi.scan(sol / cfg.get("response_dir", "response"))
     try:
+        import worklist
+        for x in items:
+            c = worklist.choice_of(sol, x)
+            if c: x["text"] = f"({c}) " + x["text"]
+    except Exception: pass
+    try:
         import locator
         locator.decorate(sol, cfg, items)
     except Exception: pass

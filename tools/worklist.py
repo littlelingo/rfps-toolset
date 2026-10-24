@@ -16,7 +16,7 @@ Usage:
   rfps-worklist [--solution [folder]]              print the counts
   rfps-worklist --table                             the whole list as a markdown table
   rfps-worklist --next [N]                          print the next N open items (default 1) as JSON
-  rfps-worklist --set ID addressed|mine|skipped|open [--note TEXT]
+  rfps-worklist --set ID addressed|mine|skipped|open [--note TEXT]   ID may also be a flow step id (addressed = done, skipped = skip, open = reset), so there is one command for choices
   rfps-worklist --json                              the whole list as JSON
 """
 import argparse, hashlib, json, pathlib, re, sys, tomllib
@@ -49,11 +49,18 @@ def col(cols, cells, *names):
             if c.lower().startswith(n.lower()) and i < len(cells): return cells[i]
     return ""
 
+def marker_id(x): return key("m", x["kind"], x["section"], x["text"][:60])
+
+def choice_of(sol, x):
+    """The user's recorded choice for a marker found by open_items.scan ('' when none); lets the other views show it."""
+    c = load_state(sol).get(marker_id(x), {})
+    return c.get("status", "") if c.get("status") != "open" else ""
+
 def collect(sol, cfg):
     items = []
     for x in open_items.scan(sol / cfg.get("response_dir", "response")):
         rank, label, who, act = MARKER[x["kind"]]
-        items.append(dict(id=key("m", x["kind"], x["section"], x["text"][:60]), rank=rank, kind=label, who=who, action=act,
+        items.append(dict(id=marker_id(x), rank=rank, kind=label, who=who, action=act,
                           where=f"{x['file']}:{x['line']}", section=x["section"], text=x["text"]))
     cm = sol / "coverage-matrix.md"
     if cm.is_file():
@@ -110,6 +117,13 @@ def main():
     if a.set:
         i, s = a.set
         if s not in ("addressed", "mine", "skipped", "open"): sys.exit("status must be addressed, mine, skipped or open")
+        if i in {st["id"] for st in tomllib.loads((pathlib.Path(__file__).parent / "flow.toml").read_text())["step"]}:
+            if s == "mine": sys.exit("a flow step is done, skipped or open; use addressed, skipped or open")
+            import subprocess
+            fs = str(pathlib.Path(__file__).parent.parent / "bin" / "rfps-flow-status")
+            if not (sol / "progress.md").is_file(): subprocess.run([fs, "--solution", str(sol)], capture_output=True)   # writes progress.md
+            r = subprocess.run([fs, "--solution", str(sol), "--set", i, {"addressed": "done", "skipped": "skip", "open": "reset"}[s]], capture_output=True, text=True)
+            print((r.stdout + r.stderr).strip()); sys.exit(r.returncode)
         if i not in {x["id"] for x in collect(sol, cfg)}: sys.exit(f"no item {i} in the current list")
         st = load_state(sol); st[i] = {"status": s, "note": a.note}; save_state(sol, st)
     items = open_list(sol, cfg); todo = [i for i in items if i["status"] == "open"]

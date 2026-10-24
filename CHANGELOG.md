@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.2 (2026-10-24)
 
 - Google route: a bullet that is still a pending suggestion (`suggestedBulletChange`) is now read as a list item, the likely cause of the second suggested bullet reading back as a plain paragraph.
 - `rfps-sync-gdoc --style-plan` reports what the connector cannot carry over from the Word template (page-number fields, table of contents, content controls, images); `/rfps:make-gdoc-template --update` re-styles the existing Google template in place when only the look changed.

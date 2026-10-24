@@ -23,20 +23,23 @@ Then say in two lines what will happen and that you will only stop for a fact yo
 
 ## 2. Run (no stops between stages)
 
-Work in this order. After each stage give one line with links to what was written, and carry on.
+The path is the flow defined in `${CLAUDE_PLUGIN_ROOT}/tools/flow.toml`, not a second copy of it. Run `rfps-flow-status --json` and work through its steps in order, up to and including `wip`. For each step that is not done, run its `command` (a skill, or the tool the step names); run the skills named below with the intake answers as their inputs. After each step give one line with links to what was written, then re-run `rfps-flow-status` and carry on. Steps already done are left alone, so `/rfps:start` can be run again to resume.
 
-1. **Set up.** Follow `new-engagement` (`rfps-new-engagement`); run `generate-template` first if there is no template. Register each past-performance location with `rfps-add-source`, then `rfps-scan-sources` (extract text with `rfps-extract-docs`; Drive files need the confirmation step in `add-past-performance`).
-2. **Understand.** Run `collateral-analyzer` (brief, gap report, amendment log), then `requirements-mapper` (coverage matrix).
-3. **Evidence.** Follow `add-past-performance` to propose register rows from the scanned material. Add them with `rfps-register-add` as `hold`; never mark any row `cleared` (that is the user's call, and permissions are the client's). Rows that look unusable go to the worklist as notes, not into the register.
-4. **People.** Run `resource-planner` for the roster, `resource-plan.md` and the staffing workbook. Leave names the documents do not give as placeholders.
-5. **Draft.** Run `section-drafter` for every heading. Every claim is `[GROUNDED: E-nnn]`, `[ASSERTION]`, or a `[DECISION]`, `[OPEN]` or `[EVIDENCE NEEDED]` marker; invent nothing about the bidder. Then `rfps-open-items --mark`.
-6. **Review.** Run `empathy-reviewer` and `compliance-validator`, then `rfps-refresh-reports`.
-7. **WIP.** Follow `build-wip` (Google Doc by default, Word for `--word`); it makes the shared document and pushes the drafted text as suggestions or tracked changes. Do not run `build-final`.
+Do not run these steps; they depend on people and become worklist items instead: `amendments` (unless the analyzer found some to log), `cleared`, `markers`, `integrated`, `attachments`, `docreview`, `final`.
 
-If a stage fails, stop at that stage, say what failed and how to resume (`/rfps:status`), and do not hide the failure behind later stages.
+Rules that differ from running the skills one by one:
+
+- `solution`/`template`: if there is no template, run `generate-template` first. Register each past-performance location with `rfps-add-source`, then `rfps-scan-sources` (Drive files need the confirmation step in `add-past-performance`).
+- `register`: follow `add-past-performance` to propose rows and add them with `rfps-register-add` as `hold`; never mark a row `cleared` (that is the user's call and the client's permission). Unusable material goes to the user as a note, not into the register.
+- `resources`: leave names the documents do not give as placeholders.
+- `draft`: every claim is `[GROUNDED: E-nnn]`, `[ASSERTION]`, or a `[DECISION]`, `[OPEN]` or `[EVIDENCE NEEDED]` marker; invent nothing about the bidder. Run `rfps-open-items --mark` afterwards.
+- `compliance`: finish with `rfps-refresh-reports`.
+- `wip`: follow `build-wip` (Google Doc by default, Word for `--word`). Never run `build-final`.
+
+If a step fails, stop there, say what failed and how to resume, and do not hide the failure behind later steps.
 
 ## 3. Hand over
 
-1. Run `rfps-worklist`; report the counts by kind, how many are blockers, and link `worklist.md`.
+1. Run `rfps-worklist`; report the counts by kind and how many are blockers.
 2. Give a short honest summary: what exists now (WIP link, brief, matrix, register rows by clearance), what is thin or unsupported, and what the tools could not decide.
 3. Ask one question: walk the worklist now with `/rfps:walk`, or stop here.

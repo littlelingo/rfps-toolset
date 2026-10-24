@@ -22,6 +22,6 @@ For each pass:
    - **Skip for now** - `--set <id> skipped`.
    - **Not applicable** - `--set <id> skipped --note "not applicable: <why>"`.
 4. After a tool-made change, run `rfps-open-items` and `rfps-refresh-reports`, record `--set <id> addressed`, and push the change to the shared document by following `build-wip` for just the touched sections. Items that came from a marker leave the list by themselves once the marker is gone.
-5. Offer the next item as a question, never a list. Stop when the user says so; the list and the choices are kept in `worklist.md` and `.state/worklist.json`.
+5. Offer the next item as a question, never a list. Stop when the user says so; the list is recomputed from the files each time and only your choices are kept, in `.state/worklist.json`.
 
 Related items (several `[EVIDENCE NEEDED]` markers for one source, or a gap and the compliance failure it causes) may be offered together, once, when one answer settles them.

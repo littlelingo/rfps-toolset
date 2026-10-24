@@ -84,13 +84,15 @@ class Doc:
         return None
     def _par_json(self, p, start):
         els, pos, run = [], start, None
-        for ch, ins, dele in p.chars:
+        for c in p.chars:
+            ch, ins, dele = c[0], c[1], c[2]; bg = c[3] if len(c) > 3 else None
             w = 2 if ord(ch) > 0xFFFF else 1
-            if run is None or (run["ins"], run["del"]) != (ins, dele): run = {"ins": ins, "del": dele, "text": "", "s": pos}; els.append(run)
+            if run is None or (run["ins"], run["del"], run["bg"]) != (ins, dele, bg): run = {"ins": ins, "del": dele, "bg": bg, "text": "", "s": pos}; els.append(run)
             run["text"] += ch; run["e"] = pos + w; pos += w
         out = []
         for r in els:
             tr = {"content": r["text"]}
+            if r["bg"]: tr["textStyle"] = {"backgroundColor": {"color": {"rgbColor": {"red": r["bg"][0], "green": r["bg"][1], "blue": r["bg"][2]}}}}
             if r["ins"]: tr["suggestedInsertionIds"] = ["s.1"]
             if r["del"]: tr["suggestedDeletionIds"] = ["s.1"]
             out.append({"startIndex": r["s"], "endIndex": r["e"], "textRun": tr})
@@ -146,6 +148,25 @@ class Doc:
                     if nxt is not None and self.els.index(nxt) == self.els.index(e) + 1:
                         nxt.chars = e.chars + nxt.chars; self.els.remove(e)
         self.els = [e for e in self.els if not (isinstance(e, Para) and not e.chars)]
+    def _all_paras(self):
+        for e, s, z in self._spans():
+            if isinstance(e, Para): yield e, s
+            else:
+                p = s + 1
+                for r in e.cells:
+                    p += 1
+                    for cell in r:
+                        p += 1
+                        for par in cell: yield par, p; p += par.length()
+    def _set_bg(self, a, b, rgb):
+        for par, s in self._all_paras():
+            pos = s
+            for c in par.chars:
+                w = 2 if ord(c[0]) > 0xFFFF else 1
+                if a <= pos < b and c[0] != "\n":
+                    if len(c) > 3: c[3] = rgb
+                    else: c.append(rgb)
+                pos += w
     def paragraphs_in(self, a, b):
         return [e for e, s, z in self._spans() if isinstance(e, Para) and s < b and z > a]
     def insert_table(self, idx, rows, cols):
@@ -180,7 +201,9 @@ class Doc:
                 for p in self.paragraphs_in(v["range"]["startIndex"], v["range"]["endIndex"]): p.bullet = "ol" if v["bulletPreset"].startswith("NUMBERED") else "ul"
             elif k == "deleteParagraphBullets":
                 for p in self.paragraphs_in(v["range"]["startIndex"], v["range"]["endIndex"]): p.bullet = None
-            elif k == "updateTextStyle": pass
+            elif k == "updateTextStyle":
+                ts = v.get("textStyle", {}).get("backgroundColor")
+                if ts: self._set_bg(v["range"]["startIndex"], v["range"]["endIndex"], tuple(ts["color"]["rgbColor"][x] for x in ("red", "green", "blue")))
             else: raise ValueError(f"request not simulated: {k}")
         self.rev += 1
         return {"replies": [{"api_replies": api, "errors": [], "warnings": []}]}
@@ -206,6 +229,10 @@ class Doc:
                 if old in t:
                     a = t.index(old); e.chars[a:a + len(old)] = [[c, False, False] for c in new]; return
         raise ValueError(old)
+    def human_replace_in_comment(self, old, new):
+        self.human_replace(old, new)
+        for c in self.comments.values():
+            if old in c["quote"]: c["quote"] = c["quote"].replace(old, new)
     def human_delete_para(self, contains):
         for e, _, _ in self._spans():
             if isinstance(e, Para) and contains in "".join(c[0] for c in e.chars): self.els.remove(e); return

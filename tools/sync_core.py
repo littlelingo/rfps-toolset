@@ -16,7 +16,7 @@ import difflib
 def _ratio_free(a, b):
     return difflib.SequenceMatcher(None, a, b, autojunk=False)
 
-def plan(snapshot, current, new):
+def plan(snapshot, current, new, detail=None):
     """-> (ops, conflicts, result, drift).
 
     ops        list of dicts: {"kind": "insert"|"delete"|"replace", "cur": [indexes into current to delete/replace],
@@ -25,10 +25,12 @@ def plan(snapshot, current, new):
     result     the snapshot after the applied ops (skipped changes stay as they were, so a later push retries them)
     drift      indexes into snapshot that no longer match the document (edited or removed by someone else)
     """
-    match = {}
+    match, repl = {}, {}
     for tag, i1, i2, j1, j2 in _ratio_free([key(t) for t in snapshot], [key(t) for t in current]).get_opcodes():
         if tag == "equal":
             for k in range(i2 - i1): match[i1 + k] = j1 + k
+        else:
+            for k in range(i1, i2): repl[k] = (j1, j2)   # where an edited snapshot block ended up in the current document
     drift = [i for i in range(len(snapshot)) if i not in match]
     ops, conflicts, result = [], [], []
     for tag, i1, i2, j1, j2 in _ratio_free([key(t) for t in snapshot], [key(t) for t in new]).get_opcodes():
@@ -39,12 +41,14 @@ def plan(snapshot, current, new):
         if tag == "insert":
             if i1 > 0 and (i1 - 1) not in match:
                 conflicts.append(f"cannot place new text after a block edited in the document: {snapshot[i1 - 1][:60]}")
+                if detail is not None: detail.append({"cur": repl.get(i1 - 1), "new": [new[j] for j in add], "old": []})
                 continue
             ops.append({"kind": "insert", "cur": [], "after": match[i1 - 1] if i1 > 0 else None, "new": add})
             result += [new[j] for j in add]; continue
         gone = [i for i in old if i not in match]
         if gone:
             conflicts.append(f"edited in the document, so the response change was not applied: {label}")
+            if detail is not None: detail.append({"cur": repl.get(gone[0]), "new": [new[j] for j in add], "old": [snapshot[i] for i in old]})
             result += snapshot[i1:i2]; continue
         ops.append({"kind": "delete" if tag == "delete" else "replace", "cur": [match[i] for i in old],
                     "after": match[old[-1]], "new": add})

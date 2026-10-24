@@ -168,6 +168,15 @@ help = "Run /rfps:pull-wip to bring in edits others made in the shared WIP docum
 ask = "Do you want to bring in edits from the shared document, or push the latest response changes into it?"
 
 [[step]]
+id = "docreview"
+group = "Package"
+title = "Suggestions and comments in the shared document settled"
+command = "/rfps:pull-wip"
+check = "doc_review"
+help = "Accept or reject the suggestions in the shared Google Doc and resolve its comments, then run /rfps:pull-wip so the response matches. FINAL is built from the response, not from the document."
+ask = "Are there suggestions or comments still waiting in the shared document?"
+
+[[step]]
 id = "final"
 group = "Package"
 title = "Final copy built and placed in the final submission folder"

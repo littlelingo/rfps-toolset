@@ -16,9 +16,11 @@ Usage (DOC.json is a saved read_doc result):
   rfps-sync-gdoc --status DOC.json               per section: response changes to push, edits made in the doc
   rfps-sync-gdoc --push DOC.json                 write the update_doc arguments to build/gdoc-push.json; every addition is a suggestion
   rfps-sync-gdoc --commit                        after Claude sent the push successfully: record it as synced
+  rfps-sync-gdoc --highlight-plan DOC.json       build/gdoc-highlight.json: color the markers and tags (suggested formatting); safe to repeat
   rfps-sync-gdoc --pull DOC.json [--apply] [--sections "A;B"]   edits others made, for approval; --apply writes response/*.md
   rfps-sync-gdoc --comments-plan DOC.json        build/gdoc-comments.json: update_doc insertComment requests for open items that have no comment yet
   rfps-sync-gdoc --comments-commit RESULT.json   record the comments Claude created (RESULT.json = the update_doc reply)
+  rfps-sync-gdoc --pull DOC.json --promote [ids|all] [--apply]   turn open reviewer comments into [OPEN] markers in the response (list first, apply after approval)
   rfps-sync-gdoc --comment-note ID "text" [--handled addressed|ignored|open]   note how a comment was handled
   rfps-sync-gdoc --comments FILE                 write review/doc-comments.md from [{author, date, text, section, on}] (manual import)
   rfps-sync-gdoc --url                           print the doc link
@@ -37,6 +39,13 @@ PH_FALLBACK = {"[text]", "text", "[insert table or graphic]"}
 SUGGEST = {"writeMode": "SUGGEST"}
 
 def u16(s): return len(s.encode("utf-16-le")) // 2
+
+HILITE_RE = re.compile(r"\[(GROUNDED|ASSERTION|DECISION|OPEN|EVIDENCE NEEDED)[^\]]*\]")
+COLORS = {"GROUNDED": (0.72, 1.0, 0.72), "ASSERTION": (1.0, 0.96, 0.6), "DECISION": (1.0, 0.7, 0.7), "OPEN": (1.0, 0.82, 0.55), "EVIDENCE NEEDED": (0.85, 0.72, 1.0)}
+
+def hl_request(a, z, kind):
+    r, g, b = COLORS[kind]
+    return {"updateTextStyle": {"range": {"startIndex": a, "endIndex": z}, "textStyle": {"backgroundColor": {"color": {"rgbColor": {"red": r, "green": g, "blue": b}}}}, "fields": "backgroundColor"}}
 
 # ---------- markdown -> plain block texts (what the doc should contain) ----------
 
@@ -90,19 +99,27 @@ def _tab(doc, tab=None):
     t = next((x for x in flat if x["tabProperties"]["tabId"] == tab), flat[0]) if tab else flat[0]
     return t["documentTab"]
 
+def _bg(tr):
+    c = ((tr.get("textStyle") or {}).get("backgroundColor") or {}).get("color", {}).get("rgbColor")
+    if c is None:   # a highlight that is still a suggestion is reported under suggestedTextStyleChanges
+        for ch in (tr.get("suggestedTextStyleChanges") or {}).values():
+            if (ch.get("textStyleSuggestionState") or {}).get("backgroundColorSuggested"):
+                c = ((ch.get("textStyle") or {}).get("backgroundColor") or {}).get("color", {}).get("rgbColor"); break
+    return None if c is None else (round(c.get("red", 0), 2), round(c.get("green", 0), 2), round(c.get("blue", 0), 2))
+
 def _words(par):
-    """Accepted-view words of a paragraph: [(text, start, end)] in document index space (pending deletions skipped)."""
+    """Accepted-view words of a paragraph: [(text, start, end, background)] in document index space (pending deletions skipped)."""
     words, cur = [], None
     for e in par.get("elements", []):
         tr = e.get("textRun")
         if not tr or tr.get("suggestedDeletionIds"): continue
-        idx = e["startIndex"]
+        idx = e["startIndex"]; bg = _bg(tr)
         for ch in tr["content"]:
             w = 2 if ord(ch) > 0xFFFF else 1
             if ch.isspace():
                 cur = None
             else:
-                if cur is None: cur = [ch, idx, idx + w]; words.append(cur)
+                if cur is None: cur = [ch, idx, idx + w, bg]; words.append(cur)
                 else: cur[0] += ch; cur[2] = idx + w
             idx += w
     return [tuple(w) for w in words]
@@ -135,12 +152,22 @@ def parse_doc(doc, scaffold_texts=(), tab=None):
                 if r.get("tableRowStyle", {}).get("suggestedDeletionIds") or r.get("suggestedDeletionIds"): continue
                 cells = [" ".join(" ".join(w[0] for w in _words(c["paragraph"])) for c in cell["content"] if "paragraph" in c and _words(c["paragraph"])) for cell in r["tableCells"]]
                 rows.append("\x1f".join(cells))
-            if rows: blocks.append(dict(base, type="tbl", text="\x1e".join(rows)))
+            cellpars = [_words(c["paragraph"]) for r in el["table"]["tableRows"] for cell in r["tableCells"] for c in cell["content"] if "paragraph" in c]
+            if rows: blocks.append(dict(base, type="tbl", text="\x1e".join(rows), cellpars=[w for w in cellpars if w]))
     sections, cur = {}, None
     for b in blocks:
         if b["type"] == "heading": cur = sections.setdefault(b["text"], dict(heading=b, blocks=[]))
         elif cur is not None and b["type"] != "scaffold": cur["blocks"].append(b)
-    return dict(revision=doc.get("revisionId", ""), tab=tab_id, doc_id=doc.get("documentId", ""), blocks=blocks, sections=sections)
+    ids = set()   # text suggestions people must accept or reject (insertions and deletions)
+    def walk(o):
+        if isinstance(o, dict):
+            for k, v in o.items():
+                if k in ("suggestedInsertionIds", "suggestedDeletionIds") and isinstance(v, list): ids.update(v)
+                else: walk(v)
+        elif isinstance(o, list):
+            for v in o: walk(v)
+    walk(content)
+    return dict(revision=doc.get("revisionId", ""), tab=tab_id, doc_id=doc.get("documentId", ""), blocks=blocks, sections=sections, suggestions=len(ids))
 
 # ---------- creating the doc ----------
 
@@ -277,7 +304,8 @@ def plan_section(title, text, sec, snap):
     cur = sec["blocks"]; cur_texts = [b["text"] for b in cur]
     snap = snap if snap is not None else cur_texts
     news, new_texts = _sect_new(text, snap)
-    ops, conflicts, result, drift = sync_core.plan(snap, cur_texts, new_texts)
+    detail = []
+    ops, conflicts, result, drift = sync_core.plan(snap, cur_texts, new_texts, detail)
     actions = []
     anchor_default = sec["heading"]
     for op in ops:
@@ -290,7 +318,7 @@ def plan_section(title, text, sec, snap):
             anchor = olds[-1] if olds else (cur[op["after"]] if op["after"] is not None else None)
             if anchor is None: anchor = sec.get("scaffold_last") or anchor_default
             actions.append(_insert_blocks(anchor, new, anchor["type"] == "li"))
-    return actions, conflicts, result, drift
+    return actions, conflicts, result, drift, detail
 
 # ---------- state ----------
 
@@ -314,12 +342,14 @@ def summary(sol):
         if resp[t][2] or t not in st.get("sections", {}): continue
         snap = st["sections"][t]; _, new = _sect_new(resp[t][1], snap)
         if [sync_core.key(x) for x in new] != [sync_core.key(x) for x in snap]: ahead += 1
-    return dict(exists=True, md_ahead=ahead, synced=st.get("synced", ""), url=doc_url(st))
+    return dict(exists=True, md_ahead=ahead, synced=st.get("synced", ""), url=doc_url(st), observed=observed(sol))
 
 def scaffold_of(e): return [s for _, _, ss in template_outline(e) for s in ss]
 
 def load_doc(path, e):
-    return parse_doc(json.loads(pathlib.Path(path).read_text()), scaffold_of(e))
+    doc = json.loads(pathlib.Path(path).read_text()); parsed = parse_doc(doc, scaffold_of(e))
+    if OBS_SOL is not None: observe(OBS_SOL, parsed, parse_comments(doc, parsed) if "comments" in doc else None)
+    return parsed
 
 def sections_for(parsed, resp, order):
     probs = [f"response heading not in the doc: {h}" for h in order if h not in parsed["sections"]]
@@ -347,13 +377,15 @@ def op_status(sol, e, doc_path, st):
     if probs: print("Heading mismatch:\n  " + "\n  ".join(probs))
     n_md = n_doc = 0; print(f"Google Doc: {doc_url(st)}")
     for title, sec in rows:
-        acts, conflicts, _, drift = plan_section(title, resp[title][1], sec, st["sections"].get(title))
+        acts, conflicts, _, drift, _d = plan_section(title, resp[title][1], sec, st["sections"].get(title))
         notes = []
         if acts or conflicts: notes.append(f"response ahead: {len(acts)} edit(s) to push" + (f", {len(conflicts)} blocked" if conflicts else "")); n_md += 1
         if drift: notes.append(f"edited in the doc: {len(drift)} block(s) not in the response yet (rfps-sync-gdoc --pull)"); n_doc += 1
         print(f"  {'✓' if not notes else '•'} {title}" + (": " + "; ".join(notes) if notes else ": in sync"))
         for c in conflicts: print(f"      conflict: {c}")
     print(f"{n_md} section(s) with response changes to push, {n_doc} with edits made in the doc.")
+    obs = observed(sol)
+    print(f"Waiting for people in the doc: {obs.get('suggestions', 0)} suggestion(s) to accept or reject" + (f", {obs['open_comments']} open comment(s) ({obs.get('open_by_people', 0)} by people)" if "open_comments" in obs else " (comments not read: save read_doc with commentsIncluded)") + ".")
     led = load_ledger(sol).get("comments", {})
     if led:
         opn = sum(1 for x in led.values() if x.get("status") == "OPEN" and not x.get("gone")); mine = sum(1 for x in led.values() if x.get("origin") == "rfps" and x.get("status") == "OPEN" and not x.get("gone"))
@@ -364,7 +396,7 @@ def op_push(sol, e, doc_path, st):
     if probs: sys.exit("Heading mismatch (headings must match exactly):\n  " + "\n  ".join(probs))
     actions, pending, nconf, notes = [], dict(st["sections"]), 0, []
     for title, sec in rows:
-        acts, conflicts, result, _ = plan_section(title, resp[title][1], sec, st["sections"].get(title))
+        acts, conflicts, result, _, _d = plan_section(title, resp[title][1], sec, st["sections"].get(title))
         if acts: actions += acts; pending[title] = result; notes.append(f"  {title}: {len(acts)} edit(s)")
         elif not conflicts and st["sections"].get(title) is None: pending[title] = [b["text"] for b in sec["blocks"]]
         nconf += len(conflicts)
@@ -440,8 +472,6 @@ def op_comments(sol, path):
 
 # ---------- comments: read, track, create ----------
 MARK_RE = re.compile(r"\[(DECISION|OPEN|EVIDENCE NEEDED|ASSERTION)[^\]]*\]")
-DEFAULT_COMMENT_KINDS = ("DECISION", "OPEN", "EVIDENCE NEEDED")
-
 def item_key(kind, section, text):
     return f"{kind}|{section}|{' '.join(text.split())[:60]}"
 
@@ -497,10 +527,12 @@ def merge_ledger(led, comments, md_items, now):
             e["gone"] = True; events.append(f"comment no longer in the doc (deleted, or its text was removed): '{e.get('text', '')[:60]}' ({e.get('section', '')})")
     for e in ents.values():
         if e.get("origin") != "rfps" or e.get("gone") or not e.get("item"): continue
+        marker = e["item"].split("|")[0] in ("DECISION", "OPEN", "EVIDENCE NEEDED", "ASSERTION")
+        what = "marker" if marker else "issue"
         if e["status"] == "OPEN" and e["item"] not in md_items:
-            events.append(f"the response no longer has this marker, but its comment is still open (a person must resolve it; the connector cannot): '{e['text'][:70]}'")
+            events.append(f"the {what} is settled in the response, but its comment is still open (a person must resolve it; the connector cannot): '{e['text'][:70]}'")
         if e["status"] == "RESOLVED" and e["item"] in md_items:
-            events.append(f"comment resolved in the doc, but the marker is still in the response (confirm it was settled): '{e['text'][:70]}'")
+            events.append(f"comment resolved in the doc, but the {what} is still there (confirm it was settled): '{e['text'][:70]}'")
     return led, events
 
 def write_comments_md(sol, led, events):
@@ -520,34 +552,72 @@ def write_comments_md(sol, led, events):
 def comment_link(st, entry, template=None):
     return (template or "{url}?disco={comment_id}").format(url=doc_url(st), comment_id=entry["id"], anchor_id=entry.get("anchor", ""))
 
+ALL_COMMENT_KINDS = ("DECISION", "OPEN", "EVIDENCE NEEDED", "ASSERTION", "CONFLICT", "EVIDENCE", "BANNED")
+DEFAULT_COMMENT_KINDS = ("DECISION", "OPEN", "EVIDENCE NEEDED", "CONFLICT", "EVIDENCE", "BANNED")
+
+def _range_of(words): return words[0][1], words[-1][2]
+
+def attention_items(e, parsed, st, resp, order):
+    """Everything in the doc that needs a person, with where it sits: open markers, response changes that could not be applied,
+    evidence that is not cleared, banned phrases. -> {key: dict(kind, section, text, a, z, content)}."""
+    import hashlib
+    items = {}
+    for sec, words in all_paragraphs(parsed):
+        for kind, tag, a, z, ws in markers_in_words(words):
+            if kind == "GROUNDED": continue
+            body = re.sub(r"^\[[A-Z ]+:?\s*", "", tag).rstrip("]").strip()
+            items[item_key(kind, sec, body)] = dict(kind=kind, section=sec, text=body, a=a, z=z, content=(f"{kind}: {body}" if body else kind) + " (rfps)")
+    for title in order:
+        sec = parsed["sections"].get(title)
+        if not sec or resp[title][2]: continue
+        _, _, _, _, detail = plan_section(title, resp[title][1], sec, st["sections"].get(title))
+        for d in detail:
+            news = " ".join(d["new"]).strip()
+            if not d["cur"] or d["cur"][0] >= len(sec["blocks"]) or not news: continue
+            blk = sec["blocks"][d["cur"][0]]
+            if blk["type"] == "tbl": continue
+            a, z = _range_of(blk["words"])
+            items[f"conflict|{title}|{hashlib.sha1(news.encode()).hexdigest()[:8]}"] = dict(kind="CONFLICT", section=title, text=news[:120], a=a, z=z,
+                content="Response change not applied: this text was edited in the doc. The response says: " + news[:400] + " - settle which wording stays. (rfps)")
+    if e.get("register") and pathlib.Path(e["register"]).is_file():
+        reg = br.load_register(e["register"]); deny = br.deny_from_register(reg)
+        for sec, words in all_paragraphs(parsed):
+            for kind, tag, a, z, ws in markers_in_words(words, {"GROUNDED"}):
+                for eid in re.findall(r"E-\d+", tag):
+                    row = reg.get(eid); why = None
+                    if row is None: why = "not in the evidence register"
+                    elif (row.get("superseded_by") or "").strip(): why = f"superseded by {row['superseded_by'].strip()}"
+                    elif (row.get("clearance") or "").strip() != "cleared": why = (row.get("clearance") or "unknown").strip() + (f" ({row['notes'].strip()[:100]})" if (row.get("notes") or "").strip() else "")
+                    if why: items[f"evidence|{eid}|{sec}"] = dict(kind="EVIDENCE", section=sec, text=f"{eid}: {why}", a=a, z=z,
+                                                                  content=f"{eid} is {why}. FINAL refuses this evidence until its register row is cleared. (rfps)")
+            for phrase, why in deny:
+                hit = locate(words, re.escape(phrase), re.I)
+                if hit:
+                    _, a, z, _b = hit[0]
+                    items[f"banned|{phrase}|{sec}"] = dict(kind="BANNED", section=sec, text=phrase, a=a, z=z, content=f"Banned phrase '{phrase}' ({why}). Remove or reword it. (rfps)")
+    return items
+
 def op_comments_plan(sol, e, doc_path, st, kinds):
-    parsed = load_doc(doc_path, e); led = load_ledger(sol); have = {x["item"] for x in led["comments"].values() if x.get("item") and x.get("status") == "OPEN" and not x.get("gone")}
+    doc = json.loads(pathlib.Path(doc_path).read_text()); parsed = load_doc(doc_path, e); led = load_ledger(sol)
+    resp, order = br.parse_response(e["response"])
+    existing = parse_comments(doc, parsed) if "comments" in doc else []
+    live = [c for c in existing if c["status"] == "OPEN"]
+    have = {x["item"] for x in led["comments"].values() if x.get("item") and x.get("status") == "OPEN" and not x.get("gone")}
     reqs, pend, skipped = [], [], 0
-    for b in parsed["blocks"]:
-        if b["type"] not in ("p", "li") or "words" not in b: continue
-        sec = next((h["text"] for h in reversed([x for x in parsed["blocks"] if x["type"] == "heading" and x["start"] <= b["start"]])), "")
-        text = " ".join(w[0] for w in b["words"])
-        for m in MARK_RE.finditer(text):
-            kind = m.group(1)
-            if kinds and kind not in kinds: continue
-            body = re.sub(r"^\[[A-Z ]+:?\s*", "", m.group(0)).rstrip("]").strip()
-            key = item_key(kind, sec, body)
-            if key in have or any(p["item"] == key for p in pend): skipped += 1; continue
-            toks = m.group(0).split(); ws = [w[0] for w in b["words"]]
-            i = next((k for k in range(len(ws) - len(toks) + 1) if ws[k:k + len(toks)] == toks), None)
-            if i is None: continue
-            a, z = b["words"][i][1], b["words"][i + len(toks) - 1][2]
-            content = f"{kind}: {body}" if body else kind
-            reqs.append({"insertComment": {"range": {"startIndex": a, "endIndex": z}, "content": content + " (rfps)"}})
-            pend.append(dict(item=key, kind=kind, section=sec, quote=m.group(0)))
+    for key, it in attention_items(e, parsed, st, resp, order).items():
+        if it["kind"] not in kinds: continue
+        covered = key in have or any(c["start"] is not None and c["start"] < it["z"] and it["a"] < c["end"] for c in live)   # a comment already sits on this text
+        if covered or any(p["item"] == key for p in pend): skipped += 1; continue
+        reqs.append({"insertComment": {"range": {"startIndex": it["a"], "endIndex": it["z"]}, "content": it["content"]}})
+        pend.append(dict(item=key, kind=it["kind"], section=it["section"], quote=it["text"]))
     out = pathlib.Path(e["out"]); out.mkdir(parents=True, exist_ok=True); f = out / "gdoc-comments.json"
     if reqs:
         f.write_text(json.dumps({"documentId": st["doc_id"], "requests": reqs, "writeControl": {"requiredRevisionId": parsed["revision"]}}, indent=1))
         led["pending"] = pend; save_ledger(sol, led)
-        print(f"{len(reqs)} comment(s) to add for open items ({', '.join(sorted({p['kind'] for p in pend}))}); {skipped} already have one. Send {f} with update_doc, save the reply to a file, then run rfps-sync-gdoc --comments-commit <reply file>.")
+        print(f"{len(reqs)} comment(s) to add ({', '.join(sorted({p['kind'] for p in pend}))}); {skipped} already covered. Send {f} with update_doc, save the reply to a file, then run rfps-sync-gdoc --comments-commit <reply file>.")
     else:
         if f.exists(): f.unlink()
-        print(f"No comments to add ({skipped} open item(s) already have one).")
+        print(f"No comments to add ({skipped} item(s) already have one).")
 
 def _threads(o):
     if isinstance(o, dict):
@@ -576,14 +646,134 @@ def op_comment_note(sol, cid, note, handled):
     e["note"] = note; e["handled"] = handled or e.get("handled", "open"); save_ledger(sol, led); write_comments_md(sol, led, [])
     print(f"Noted on {e['id']}: {handled or 'open'}")
 
+def promotable(sol, e, doc_path):
+    """Open comments by people that are not tied to an item yet -> [(comment, section, md block index)] for the response."""
+    doc = json.loads(pathlib.Path(doc_path).read_text())
+    if "comments" not in doc: return []
+    parsed = load_doc(doc_path, e); led = load_ledger(sol)["comments"]; out = []
+    resp, order = br.parse_response(e["response"])
+    for c in parse_comments(doc, parsed):
+        ent = led.get(c["id"], {})
+        if c["status"] != "OPEN" or "(rfps)" in c["text"] or ent.get("item") or ent.get("handled") in ("addressed", "ignored") or not c["section"] or c["section"] not in resp: continue
+        rendered = render_md(resp[c["section"]][1]); q = " ".join(c["quote"].split())
+        idx = next((k for k, (kind, t, _) in enumerate(rendered) if q and q in t), None)
+        out.append((c, c["section"], idx))
+    return out
+
+def op_promote(sol, e, doc_path, ids, apply):
+    import sync_docx as sd
+    cands = promotable(sol, e, doc_path); secs = sd.md_sections(e["response"]); files = {}; done = 0
+    if not cands: print("No reviewer comments to promote."); return
+    led = load_ledger(sol); resp, _ = br.parse_response(e["response"])
+    for c, sec, idx in cands:
+        chosen = ids is not None and (c["id"] in ids or "all" in ids)
+        body = " ".join(c["text"].replace("[", "(").replace("]", ")").split())[:200]
+        where = f"after the paragraph holding '{c['quote'][:50]}'" if idx is not None else "at the end of the section (the commented text is not in the response)"
+        print(f"- {c['author']} in '{sec}': {c['text'][:100]}\n    would add [OPEN: {body}] {where}  (id {c['id']})")
+        if not (apply and chosen): continue
+        msec = secs[sec]; lines = files.setdefault(msec["path"], msec["path"].read_text().split("\n"))
+        b0, b1 = msec["body"]; blocks = sync_core.md_blocks(lines[b0:b1])
+        if idx is not None and idx < len(blocks): ln = blocks[idx]["end"] + b0
+        elif blocks: ln = blocks[-1]["end"] + b0
+        else: ln = b0
+        lines[ln] = (lines[ln].rstrip() + f" [OPEN: {body}]") if lines[ln].strip() else f"[OPEN: {body}]"
+        ent = led["comments"].setdefault(c["id"], dict(id=c["id"], origin="person", first_seen=datetime.datetime.now().isoformat(timespec="seconds")))
+        ent.update(item=item_key("OPEN", sec, body), handled="open", note="promoted to an [OPEN] marker in the response", status=c["status"], author=c["author"], date=c["date"],
+                   text=c["text"], quote=c["quote"], section=sec, replies=c["replies"], replies_n=len(c["replies"]), anchor=c["anchor"], gone=False); done += 1
+    for f, lines in files.items(): f.write_text("\n".join(lines))
+    if done: save_ledger(sol, led); print(f"Added {done} [OPEN] marker(s) to the response. Run rfps-open-items --mark, then rfps-sync-gdoc --push to put them in the doc as suggestions.")
+    elif apply: print("Nothing promoted: pass --promote with comment ids (or all).")
+
 def sync_comments(sol, e, doc_path, st, doc=None):
     """Reconcile the comments in a saved read_doc result with the ledger; write review/doc-comments.md. -> events."""
     doc = doc or json.loads(pathlib.Path(doc_path).read_text())
     if "comments" not in doc: return None
     parsed = load_doc(doc_path, e); comments = parse_comments(doc, parsed)
-    led, events = merge_ledger(load_ledger(sol), comments, response_items(e), datetime.datetime.now().isoformat(timespec="seconds"))
+    resp, order = br.parse_response(e["response"]); st = load_state(sol)
+    here = attention_items(e, parsed, st, resp, order); led0 = load_ledger(sol); moved = []
+    for c in comments:   # a comment follows the marker it sits on, even if the marker was reworded
+        ent = led0["comments"].get(c["id"])
+        if not ent or not ent.get("item") or c["start"] is None or c["status"] != "OPEN": continue
+        kind = ent["item"].split("|")[0]
+        for k, it in here.items():
+            if it["kind"] == kind and k != ent["item"] and it["a"] < c["end"] and c["start"] < it["z"] and k not in {x.get("item") for x in led0["comments"].values()}:
+                moved.append(f"the marker under a comment was reworded; the comment now follows it: '{it['text'][:70]}'"); ent["item"] = k; break
+    save_ledger(sol, led0)
+    keys = set(response_items(e)) | {k for k, v in attention_items(e, parsed, st, resp, order).items() if v["kind"] in ("CONFLICT", "EVIDENCE", "BANNED")}
+    led, events = merge_ledger(load_ledger(sol), comments, keys, datetime.datetime.now().isoformat(timespec="seconds"))
+    events = moved + events
     save_ledger(sol, led); write_comments_md(sol, led, events)
     return events
+
+
+# ---------- highlights, and what is waiting for people in the doc ----------
+OBS_SOL = None
+
+def observed_file(sol): return sol / ".state" / "gdoc-observed.json"
+def observed(sol):
+    f = observed_file(sol); return json.loads(f.read_text()) if f.is_file() else {}
+
+def observe(sol, parsed, comments):
+    obs = observed(sol)
+    obs.update(at=datetime.datetime.now().isoformat(timespec="seconds"), suggestions=parsed["suggestions"])
+    if comments is not None:
+        live = [c for c in comments if c["status"] == "OPEN"]
+        obs.update(open_comments=len(live), open_by_people=sum(1 for c in live if "(rfps)" not in c["text"]))
+    f = observed_file(sol); f.parent.mkdir(parents=True, exist_ok=True); f.write_text(json.dumps(obs, indent=1) + "\n")
+
+def _char_map(words):
+    """Joined text of a paragraph (words separated by one space) and, for each character, its document index (or None for a
+    separator), end index and background colour."""
+    text, idx = "", []
+    for n, (t, st, en, bg) in enumerate(words):
+        if n: text += " "; idx.append(None)
+        pos = st
+        for ch in t:
+            w = 2 if ord(ch) > 0xFFFF else 1
+            idx.append((pos, pos + w, bg)); pos += w
+        text += t
+    return text, idx
+
+def locate(words, pattern, flags=0):
+    """[(match, start index, end index, [backgrounds])] for a regex over a paragraph's text, mapped back to document positions
+    (works through punctuation: a tag followed by a full stop is found)."""
+    text, idx = _char_map(words); out = []
+    for m in re.finditer(pattern, text, flags):
+        cells = [c for c in idx[m.start():m.end()] if c]
+        if cells: out.append((m, cells[0][0], cells[-1][1], [c[2] for c in cells]))
+    return out
+
+def markers_in_words(words, kinds=None):
+    """[(kind, tag text, start, end, backgrounds)] for each bracket marker or tag in a paragraph."""
+    return [(m.group(1), m.group(0), a, z, bgs) for m, a, z, bgs in locate(words, HILITE_RE.pattern) if kinds is None or m.group(1) in kinds]
+
+def section_of(parsed, pos):
+    sec = ""
+    for h in parsed["blocks"]:
+        if h["type"] == "heading" and h["start"] <= pos: sec = h["text"]
+    return sec
+
+def all_paragraphs(parsed):
+    """(section, words) for every body paragraph and table-cell paragraph."""
+    for b in parsed["blocks"]:
+        if b["type"] in ("p", "li"): yield section_of(parsed, b["start"]), b["words"]
+        elif b["type"] == "tbl":
+            for w in b.get("cellpars", []): yield section_of(parsed, b["start"]), w
+
+def op_highlight_plan(sol, e, doc_path, st):
+    parsed = load_doc(doc_path, e); reqs = []
+    for sec, words in all_paragraphs(parsed):
+        for kind, tag, a, z, ws in markers_in_words(words):
+            want = tuple(round(x, 2) for x in COLORS[kind])
+            if not all(b == want for b in ws): reqs.append(hl_request(a, z, kind))
+    out = pathlib.Path(e["out"]); out.mkdir(parents=True, exist_ok=True); f = out / "gdoc-highlight.json"
+    if reqs:
+        f.write_text(json.dumps({"documentId": st["doc_id"], "requests": sorted(reqs, key=lambda r: -r["updateTextStyle"]["range"]["startIndex"]),
+                                 "writeControl": {"writeMode": "EDIT", "requiredRevisionId": parsed["revision"]}}, indent=1))
+        print(f"{len(reqs)} marker(s) to highlight. This is formatting only, so it is sent as a direct edit (a suggestion for every marker would bury the real ones). Send {f} with update_doc; nothing to record afterward.")
+    else:
+        if f.exists(): f.unlink()
+        print("All markers in the doc already have their highlight.")
 
 
 if __name__ == "__main__":
@@ -593,11 +783,11 @@ if __name__ == "__main__":
     ap.add_argument("--commit", action="store_true"); ap.add_argument("--revision")
     ap.add_argument("--pull"); ap.add_argument("--apply", action="store_true"); ap.add_argument("--sections")
     ap.add_argument("--comments"); ap.add_argument("--url", action="store_true")
-    ap.add_argument("--comments-plan"); ap.add_argument("--comments-commit"); ap.add_argument("--kinds")
-    ap.add_argument("--comment-note", nargs=2, metavar=("ID", "TEXT")); ap.add_argument("--handled", choices=["addressed", "ignored", "open"])
+    ap.add_argument("--comments-plan"); ap.add_argument("--comments-commit"); ap.add_argument("--kinds"); ap.add_argument("--highlight-plan")
+    ap.add_argument("--promote", nargs="?", const="", help="comment ids (comma separated, or all) to turn into [OPEN] markers; list the candidates without --apply"); ap.add_argument("--comment-note", nargs=2, metavar=("ID", "TEXT")); ap.add_argument("--handled", choices=["addressed", "ignored", "open"])
     ap.add_argument("--solution", nargs="?", const="", default=None)
     a = ap.parse_args()
-    sol = br.resolve_solution(a.solution or None); e = br.load_engagement(str(sol)); st = load_state(sol)
+    sol = br.resolve_solution(a.solution or None); e = br.load_engagement(str(sol)); st = load_state(sol); OBS_SOL = sol
     br.HP[0] = e["tcfg"].get("heading_prefix", "Heading"); br.SCAF.clear(); br.SCAF.update(e["tcfg"].get("scaffold_styles", ["Subtitle"]))
     br.PH.clear(); br.PH.update(x.lower() for x in e["tcfg"].get("placeholders", []))
     if a.html:
@@ -610,8 +800,10 @@ if __name__ == "__main__":
     if not st.get("doc_id"): sys.exit("No Google Doc recorded yet. Run --html, create the doc, then --init DOC.json --doc-id ID.")
     if a.url: print(doc_url(st)); sys.exit(0)
     if a.commit: op_commit(sol, st, a.revision); sys.exit(0)
+    if a.highlight_plan: op_highlight_plan(sol, e, a.highlight_plan, st); sys.exit(0)
     if a.comments_plan: op_comments_plan(sol, e, a.comments_plan, st, set(x.strip() for x in a.kinds.split(",")) if a.kinds else set(DEFAULT_COMMENT_KINDS)); sys.exit(0)
     if a.comments_commit: op_comments_commit(sol, a.comments_commit); sys.exit(0)
+    if a.pull and a.promote is not None: op_promote(sol, e, a.pull, set(x.strip() for x in a.promote.split(",")) if a.promote else set(), a.apply); sys.exit(0)
     if a.comment_note: op_comment_note(sol, a.comment_note[0], a.comment_note[1], a.handled); sys.exit(0)
     if a.status: op_status(sol, e, a.status, st)
     elif a.push: op_push(sol, e, a.push, st)

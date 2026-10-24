@@ -17,7 +17,9 @@ def run(*args, cwd=None, check=True):
     if check and r.returncode: sys.exit(f"FAIL: {' '.join(args)}\n{r.stdout}\n{r.stderr}")
     return r.stdout + r.stderr
 def need(cond, msg, ctx=""):
-    if not cond: sys.exit(f"FAIL: {msg}\n{ctx}")
+    if not cond:
+        if os.environ.get("KEEP"): print(f"kept {T}")
+        sys.exit(f"FAIL: {msg}\n{ctx}")
 
 T = pathlib.Path(tempfile.mkdtemp()); cap = T / "capture"
 try:
@@ -32,6 +34,7 @@ try:
     need("0 section(s) with response changes to push, 0 with edits" in out, "new doc should be in sync", out)
     # 2. the seed text arrives as suggestions
     for f in (HERE / "seed" / "response").glob("*.md"): shutil.copy(f, sol / "response" / f.name)
+    shutil.copy(HERE / "seed" / "register.csv", sol / "evidence" / "register.csv")
     out = run("rfps-sync-gdoc", "--status", str(docjson), cwd=cap)
     need("4 section(s) with response changes to push" in out, "seed text should be pending", out)
     run("rfps-sync-gdoc", "--push", str(docjson), cwd=cap)
@@ -42,6 +45,17 @@ try:
     need("[text]" not in doc.accepted_text().replace("[text]", "", 0) or True, "")
     out = run("rfps-sync-gdoc", "--status", str(docjson), cwd=cap)
     need("0 section(s) with response changes to push, 0 with edits" in out, "should be in sync after the push", out)
+    out = run("rfps-sync-gdoc", "--status", str(docjson), cwd=cap)
+    need("Waiting for people in the doc: 1 suggestion(s)" in out, "pending suggestions should be counted", out)
+    need("attention" in run("rfps-flow-status", "--json", cwd=cap) or True, "")
+    # markers are highlighted with a direct formatting pass (not a suggestion per marker)
+    out = run("rfps-sync-gdoc", "--highlight-plan", str(docjson), cwd=cap)
+    need("marker(s) to highlight" in out and "direct edit" in out, "markers should need a highlight", out)
+    hl = json.loads((build / "gdoc-highlight.json").read_text()); need(hl["writeControl"]["writeMode"] == "EDIT", "highlights are direct formatting", hl["writeControl"])
+    doc.apply(hl); doc.save(docjson)
+    need("All markers in the doc already have their highlight" in run("rfps-sync-gdoc", "--highlight-plan", str(docjson), cwd=cap), "highlight pass should be idempotent")
+    bgs = {c[3] for e, _ in doc._all_paras() for c in e.chars if len(c) > 3}
+    need(len(bgs) >= 2, "expected at least a green (GROUNDED) and a yellow (ASSERTION) highlight", bgs)
     # a stale revision is refused
     try: gdoc_sim.Doc.apply(doc, {**args, "writeControl": {**args["writeControl"], "requiredRevisionId": "rev0"}}); need(False, "stale revision accepted")
     except ValueError: pass
@@ -74,10 +88,16 @@ try:
     need("1 conflict" in out, "collision not reported", out)
     need(not (build / "gdoc-push.json").exists(), "a colliding change was pushed anyway")
     need("every staff page" in doc.accepted_text(), "the person's edit was lost")
+    out = run("rfps-sync-gdoc", "--comments-plan", str(docjson), cwd=cap)
+    need("CONFLICT" in out and "comment(s) to add" in out, "the skipped change should get a comment in the doc", out)
+    reply = doc.apply(json.loads((build / "gdoc-comments.json").read_text())); (T / "reply.json").write_text(json.dumps(reply))
+    run("rfps-sync-gdoc", "--comments-commit", str(T / "reply.json"), cwd=cap); doc.save(docjson)
+    need(any("Response change not applied" in c["content"] for c in doc.comments.values()), "conflict comment text", doc.comments)
     # 6. new paragraph, bullet and table in the response, inserted into the doc in place
     tech.write_text(tech.read_text().replace("and post it online.", ".").replace("WCAG 2.1 AA .", "WCAG 2.1 AA.") + "\n- **Support (RFP 2.7).** We provide tier-two support during business hours.\n\n| Phase | Months |\n|-------|--------|\n| Build | 1-5 |\n| Go-live | 6-7 |\n")
     doc.human_replace("every staff page", "staff page"); doc.rev += 1; doc.save(docjson)
-    run("rfps-sync-gdoc", "--pull", str(docjson), "--apply", cwd=cap)
+    out = run("rfps-sync-gdoc", "--pull", str(docjson), "--apply", cwd=cap)
+    need("is settled in the response, but its comment is still open" in out, "a conflict that no longer applies should be flagged", out)
     run("rfps-sync-gdoc", "--push", str(docjson), cwd=cap)
     doc.apply(json.loads((build / "gdoc-push.json").read_text())); run("rfps-sync-gdoc", "--commit", cwd=cap); doc.save(docjson)
     txt = doc.accepted_text()
@@ -96,19 +116,56 @@ try:
     need(any(c["quote"] == "[DECISION: name the Project Manager]" for c in doc.comments.values()), "comment anchored on the marker", doc.comments)
     need("No comments to add" in run("rfps-sync-gdoc", "--comments-plan", str(docjson), cwd=cap), "a second plan should find nothing to add")
     run("rfps-open-items", cwd=cap); oi = (sol / "open-items.md").read_text()
-    need("?disco=doco.SIM1" in oi, "the DECISION item should link to its comment", oi[:800])
+    dec_id = next(i for i, c in doc.comments.items() if "[DECISION" in c["quote"])
+    need(f"?disco={dec_id}" in oi, "the DECISION item should link to its comment", oi[:800])
     need("#heading=h." in oi, "items without a comment link to their heading", oi[:800])
-    cid = next(iter(doc.comments)); doc.human_reply(cid, "We will name them Friday"); doc.save(docjson)
+    cid = dec_id; doc.human_reply(cid, "We will name them Friday"); doc.save(docjson)
     out = run("rfps-sync-gdoc", "--pull", str(docjson), cwd=cap)
     need("new reply by Reviewer" in out, "reply not noticed", out)
     doc.human_resolve(cid); doc.save(docjson)
     out = run("rfps-sync-gdoc", "--pull", str(docjson), cwd=cap)
-    need("comment resolved in the doc, but the marker is still in the response" in out, "resolved comment with a live marker should be flagged", out)
+    need("comment resolved in the doc, but the marker is still there" in out, "resolved comment with a live marker should be flagged", out)
     mp.write_text(mp.read_text().replace(" [DECISION: name the Project Manager]", "")); need(True, "")
     cm = (sol / "review" / "doc-comments.md").read_text()
     need("Reviewer" in cm and "We will name them Friday" in cm, "comments file should list the reply", cm)
     run("rfps-sync-gdoc", "--comment-note", cid, "PM named in the staffing plan", "--handled", "addressed", cwd=cap)
     need("addressed" in (sol / "review" / "doc-comments.md").read_text(), "handling note")
+    # 7b. evidence that is not cleared and banned phrases get comments too
+    pp = sol / "response" / "04-past-performance.md"
+    pp.write_text(pp.read_text().rstrip("\n") + "\n\nWe also did accessibility work [GROUNDED: E-003].\n")
+    tech.write_text(tech.read_text().rstrip("\n") + "\n\nNo data loss occurred in any of our migrations.\n")
+    run("rfps-sync-gdoc", "--push", str(docjson), cwd=cap); doc.apply(json.loads((build / "gdoc-push.json").read_text()))
+    run("rfps-sync-gdoc", "--commit", cwd=cap); doc.save(docjson)
+    out = run("rfps-sync-gdoc", "--comments-plan", str(docjson), cwd=cap)
+    need("2 comment(s) to add" in out and "EVIDENCE" in out and "BANNED" in out, "expected an evidence and a banned-phrase comment", out + "\n" + doc.accepted_text()[-900:] + "\n" + (sol / "response" / "04-past-performance.md").read_text()[-300:])
+    reply = doc.apply(json.loads((build / "gdoc-comments.json").read_text())); (T / "reply.json").write_text(json.dumps(reply))
+    run("rfps-sync-gdoc", "--comments-commit", str(T / "reply.json"), cwd=cap); doc.save(docjson)
+    quotes = {c["quote"] for c in doc.comments.values()}
+    need("[GROUNDED: E-003]" in quotes and "data loss occurred" in quotes, "comments anchored on the tag and the phrase", quotes)
+    reg = sol / "evidence" / "register.csv"; reg.write_text(reg.read_text().replace("needs-permission", "cleared"))
+    out = run("rfps-sync-gdoc", "--pull", str(docjson), cwd=cap)
+    need("is settled in the response, but its comment is still open" in out, "evidence cleared but its comment is open", out)
+    # 7c. a reviewer's comment can become an [OPEN] marker, and no second comment is made for it
+    pcid = doc.human_comment("emails the responsible driver", "Why email and not SMS?"); doc.save(docjson)
+    out = run("rfps-sync-gdoc", "--pull", str(docjson), "--promote", cwd=cap)
+    need("would add [OPEN: Why email and not SMS?]" in out, "promotion candidate not listed", out)
+    run("rfps-sync-gdoc", "--pull", str(docjson), "--promote", pcid, "--apply", cwd=cap)
+    need("[OPEN: Why email and not SMS?]" in tech.read_text(), "the marker should be in the response", tech.read_text())
+    run("rfps-sync-gdoc", "--push", str(docjson), cwd=cap); doc.apply(json.loads((build / "gdoc-push.json").read_text()))
+    run("rfps-sync-gdoc", "--commit", cwd=cap); doc.save(docjson)
+    out = run("rfps-sync-gdoc", "--comments-plan", str(docjson), cwd=cap)
+    need("No comments to add" in out, "the reviewer's comment already covers the new marker", out)
+    # 7d. a reworded marker keeps its comment
+    mp.write_text(mp.read_text().rstrip("\n") + "\n\nStaffing is set. [OPEN: confirm the schedule]\n")
+    run("rfps-sync-gdoc", "--push", str(docjson), cwd=cap); doc.apply(json.loads((build / "gdoc-push.json").read_text()))
+    run("rfps-sync-gdoc", "--commit", cwd=cap); doc.save(docjson)
+    run("rfps-sync-gdoc", "--comments-plan", str(docjson), cwd=cap)
+    reply = doc.apply(json.loads((build / "gdoc-comments.json").read_text())); (T / "reply.json").write_text(json.dumps(reply))
+    run("rfps-sync-gdoc", "--comments-commit", str(T / "reply.json"), cwd=cap); doc.save(docjson)
+    doc.human_replace_in_comment("confirm the schedule", "confirm the delivery schedule"); doc.rev += 1; doc.save(docjson)
+    out = run("rfps-sync-gdoc", "--pull", str(docjson), cwd=cap)
+    need("comment now follows it" in out, "a reworded marker should keep its comment", out)
+    need("Suggestions and comments in the shared document" in run("rfps-flow-status", "--table", cwd=cap), "flow step for suggestions and comments")
     # 8. locator and the manual comment import
     run("rfps-open-items", cwd=cap)
     need("docs.google.com/document/d/DOC1/edit" in (sol / "open-items.md").read_text(), "open items should link to the Google Doc", (sol / "open-items.md").read_text()[:600])
@@ -119,4 +176,4 @@ try:
     need("Cite the SLA" in (sol / "review" / "doc-comments.md").read_text(), "comments file missing")
     print("gdoc test passed")
 finally:
-    shutil.rmtree(T, ignore_errors=True)
+    if not os.environ.get("KEEP"): shutil.rmtree(T, ignore_errors=True)

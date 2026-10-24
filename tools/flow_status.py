@@ -210,6 +210,18 @@ def d_wip_current(c):
     f = newest_build(c, "WIP")
     if not f: return "todo", "no work-in-progress build yet"
     return ("done", f"{f.name} is current") if f.stat().st_mtime >= c.newest else ("attention", "response changed since the last build")
+def d_doc_review(c):
+    try:
+        import sync_gdoc as sg
+        g = sg.summary(c.sol)
+    except Exception: g = {"exists": False}
+    if not g.get("exists"): return "done", "not using a Google Doc (comments and suggestions are checked in Word)"
+    o = g.get("observed") or {}
+    if not o: return "todo", "the shared Google Doc has not been read yet (/rfps:pull-wip)"
+    n, m = o.get("suggestions", 0), o.get("open_comments")
+    note = f"as of {o['at'][:16].replace('T', ' ')}"
+    if n or m: return "attention", f"{n} suggestion(s) waiting to be accepted or rejected and {m if m is not None else 'unknown'} open comment(s), {note}"
+    return "done", f"no pending suggestions or open comments, {note}" if m is not None else f"no pending suggestions, {note}; comments not read"
 def d_final_current(c):
     f = newest_build(c, "FINAL")
     if not f: return "todo", "no final build yet"

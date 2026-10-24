@@ -61,7 +61,7 @@ def main():
     else:
         c = find_template(src, a.draft_pattern, a.template_exclude)
         if len(c) == 1: tpl = c[0].resolve()
-        elif not c: sys.exit("no response template .docx found in a folder matching --draft-pattern; pass --template (generating a template from the solicitation is not built yet)")
+        elif not c: sys.exit("no response template .docx found in a folder matching --draft-pattern; pass --template, or generate one from the solicitation with /rfps:generate-template")
         else: sys.exit("several candidate templates; pass --template:\n  " + "\n  ".join(str(p) for p in c))
     if not tpl.is_file(): sys.exit(f"template not found: {tpl}")
     d = docx.Document(str(tpl))
@@ -123,4 +123,5 @@ def main():
     print(f"  git: {git}; active-solution pointer: {'not set' if a.no_pointer else 'set'}")
     print("Next: run the analysis skills on the solicitation, add past-performance sources, write text under each heading, then /rfps:build-wip.")
 
-main()
+if __name__ == "__main__":
+    main()

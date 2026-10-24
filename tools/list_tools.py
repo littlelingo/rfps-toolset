@@ -26,6 +26,8 @@ HINTS = {
     "open_doc.py": ("Opening the shared WIP docx and copying the text to search for, from an open item", "/rfps:open-items"),
     "scan_sources.py": ("Finding new or changed past-performance files, extracting their text and writing the digest the evidence rows are proposed from", "/rfps:add-past-performance"),
     "register_add.py": ("Adding evidence register rows with the next free ID, never cleared on their own", "/rfps:add-past-performance"),
+    "make_template.py": ("Writing a response template .docx from an approved outline when the solicitation comes with no form", "/rfps:generate-template"),
+    "update_template.py": ("Bringing response/ in line after the template's headings changed: new, renamed, removed or moved sections", "/rfps:update-template"),
     "add_source.py": ("Listing where past-performance material lives, so it is read in place and never copied", "/rfps:add-past-performance"),
     "file_audit.py": ("Checking that every file in the solution folder has a known origin, and recording the ones that do not", "/rfps:file-audit"),
     "status_page.py": ("Seeing the whole picture on one local web page: steps, sections, open items, blockers, evidence and team, with filters and search", "/rfps:status-page"),

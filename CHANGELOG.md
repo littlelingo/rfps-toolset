@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Template generation and `/rfps:update-template`:** `/rfps:generate-template` reads the solicitation (base and amendments) for how the response must be organized, proposes a section outline with a source citation for each section, and after approval `rfps-make-template` writes `05 Draft Response/Response Template.docx` (Heading 1-3, a Subtitle line for what the section must show, a `[text]` placeholder; never overwrites). `/rfps:update-template` (`rfps-update-template`) compares a changed template's headings with `response/`: new sections are added empty in order, renames are applied on request (`--rename` for close matches, `--rename-all` for same-place rewordings a person confirms), removed headings are only reported, and nothing is deleted.
+
 ## 0.2.0 (2026-10-24)
 
 - **`/rfps:add-past-performance` grew up:** several locations in one call (`rfps-add-source a b c`), a scan for new and changed files (`rfps-scan-sources`: extracts text for what changed, skips the rest, writes `past-performance/digest.md` with the years, amounts and permission wording each file mentions), a Google Drive folder as a source (Claude lists it through the connector, `rfps-scan-sources --drive LABEL --listing/--ingest` compare and record it, and nothing is read until the user confirms), and `rfps-register-add`, which assigns the next free evidence ID and refuses `cleared` unless the user's own confirmation is passed (`--confirm-cleared`). The skill now proposes rows for approval and defaults every row to `hold`.

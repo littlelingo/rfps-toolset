@@ -121,4 +121,27 @@ rm "11 Final Submission"/*_FINAL.docx active-solution/build/*_FINAL.docx
 printf '\nAlso: accessibility work for Northgate Water [GROUNDED: E-003].\n' >> active-solution/response/04-past-performance.md
 if rfps-build-response --solution --mode final >/dev/null 2>&1; then echo "FAIL: FINAL accepted uncleared evidence" >&2; exit 1; fi
 uv run --quiet "$HERE/gdoc_test.py"
+# template generation and update: an outline becomes a template; a changed template is compared with response/
+cat > "$T/outline.json" <<'JSON'
+{"title": "Response to RFP X", "sections": [
+ {"level": 1, "title": "Executive Summary", "instruction": "One page on the overall approach", "source": "RFP 4.1"},
+ {"level": 1, "title": "Technical Approach", "instruction": "Describe the approach to scope items 2.1 to 2.5", "source": "RFP 4.2"},
+ {"level": 2, "title": "Data Migration", "instruction": "How legacy data moves", "source": "RFP 2.2"},
+ {"level": 1, "title": "Management Plan"}]}
+JSON
+mkdir -p "$T/gen/05 Draft Response" && rfps-make-template --outline "$T/outline.json" --source "$T/gen" | grep -q "4 sections" || { echo "FAIL: template not written" >&2; exit 1; }
+if rfps-make-template --outline "$T/outline.json" --source "$T/gen" >/dev/null 2>&1; then echo "FAIL: existing template was overwritten" >&2; exit 1; fi
+(cd "$T/gen" && rfps-new-engagement --source "$T/gen" --title Gen >/dev/null) && test -f "$T/gen/active-solution/response/02-technical-approach.md" || { echo "FAIL: engagement from a generated template" >&2; exit 1; }
+uv run --quiet --with python-docx python3 - "$T/gen/05 Draft Response/Response Template.docx" <<'PY'
+import sys, docx
+d = docx.Document(sys.argv[1])
+for p in d.paragraphs:
+    if p.style.name == "Heading 1" and p.text == "Management Plan": p.text = "Management Approach"      # renamed
+    if p.style.name == "Heading 1" and p.text == "Executive Summary": p.text = "Overview of the Response"  # renamed
+n = d.add_paragraph("Risk Management"); n.style = d.styles["Heading 1"]                                    # new
+d.save(sys.argv[1])
+PY
+(cd "$T/gen" && out=$(rfps-update-template) && echo "$out" | grep -q "renamed: 'Management Plan' -> 'Management Approach'" && echo "$out" | grep -q "new in the template: Risk Management" || { echo "FAIL: update-template report" >&2; exit 1; }
+ echo "$out" | grep -q "possibly renamed (same place, different wording): 'Executive Summary' -> 'Overview of the Response'" || { echo "FAIL: positional rename not suggested" >&2; echo "$out" >&2; exit 1; }
+ rfps-update-template --apply --rename-all >/dev/null && out=$(rfps-update-template) && echo "$out" | grep -q "Everything matches" || { echo "FAIL: update-template apply" >&2; echo "$out" >&2; exit 1; })
 echo "smoke test passed"

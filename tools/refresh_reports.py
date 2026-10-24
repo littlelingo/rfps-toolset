@@ -107,7 +107,7 @@ def refresh_compliance(sol, cfg):
     t = replace_block(t, "preflight", "\n".join(pre), f.name)
     resp, order, pages, tags, brackets = response_facts(sol, cfg)
     tw = sum(w for _, w in pages); lim = cfg.get("page_limit")
-    lo, hi = tw / 550, tw / 450
+    hi = tw / 450
     if lim: pl = "Within limits" if hi <= lim * 0.9 else ("At risk" if hi <= lim else "Exceeds limits")
     else: pl = "No page limit configured (set page_limit in solution.toml)"
     summ = [f"**Total Requirements Checked:** {N} (plus {len(nrows)} narrative requirements below)",

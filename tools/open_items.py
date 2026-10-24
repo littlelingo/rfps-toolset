@@ -38,7 +38,7 @@ def mark_files(rdir):
 def scan(rdir):
     items = []
     for f in sorted(rdir.glob("*.md")):
-        t = f.read_text(); heading = f.stem
+        t = f.read_text()
         starts = [0]
         for m in re.finditer("\n", t): starts.append(m.end())
         def line_of(pos):

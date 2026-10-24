@@ -17,7 +17,7 @@ tag cites no ID. Banned phrases (retired figures, non-public details, wrong name
 
 The template .docx is never modified. WIP output goes to the build dir; FINAL is also copied to final_copy_dir if configured.
 """
-import argparse, copy, csv, re, sys, pathlib, tomllib
+import argparse, csv, re, sys, pathlib, tomllib
 import docx
 from docx.enum.text import WD_COLOR_INDEX
 from docx.oxml import OxmlElement
@@ -204,7 +204,6 @@ def build(template, response, out, mode, name, force, register=None, final_copy=
     PH.clear(); PH.update(x.lower() for x in tcfg.get("placeholders", []))
     resp, order = parse_response(response)
     d = docx.Document(template)
-    body = d.element.body
     paras = [p for p in d.paragraphs]
     heads = [(i, p) for i, p in enumerate(paras) if is_heading(p)]
     doc_heads = [p.text.strip() for _, p in heads]

@@ -29,7 +29,7 @@ All text this tool adds arrives as suggestions (tracked changes) that people acc
 doc has placeholders only, so the first draft is reviewable too. Comments are tracked in .state/gdoc-comments.json and
 review/doc-comments.md, so each pull reconciles them with the response.
 """
-import argparse, datetime, html, json, os, pathlib, re, sys, tomllib
+import argparse, datetime, html, json, pathlib, re, sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import docx
 import build_response as br
@@ -637,7 +637,7 @@ def op_comments_commit(sol, result_path):
                                               status=t.get("status", "OPEN"), author=hp.get("author", {}).get("displayName", ""), date=(hp.get("createTime") or "")[:16].replace("T", " "),
                                               text=" ".join((hp.get("content") or "").split()), quote=t.get("plainTextQuote", p["quote"]), section=p["section"], replies=[], replies_n=0)
     led["pending"] = []; save_ledger(sol, led)
-    e = br.load_engagement(str(sol)); f = write_comments_md(sol, led, [f"added {len(pend)} comment(s) for open items"])
+    f = write_comments_md(sol, led, [f"added {len(pend)} comment(s) for open items"])
     print(f"Recorded {len(pend)} comment(s) -> {f}")
 
 def op_comment_note(sol, cid, note, handled):

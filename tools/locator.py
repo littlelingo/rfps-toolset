@@ -6,7 +6,7 @@ otherwise or when solution.toml says open_in = "md". A Google Docs location is t
 that comment; `gdoc_comment_link` in solution.toml sets the link format), else the doc itself; a Word location is the
 heading's bookmark (added by rfps-sync-docx) plus the marker text to search for.
 """
-import hashlib, pathlib, re, sys, tomllib
+import hashlib, pathlib, re, sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 def wip_format(cfg):

@@ -1,0 +1,18 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Lint (errors and unused names)
+        run: uvx ruff check .
+      - name: Smoke test (tools end to end, Word and Google routes against the simulated Docs API; no model calls)
+        run: fixtures/smoke.sh
+      - name: Validate the plugin and marketplace
+        # Needs the Claude Code CLI; the validator reads files only and needs no login.
+        run: npx --yes @anthropic-ai/claude-code plugin validate . --strict

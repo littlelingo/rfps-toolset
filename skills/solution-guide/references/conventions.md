@@ -47,6 +47,7 @@ This is not a code project. The rfps plugin is a generic, reusable flow for work
 - **Conventions are defaults, not rules.** `tools/defaults.toml` holds the capture-folder name patterns (solicitation, draft response, final submission) and how a response docx marks its structure (heading style prefix, scaffold styles, placeholder text). Override the docx conventions in a solution's `solution.toml` under `[docx]`, and the folder patterns with `new_engagement.py` flags.
 
 ## Evidence register
+- Past-performance files are listed in `past-performance/sources.toml` (`rfps-add-source`, several at once; a Google Drive folder is read through the connector only after the user confirms) and scanned for new or changed files by `rfps-scan-sources`, which writes `past-performance/digest.md`. Evidence rows are added with `rfps-register-add`, which never marks a row `cleared` without `--confirm-cleared`, the user's own say-so.
 - Facts about the firm's past performance and practices live in `active-solution/evidence/register.csv`, not in the prose. The response cites them as `[GROUNDED: E-nnn]`. See `evidence/README.md` for how to add or replace evidence. Source locations are listed in `past-performance/sources.toml`.
 - Never reuse or renumber an ID. To correct a fact, add a new row and set `superseded_by` on the old one.
 - The register's `ban_phrases` column lists wording that must never appear in the response (retired figures, non-public details, wrong names).

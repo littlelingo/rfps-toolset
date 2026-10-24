@@ -21,7 +21,7 @@ Usage: rfps-sync-docx [--status | --push | --pull [--apply] | --rebuild] [--solu
   --dry-run   with push: report what would change, write nothing
   --force     push even if Word's lock file shows the document is open
 """
-import argparse, contextlib, copy, datetime, io, re, hashlib, json, os, pathlib, shutil, sys, tomllib
+import argparse, contextlib, copy, datetime, io, re, json, os, pathlib, shutil, sys, tomllib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import docx
 from docx.oxml import OxmlElement

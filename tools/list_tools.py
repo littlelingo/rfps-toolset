@@ -24,6 +24,8 @@ HINTS = {
     "sync_gdoc.py": ("Planning pushes to, and reading edits back from, the shared Google Doc (Claude does the reading and writing through the Google connectors)", "/rfps:build-wip, /rfps:pull-wip"),
     "sync_docx.py": ("Pushing approved response changes into the shared WIP docx as tracked changes, and reading edits and comments others made there back into the response; never overwrites their work", "/rfps:build-wip, /rfps:pull-wip"),
     "open_doc.py": ("Opening the shared WIP docx and copying the text to search for, from an open item", "/rfps:open-items"),
+    "scan_sources.py": ("Finding new or changed past-performance files, extracting their text and writing the digest the evidence rows are proposed from", "/rfps:add-past-performance"),
+    "register_add.py": ("Adding evidence register rows with the next free ID, never cleared on their own", "/rfps:add-past-performance"),
     "add_source.py": ("Listing where past-performance material lives, so it is read in place and never copied", "/rfps:add-past-performance"),
     "file_audit.py": ("Checking that every file in the solution folder has a known origin, and recording the ones that do not", "/rfps:file-audit"),
     "status_page.py": ("Seeing the whole picture on one local web page: steps, sections, open items, blockers, evidence and team, with filters and search", "/rfps:status-page"),

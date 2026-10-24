@@ -14,6 +14,29 @@ grep -q 'path = "../past-performance"' active-solution/past-performance/sources.
 # shared WIP docx: created from the (still empty) template, then the seed text arrives as tracked changes
 rfps-sync-docx >/dev/null
 test -f "05 Draft Response/Response Template_WIP.docx"
+# past-performance sources: scan for new and changed files, digest, Drive listing comparison, safe register rows
+out=$(rfps-scan-sources); echo "$out" | grep -q "1 new, 0 changed" || { echo "FAIL: first scan should find 1 new file: $out" >&2; exit 1; }
+grep -q "Permission wording" active-solution/past-performance/digest.md && grep -qi "approved" active-solution/past-performance/digest.md || { echo "FAIL: digest lacks the permission wording" >&2; exit 1; }
+rfps-scan-sources | grep -q "0 new, 0 changed" || { echo "FAIL: a second scan should find nothing" >&2; exit 1; }
+uv run --quiet --with python-docx python3 - past-performance/*.docx <<'PY'
+import sys, docx
+d = docx.Document(sys.argv[1]); d.add_paragraph("Update 2026: added a new reference."); d.save(sys.argv[1])
+PY
+rfps-scan-sources | grep -q "1 new, 1 changed\|0 new, 1 changed" || { echo "FAIL: an edited file should be reported as changed" >&2; exit 1; }
+rfps-add-source FOLDER123 --type drive --label drivefolder >/dev/null
+printf '[{"id":"f1","title":"Case A.docx","mimeType":"x","modifiedTime":"2026-01-01T00:00:00Z","size":"10"},{"id":"f2","title":"Case B.pdf","mimeType":"x","modifiedTime":"2026-01-02T00:00:00Z","size":"20"}]' > "$T/listing.json"
+rfps-scan-sources --drive drivefolder --listing "$T/listing.json" | grep -q "2 new or changed" || { echo "FAIL: Drive listing should show 2 new" >&2; exit 1; }
+mkdir -p active-solution/.state/text/past-performance/drivefolder
+printf 'Case A text approved 2025 $1.2M' > active-solution/.state/text/past-performance/drivefolder/f1.txt
+printf 'Case B text' > active-solution/.state/text/past-performance/drivefolder/f2.txt
+rfps-scan-sources --drive drivefolder --ingest | grep -q "Recorded 2 of 2" || { echo "FAIL: ingest" >&2; exit 1; }
+printf '[{"id":"f1","title":"Case A.docx","mimeType":"x","modifiedTime":"2026-01-01T00:00:00Z","size":"10"},{"id":"f2","title":"Case B.pdf","mimeType":"x","modifiedTime":"2026-02-02T00:00:00Z","size":"20"}]' > "$T/listing.json"
+rfps-scan-sources --drive drivefolder --listing "$T/listing.json" | grep -q "1 new or changed file(s), 1 unchanged" || { echo "FAIL: only the modified Drive file should be pending" >&2; exit 1; }
+if rfps-register-add --claim "x" --client c --clearance cleared >/dev/null 2>&1; then echo "FAIL: cleared without confirmation was accepted" >&2; exit 1; fi
+rfps-register-add --claim "Test fact" --client c --source s | grep -q "E-001" || { echo "FAIL: first register row should be E-001" >&2; exit 1; }
+grep -q ",hold," active-solution/evidence/register.csv || { echo "FAIL: default clearance should be hold" >&2; exit 1; }
+rfps-register-add --claim "Second" --client c --clearance cleared --confirm-cleared | grep -q "E-002" || { echo "FAIL: confirmed cleared row" >&2; exit 1; }
+: > active-solution/evidence/register.csv && cp "$HERE/seed/register.csv" active-solution/evidence/register.csv   # the seed register for the rest of this script
 cp "$HERE"/seed/response/*.md active-solution/response/
 cp "$HERE/seed/register.csv" active-solution/evidence/register.csv
 rfps-refresh-reports --solution >/dev/null

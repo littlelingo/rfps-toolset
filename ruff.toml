@@ -1,0 +1,4 @@
+# Errors and unused names only: the tools are written compactly on purpose, so style rules are off.
+line-length = 200
+[lint]
+select = ["E9", "F"]

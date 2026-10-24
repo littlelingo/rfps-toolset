@@ -2,14 +2,13 @@
 # requires-python = ">=3.10"
 # dependencies = ["pypdf", "python-docx", "openpyxl", "python-pptx"]
 # ///
-"""Extract text from every .pdf, .docx, .xlsx and .pptx under a folder into one .txt per file.
+"""Extract text from every .pdf, .docx, .xlsx, .pptx, .txt and .md under a folder into one .txt per file.
 
 Usage: rfps-extract-docs <input folder> <output folder>
 Read-only on the input; the output folder receives <relative path with / replaced by __>.txt.
 Use it to give the analysis skills searchable text for solicitation documents and past-performance sources.
 """
-import sys, os, re, pathlib
-root=pathlib.Path(sys.argv[1]); out=pathlib.Path(sys.argv[2])
+import sys, pathlib
 import pypdf, docx, openpyxl, pptx
 from docx.table import Table
 from docx.text.paragraph import Paragraph
@@ -43,13 +42,21 @@ def do_pptx(p):
                 for r in sh.table.rows: o.append(" | ".join(c.text for c in r.cells))
         if s.has_notes_slide and s.notes_slide.notes_text_frame.text.strip(): o.append("NOTES: "+s.notes_slide.notes_text_frame.text)
     return "\n".join(o)
-H={".pdf":do_pdf,".docx":do_docx,".xlsx":do_xlsx,".pptx":do_pptx}
-for p in sorted(root.rglob("*")):
-    if p.is_file() and p.suffix.lower() in H:
-        rel=str(p.relative_to(root)).replace("/","__")
-        try:
-            t=H[p.suffix.lower()](p)
-        except Exception as e:
-            t=f"EXTRACT ERROR {e}"
-        (out/(rel+".txt")).write_text(t)
-        print(len(t), rel[:120])
+def do_text(p): return p.read_text(errors="replace")
+H={".pdf":do_pdf,".docx":do_docx,".xlsx":do_xlsx,".pptx":do_pptx,".txt":do_text,".md":do_text}
+
+def extract_file(p):
+    """Text of one supported file, or an 'EXTRACT ERROR' line (scanned PDFs without a text layer come out empty or short)."""
+    try:
+        return H[p.suffix.lower()](p)
+    except Exception as e:
+        return f"EXTRACT ERROR {e}"
+
+if __name__ == "__main__":
+    root=pathlib.Path(sys.argv[1]); out=pathlib.Path(sys.argv[2])
+    for p in sorted(root.rglob("*")):
+        if p.is_file() and p.suffix.lower() in H:
+            rel=str(p.relative_to(root)).replace("/","__")
+            t=extract_file(p)
+            (out/(rel+".txt")).write_text(t)
+            print(len(t), rel[:120])

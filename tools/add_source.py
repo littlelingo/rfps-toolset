@@ -8,7 +8,9 @@ A location inside the capture (source) folder is stored relative to active-solut
 uses, so the entry survives moving or syncing the folder. A location elsewhere is stored as an absolute path.
 An entry for the same location is not added twice.
 
-Usage: rfps-add-source <folder or file> [--label NAME] [--type local|drive] [--solution <folder>]
+Usage: rfps-add-source <folder or file> [<more> ...] [--label NAME] [--type local|drive] [--solution <folder>]
+       (several locations in one call each get their own label from the folder name; --label is for a single location;
+        for --type drive the location is the Drive folder id)
        rfps-add-source --normalize [--solution <folder>]   rewrite absolute local entries under the capture folder as relative,
                                                            and report entries whose location no longer exists
 """
@@ -46,24 +48,33 @@ def normalize(sol):
     if changed: f.write_text(text)
     print(f"{changed} entr{'y' if changed == 1 else 'ies'} made relative, {missing} missing")
 
-if __name__ == "__main__":
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("location", nargs="?"); ap.add_argument("--normalize", action="store_true"); ap.add_argument("--label"); ap.add_argument("--type", choices=["local", "drive"], default="local")
-    ap.add_argument("--solution", default=None)
-    a = ap.parse_args()
-    sol = br.resolve_solution(a.solution)
-    if a.normalize: normalize(sol); sys.exit(0)
-    if not a.location: sys.exit("give a folder or file to add, or use --normalize")
-    target = pathlib.Path(a.location).expanduser().resolve()
-    if a.type == "local" and not target.exists(): sys.exit(f"not found: {target}")
+def add_one(sol, location, label, typ):
+    target = pathlib.Path(location).expanduser().resolve()
+    if typ == "local" and not target.exists(): return f"not found: {target}"
     f = sol / "past-performance" / "sources.toml"
     f.parent.mkdir(parents=True, exist_ok=True)
     text = f.read_text() if f.is_file() else ""
     have = tomllib.loads(text).get("source", []) if text.strip() else []
-    if any(resolve(s.get("path", ""), sol) == target for s in have if s.get("type", "local") == a.type):
-        print(f"already listed: {target}"); sys.exit(0)
-    path = stored_path(target, sol) if a.type == "local" else a.location
-    label = a.label or target.name
-    entry = f'\n[[source]]\ntype = "{a.type}"\npath = "{path}"\nlabel = "{label}"\n'
+    if typ == "local" and any(resolve(s.get("path", ""), sol) == target for s in have if s.get("type", "local") == "local") \
+            or typ == "drive" and any(s.get("path") == location for s in have if s.get("type") == "drive"):
+        return f"already listed: {location if typ == 'drive' else target}"
+    path = stored_path(target, sol) if typ == "local" else location
+    label = label or (target.name if typ == "local" else location[:12])
+    if any(s.get("label") == label for s in have): label = f"{label}-{len(have) + 1}"
+    entry = f'\n[[source]]\ntype = "{typ}"\npath = "{path}"\nlabel = "{label}"\n'
     f.write_text(text.rstrip("\n") + "\n" + entry if text.strip() else entry.lstrip("\n"))
-    print(f"added {a.type} source: {path} (label {label})")
+    return f"added {typ} source: {path} (label {label})"
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("locations", nargs="*"); ap.add_argument("--normalize", action="store_true"); ap.add_argument("--label")
+    ap.add_argument("--type", choices=["local", "drive"], default="local"); ap.add_argument("--solution", default=None)
+    a = ap.parse_args()
+    sol = br.resolve_solution(a.solution or None)
+    if a.normalize: normalize(sol); sys.exit(0)
+    if not a.locations: sys.exit("give a folder or file to add, or use --normalize")
+    if a.label and len(a.locations) > 1: sys.exit("--label is for a single location; several locations are labelled by folder name")
+    bad = False
+    for loc in a.locations:
+        msg = add_one(sol, loc, a.label, a.type); print(msg); bad |= msg.startswith("not found")
+    sys.exit(1 if bad else 0)

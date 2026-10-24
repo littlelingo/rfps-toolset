@@ -122,7 +122,7 @@ class Doc:
         for c in chars:
             cur.append(c)
             if c[0] == "\n": parts.append(cur); cur = []
-        pos = self.els.index(p); first = True; made = []
+        pos = self.els.index(p); made = []
         for part in parts:
             q = Para(); q.chars = part; q.style, q.bullet = p.style, p.bullet; made.append(q)
         self.els[pos:pos + 1] = made
@@ -132,7 +132,6 @@ class Doc:
             if not isinstance(e, Para) and a <= s and z <= b:
                 if suggest: raise ValueError("suggested table deletion not simulated")
                 self.els.remove(e); return
-        pos = 1; i = 0; merge_next = False
         spans = self._spans()
         for idx, (e, s, z) in enumerate(spans):
             if not isinstance(e, Para): continue
@@ -262,5 +261,4 @@ class Doc:
 if __name__ == "__main__":
     # usage: gdoc_sim.py create HTML OUT.json | read STATE.json OUT.json | apply STATE.json ARGS.json
     cmd = sys.argv[1]
-    import pickle
     if cmd == "create": d = Doc.from_html(open(sys.argv[2]).read()); d.save(sys.argv[3])

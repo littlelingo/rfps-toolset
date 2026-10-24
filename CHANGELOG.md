@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 (2026-10-24)
 
 - One collector, several views: `open-items.md` and the status page show the choice recorded on each marker (`(mine)`, `(skipped)`), and `rfps-worklist --set` also takes a flow step id (done, skip, reset in `progress.md`). No new tracking files.
 

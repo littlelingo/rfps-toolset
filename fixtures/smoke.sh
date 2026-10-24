@@ -121,6 +121,7 @@ rm "11 Final Submission"/*_FINAL.docx active-solution/build/*_FINAL.docx
 printf '\nAlso: accessibility work for Northgate Water [GROUNDED: E-003].\n' >> active-solution/response/04-past-performance.md
 if rfps-build-response --solution --mode final >/dev/null 2>&1; then echo "FAIL: FINAL accepted uncleared evidence" >&2; exit 1; fi
 uv run --quiet "$HERE/gdoc_test.py"
+uv run --quiet "$HERE/gdoc_template_test.py"
 # template generation and update: an outline becomes a template; a changed template is compared with response/
 cat > "$T/outline.json" <<'JSON'
 {"title": "Response to RFP X", "sections": [

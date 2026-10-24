@@ -16,6 +16,8 @@ Usage (DOC.json is a saved read_doc result):
   rfps-sync-gdoc --status DOC.json               per section: response changes to push, edits made in the doc
   rfps-sync-gdoc --push DOC.json                 write the update_doc arguments to build/gdoc-push.json; every addition is a suggestion
   rfps-sync-gdoc --commit                        after Claude sent the push successfully: record it as synced
+  rfps-sync-gdoc --style-plan DOC.json           build/gdoc-style.json: page setup, fonts and line spacing from the Word template, plus its header and footer text (direct formatting)
+  rfps-sync-gdoc --set-template ID               record a Google Doc template (copied to start each shared WIP) as gdoc_template in solution.toml
   rfps-sync-gdoc --highlight-plan DOC.json       build/gdoc-highlight.json: color the markers and tags (suggested formatting); safe to repeat
   rfps-sync-gdoc --pull DOC.json [--apply] [--sections "A;B"]   edits others made, for approval; --apply writes response/*.md
   rfps-sync-gdoc --comments-plan DOC.json        build/gdoc-comments.json: update_doc insertComment requests for open items that have no comment yet
@@ -147,17 +149,20 @@ def parse_doc(doc, scaffold_texts=(), tab=None):
                 blocks.append(dict(base, type="li" if par.get("bullet") else "p", text=text, words=ws,
                                    ordered="glyphType" in str(par.get("bullet", {}))))
         elif "table" in el:
+            tbase = dict(base, is_table=True)
             rows = []
             for r in el["table"]["tableRows"]:
                 if r.get("tableRowStyle", {}).get("suggestedDeletionIds") or r.get("suggestedDeletionIds"): continue
                 cells = [" ".join(" ".join(w[0] for w in _words(c["paragraph"])) for c in cell["content"] if "paragraph" in c and _words(c["paragraph"])) for cell in r["tableCells"]]
                 rows.append("\x1f".join(cells))
             cellpars = [_words(c["paragraph"]) for r in el["table"]["tableRows"] for cell in r["tableCells"] for c in cell["content"] if "paragraph" in c]
-            if rows: blocks.append(dict(base, type="tbl", text="\x1e".join(rows), cellpars=[w for w in cellpars if w]))
+            ttext = "\x1e".join(rows)
+            if rows: blocks.append(dict(tbase, type="scaffold" if ttext in scaffold else "tbl", text=ttext, cellpars=[w for w in cellpars if w]))
     sections, cur = {}, None
     for b in blocks:
         if b["type"] == "heading": cur = sections.setdefault(b["text"], dict(heading=b, blocks=[]))
         elif cur is not None and b["type"] != "scaffold": cur["blocks"].append(b)
+        elif cur is not None and not cur["blocks"]: cur["scaffold_last"] = b   # template text before the content: new text goes after it
     ids = set()   # text suggestions people must accept or reject (insertions and deletions)
     def walk(o):
         if isinstance(o, dict):
@@ -204,25 +209,51 @@ def md_html(text):
     flush()
     return "\n".join(out)
 
-def template_outline(e):
-    """[(level, title, [scaffold lines])] in template order, plus the placeholder text used for empty sections."""
+def template_content(e):
+    """The template's body in order: [{kind: 'h'|'scaffold'|'placeholder'|'title'|'p'|'tbl', level, text | rows}]."""
+    from docx.table import Table
+    from docx.text.paragraph import Paragraph
     tcfg = e["tcfg"]; prefix = tcfg.get("heading_prefix", "Heading"); scaf = set(tcfg.get("scaffold_styles", ["Subtitle"]))
+    phs = {x.lower() for x in tcfg.get("placeholders", [])} | PH_FALLBACK
     d = docx.Document(e["template"]); out = []
-    for p in d.paragraphs:
-        sn = p.style.name
-        if sn.startswith(prefix):
-            m = re.search(r"(\d+)$", sn); out.append([int(m.group(1)) if m else 1, p.text.strip(), []])
-        elif sn in scaf and out and p.text.strip(): out[-1][2].append(p.text.strip())
-    return [tuple(x) for x in out]
+    for el in d.element.body.iterchildren():
+        if el.tag.endswith("}p"):
+            p = Paragraph(el, d); sn = p.style.name; t = p.text.strip()
+            if not t: continue
+            if sn.startswith(prefix):
+                m = re.search(r"(\d+)$", sn); out.append(dict(kind="h", level=int(m.group(1)) if m else 1, text=t))
+            elif sn in scaf: out.append(dict(kind="scaffold", text=t))
+            elif t.lower() in phs: out.append(dict(kind="placeholder", text=t))
+            elif sn == "Title": out.append(dict(kind="title", text=t))
+            else: out.append(dict(kind="p", text=t))
+        elif el.tag.endswith("}tbl"):
+            t = Table(el, d); rows = [[c.text.strip().replace("\n", " / ") for c in r.cells] for r in t.rows]
+            if rows: out.append(dict(kind="tbl", rows=rows))
+    return out
+
+def template_outline(e):
+    """[(level, title, [scaffold lines])] in template order."""
+    out = []
+    for b in template_content(e):
+        if b["kind"] == "h": out.append((b["level"], b["text"], []))
+        elif b["kind"] == "scaffold" and out: out[-1][2].append(b["text"])
+    return out
 
 def build_html(e, resp, skeleton=True):
-    """First version of the doc. Skeleton (default): placeholders only, so the drafted text arrives later as suggestions."""
-    parts = ["<html><body>"]
-    for level, title, scaffold in template_outline(e):
-        parts.append(f"<h{min(level, 6)}>{html.escape(title)}</h{min(level, 6)}>")
-        for s in scaffold: parts.append(f"<p><i>{html.escape(s)}</i></p>")
-        text = "" if skeleton else resp.get(title, [1, "", False])[1]
-        parts.append(md_html(text) if text.strip() else "<p>[text]</p>")
+    """The template as HTML for Drive: its headings, boilerplate, tables and evaluation lines, and its [text] placeholders.
+    Skeleton (default): the response text is not in it, so it arrives later as suggestions."""
+    parts, title, used = ["<html><body>"], None, False
+    for b in template_content(e):
+        k = b["kind"]
+        if k == "h":
+            title = b["text"]; used = False; n = min(b["level"], 6); parts.append(f"<h{n}>{html.escape(b['text'])}</h{n}>")
+        elif k == "scaffold": parts.append(f"<p><i>{html.escape(b['text'])}</i></p>")
+        elif k == "title": parts.append(f"<p><b>{html.escape(b['text'])}</b></p>")
+        elif k == "p": parts.append(f"<p>{html.escape(b['text'])}</p>")
+        elif k == "placeholder":
+            text = "" if skeleton or used or title is None else resp.get(title, [1, "", False])[1]
+            parts.append(md_html(text) if text.strip() else f"<p>{html.escape(b['text'])}</p>"); used = True
+        elif k == "tbl": parts.append("<table border=\"1\">" + "".join("<tr>" + "".join(f"<td>{html.escape(c)}</td>" for c in row) + "</tr>" for row in b["rows"]) + "</table>")
     parts.append("</body></html>")
     return "\n".join(parts)
 
@@ -268,7 +299,7 @@ def _delete_block(b):
 def _insert_blocks(anchor, news, after_list):
     """(position, requests) inserting rendered blocks [(kind, text, ordered)] after a block (or a heading/scaffold paragraph).
     After a table, text goes in front of the paragraph that follows it; otherwise a new paragraph starts after the anchor's text."""
-    before_next = anchor["type"] == "tbl"
+    before_next = anchor["type"] == "tbl" or anchor.get("is_table", False)
     ptr = anchor["end"] if before_next else anchor["end"] - 1
     pos0 = ptr; fill_empty = False; reqs = []; prev_li = after_list
     for kind, text, ordered in news:
@@ -346,8 +377,14 @@ def summary(sol):
 
 def scaffold_of(e): return [s for _, _, ss in template_outline(e) for s in ss]
 
+def read_doc_file(path):
+    """A saved read_doc result. The connector's own saved file wraps the document in {"content": ...}; a hand-trimmed copy does not."""
+    doc = json.loads(pathlib.Path(path).read_text())
+    return doc["content"] if isinstance(doc, dict) and "content" in doc and "tabs" not in doc and "body" not in doc else doc
+
 def load_doc(path, e):
-    doc = json.loads(pathlib.Path(path).read_text()); parsed = parse_doc(doc, scaffold_of(e))
+    extra = [t for ts in (load_state(OBS_SOL).get("template_text", {}).values() if OBS_SOL is not None else []) for t in ts]
+    doc = read_doc_file(path); parsed = parse_doc(doc, scaffold_of(e) + extra)
     if OBS_SOL is not None: observe(OBS_SOL, parsed, parse_comments(doc, parsed) if "comments" in doc else None)
     return parsed
 
@@ -357,12 +394,24 @@ def sections_for(parsed, resp, order):
 
 # ---------- operations ----------
 
-def op_init(sol, e, doc_path, doc_id):
+def op_init(sol, e, doc_path, doc_id, allow_mismatch=False):
     parsed = load_doc(doc_path, e); resp, order = br.parse_response(e["response"])
-    st = dict(doc_id=doc_id or parsed["doc_id"], revision=parsed["revision"], sections={t: [b["text"] for b in s["blocks"]] for t, s in parsed["sections"].items() if t in resp},
-              heading_ids={t: s["heading"].get("heading_id", "") for t, s in parsed["sections"].items()}, synced=datetime.datetime.now().isoformat(timespec="seconds"))
+    missing = [h for h in order if h not in parsed["sections"]]
+    if missing and not allow_mismatch:
+        sys.exit("The doc lacks these response headings (they must match exactly): " + "; ".join(missing) + ". Fix the doc or response/, or see /rfps:update-template; --allow-mismatch records it anyway.")
+    isph = lambda t: t.lower() in PH_FALLBACK or t.lower() in br.PH
+    snap, tmpl = {}, {}
+    for t, sec in parsed["sections"].items():
+        if t not in resp: continue
+        snap[t] = [b["text"] for b in sec["blocks"] if isph(b["text"])]
+        keep = [b["text"] for b in sec["blocks"] if not isph(b["text"])]   # template text under a heading is the template's, not the response's
+        if keep: tmpl[t] = keep
+    st = dict(doc_id=doc_id or parsed["doc_id"], revision=parsed["revision"], sections=snap, template_text=tmpl,
+              heading_ids={t: s_["heading"].get("heading_id", "") for t, s_ in parsed["sections"].items()}, synced=datetime.datetime.now().isoformat(timespec="seconds"))
     save_state(sol, st)
-    print(f"Recorded {doc_url(st)} ({len(st['sections'])} sections). Nothing was changed in the doc; the response text goes in next as suggestions (rfps-sync-gdoc --push).")
+    kept = sum(len(v) for v in tmpl.values())
+    print(f"Recorded {doc_url(st)} ({len(st['sections'])} sections" + (f"; {kept} template paragraph(s) under headings are left alone" if kept else "") +
+          "). Nothing was changed in the doc; the response text goes in next as suggestions (rfps-sync-gdoc --push).")
 
 def analyse(sol, e, doc_path, st):
     parsed = load_doc(doc_path, e); resp, order = br.parse_response(e["response"])
@@ -598,7 +647,7 @@ def attention_items(e, parsed, st, resp, order):
     return items
 
 def op_comments_plan(sol, e, doc_path, st, kinds):
-    doc = json.loads(pathlib.Path(doc_path).read_text()); parsed = load_doc(doc_path, e); led = load_ledger(sol)
+    doc = read_doc_file(doc_path); parsed = load_doc(doc_path, e); led = load_ledger(sol)
     resp, order = br.parse_response(e["response"])
     existing = parse_comments(doc, parsed) if "comments" in doc else []
     live = [c for c in existing if c["status"] == "OPEN"]
@@ -648,7 +697,7 @@ def op_comment_note(sol, cid, note, handled):
 
 def promotable(sol, e, doc_path):
     """Open comments by people that are not tied to an item yet -> [(comment, section, md block index)] for the response."""
-    doc = json.loads(pathlib.Path(doc_path).read_text())
+    doc = read_doc_file(doc_path)
     if "comments" not in doc: return []
     parsed = load_doc(doc_path, e); led = load_ledger(sol)["comments"]; out = []
     resp, order = br.parse_response(e["response"])
@@ -686,7 +735,7 @@ def op_promote(sol, e, doc_path, ids, apply):
 
 def sync_comments(sol, e, doc_path, st, doc=None):
     """Reconcile the comments in a saved read_doc result with the ledger; write review/doc-comments.md. -> events."""
-    doc = doc or json.loads(pathlib.Path(doc_path).read_text())
+    doc = doc or read_doc_file(doc_path)
     if "comments" not in doc: return None
     parsed = load_doc(doc_path, e); comments = parse_comments(doc, parsed)
     resp, order = br.parse_response(e["response"]); st = load_state(sol)
@@ -776,14 +825,94 @@ def op_highlight_plan(sol, e, doc_path, st):
         print("All markers in the doc already have their highlight.")
 
 
+# ---------- making the Google Doc look like the Word template ----------
+def docx_look(e):
+    """Page setup, fonts and header/footer text from the Word template, for the Google copy."""
+    d = docx.Document(e["template"]); sec = d.sections[0]
+    pt = lambda v: None if v is None else round(v / 12700, 2)
+    defaults = d.styles.element.find(qn_w("docDefaults"))
+    def dflt(tag, attr):
+        if defaults is None: return None
+        el = defaults.find(".//" + qn_w(tag))
+        return None if el is None else el.get(qn_w(attr))
+    base_name = dflt("rFonts", "ascii"); base_size = (int(dflt("sz", "val")) / 2) if dflt("sz", "val") else None
+    def font(name):
+        try: st = d.styles[name]
+        except KeyError: return {}
+        f = st.font; color = None
+        try:
+            if f.color is not None and f.color.rgb is not None: color = str(f.color.rgb)
+        except Exception: color = None
+        return dict(name=f.name, size=pt(f.size), bold=f.bold, italic=f.italic, color=color)
+    normal = font("Normal"); normal["name"] = normal.get("name") or base_name; normal["size"] = normal.get("size") or base_size
+    heads = {n: font(f"Heading {n}") for n in (1, 2, 3)}
+    ls = None
+    try: ls = d.styles["Normal"].paragraph_format.line_spacing
+    except Exception: ls = None
+    hdr = " ".join(p.text.strip() for p in sec.header.paragraphs if p.text.strip()); ftr = " ".join(p.text.strip() for p in sec.footer.paragraphs if p.text.strip())
+    return dict(page=(pt(sec.page_width), pt(sec.page_height)), margins=dict(top=pt(sec.top_margin), bottom=pt(sec.bottom_margin), left=pt(sec.left_margin), right=pt(sec.right_margin)),
+                normal=normal, heads=heads, title=font("Title"), line_spacing=float(ls) if isinstance(ls, float) else None, header=hdr, footer=ftr)
+
+def qn_w(tag): return "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}" + tag
+
+def _rgb(hexs):
+    return {"color": {"rgbColor": {"red": int(hexs[0:2], 16) / 255, "green": int(hexs[2:4], 16) / 255, "blue": int(hexs[4:6], 16) / 255}}}
+
+def _text_style(f, extra=None):
+    ts, fields = {}, []
+    if f.get("name"): ts["weightedFontFamily"] = {"fontFamily": f["name"], "weight": 700 if f.get("bold") else 400}; fields.append("weightedFontFamily")
+    if f.get("size"): ts["fontSize"] = {"magnitude": f["size"], "unit": "PT"}; fields.append("fontSize")
+    if f.get("bold") is not None: ts["bold"] = bool(f["bold"]); fields.append("bold")
+    if f.get("italic") is not None: ts["italic"] = bool(f["italic"]); fields.append("italic")
+    if f.get("color"): ts["foregroundColor"] = _rgb(f["color"]); fields.append("foregroundColor")
+    for k, v in (extra or {}).items(): ts[k] = v; fields.append(k)
+    return ts, ",".join(fields)
+
+def op_style_plan(sol, e, doc_path, st):
+    """build/gdoc-style.json: update_doc requests (page setup, fonts, line spacing) that make the Google copy look like the Word template,
+    plus the header and footer text to add. Formatting only, so it is sent as a direct edit."""
+    parsed = load_doc(doc_path, e); look = docx_look(e); reqs = []
+    m, w, h = look["margins"], *look["page"]
+    ds = {}
+    if w and h: ds["pageSize"] = {"width": {"magnitude": w, "unit": "PT"}, "height": {"magnitude": h, "unit": "PT"}}
+    for k, name in (("top", "marginTop"), ("bottom", "marginBottom"), ("left", "marginLeft"), ("right", "marginRight")):
+        if m.get(k) is not None: ds[name] = {"magnitude": m[k], "unit": "PT"}
+    if ds: reqs.append({"updateDocumentStyle": {"documentStyle": ds, "fields": ",".join(ds)}})
+    normal = look["normal"]; title_texts = {b["text"] for b in template_content(e) if b["kind"] == "title"}
+    def style(a, z, f, extra=None):
+        ts, fields = _text_style(f, extra)
+        if fields and z > a: reqs.append({"updateTextStyle": {"range": {"startIndex": a, "endIndex": z}, "textStyle": ts, "fields": fields}})
+    for b in parsed["blocks"]:
+        a, z = b["start"], b["end"] - 1
+        if b["type"] == "heading":
+            f = {**normal, **{k: v for k, v in look["heads"].get(min(b["level"], 3), {}).items() if v is not None}}; style(a, z, f)
+        elif b["type"] in ("p", "li") and b["text"] in title_texts: style(a, z, {**normal, **{k: v for k, v in look["title"].items() if v is not None}})
+        elif b["type"] in ("p", "li"): style(a, z, normal)
+        elif b["type"] == "scaffold" and "words" in b: style(a, z, normal, {"italic": True})
+        elif b.get("cellpars"):
+            for words in b["cellpars"]: style(words[0][1], words[-1][2], normal)
+        if b["type"] in ("p", "li", "scaffold") and look["line_spacing"] and "words" in b:
+            reqs.append({"updateParagraphStyle": {"range": {"startIndex": b["start"], "endIndex": b["end"]}, "paragraphStyle": {"lineSpacing": round(100 * look["line_spacing"])}, "fields": "lineSpacing"}})
+    out = pathlib.Path(e["out"]); out.mkdir(parents=True, exist_ok=True); f = out / "gdoc-style.json"
+    f.write_text(json.dumps({"documentId": st.get("doc_id") or parsed["doc_id"], "requests": sorted(reqs, key=lambda r: -max(((r.get("updateTextStyle") or r.get("updateParagraphStyle") or {}).get("range") or {"startIndex": -1})["startIndex"], -1)),
+                             "writeControl": {"writeMode": "EDIT", "requiredRevisionId": parsed["revision"]}, "header": look["header"], "footer": look["footer"]}, indent=1))
+    n = ", ".join(x for x in (f"header '{look['header'][:40]}'" if look["header"] else "", f"footer '{look['footer'][:40]}'" if look["footer"] else "") if x)
+    print(f"{len(reqs)} formatting request(s) (page setup, fonts, line spacing) in {f}." + (f" Also add {n} (createHeader/createFooter, then insertText with the returned id; page-number fields cannot be added through the connector)." if n else "") +
+          " Formatting only, so send it as a direct edit.")
+
+def op_set_template(sol, doc_id):
+    cfg = sol / "solution.toml"; s = cfg.read_text(); line = f'gdoc_template = "{doc_id}"'
+    s = re.sub(r"^gdoc_template = .*$", line, s, flags=re.M) if re.search(r"^gdoc_template = ", s, re.M) else s.rstrip("\n") + f"\n# Google Doc copied to make the shared WIP document (look of the Word template).\n{line}\n"
+    cfg.write_text(s); print(f"solution.toml now has {line}")
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--html", action="store_true"); ap.add_argument("--init"); ap.add_argument("--doc-id")
+    ap.add_argument("--html", action="store_true"); ap.add_argument("--init"); ap.add_argument("--doc-id"); ap.add_argument("--allow-mismatch", action="store_true")
     ap.add_argument("--status"); ap.add_argument("--push")
     ap.add_argument("--commit", action="store_true"); ap.add_argument("--revision")
     ap.add_argument("--pull"); ap.add_argument("--apply", action="store_true"); ap.add_argument("--sections")
     ap.add_argument("--comments"); ap.add_argument("--url", action="store_true")
-    ap.add_argument("--comments-plan"); ap.add_argument("--comments-commit"); ap.add_argument("--kinds"); ap.add_argument("--highlight-plan")
+    ap.add_argument("--comments-plan"); ap.add_argument("--comments-commit"); ap.add_argument("--kinds"); ap.add_argument("--highlight-plan"); ap.add_argument("--style-plan"); ap.add_argument("--set-template")
     ap.add_argument("--promote", nargs="?", const="", help="comment ids (comma separated, or all) to turn into [OPEN] markers; list the candidates without --apply"); ap.add_argument("--comment-note", nargs=2, metavar=("ID", "TEXT")); ap.add_argument("--handled", choices=["addressed", "ignored", "open"])
     ap.add_argument("--solution", nargs="?", const="", default=None)
     a = ap.parse_args()
@@ -795,7 +924,9 @@ if __name__ == "__main__":
         out = pathlib.Path(e["out"]); out.mkdir(parents=True, exist_ok=True); (out / "gdoc-create.html").write_text(h)
         print(f"Wrote {out / 'gdoc-create.html'} ({len(h):,} characters). Send it to Drive create_file with contentMimeType text/html, then read the new doc with read_doc and run --init.")
         sys.exit(0)
-    if a.init: op_init(sol, e, a.init, a.doc_id); sys.exit(0)
+    if a.set_template: op_set_template(sol, a.set_template); sys.exit(0)
+    if a.style_plan: op_style_plan(sol, e, a.style_plan, st); sys.exit(0)
+    if a.init: op_init(sol, e, a.init, a.doc_id, a.allow_mismatch); sys.exit(0)
     if a.comments: op_comments(sol, a.comments); sys.exit(0)
     if not st.get("doc_id"): sys.exit("No Google Doc recorded yet. Run --html, create the doc, then --init DOC.json --doc-id ID.")
     if a.url: print(doc_url(st)); sys.exit(0)

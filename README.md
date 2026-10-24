@@ -54,6 +54,9 @@ The solution is found from the current directory (a folder at or above it holdin
 | `/rfps:use-solution` | Show or set the active solution |
 | `/rfps:status`, `/rfps:next`, `/rfps:step` | Where you are, the next best action, mark a step done or skipped |
 | `/rfps:add-past-performance` | List where past-performance material lives and draft evidence rows for approval |
+| `/rfps:generate-template` | Make a response template .docx from the solicitation's instructions when no form was issued |
+| `/rfps:update-template` | Bring `response/` in line after the template's headings changed (Word or a Google Doc) |
+| `/rfps:make-gdoc-template` | Build a Google Doc version of the Word template to copy for each shared WIP document |
 | `/rfps:extract` | Turn PDF, Word, Excel and PowerPoint files into searchable text |
 | `/rfps:collateral-analyzer` | Brief and gap report from the provided collateral |
 | `/rfps:requirements-mapper` | Coverage matrix of requirements to evidence |

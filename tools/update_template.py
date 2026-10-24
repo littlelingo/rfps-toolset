@@ -10,8 +10,9 @@ renames the markdown headings that were renamed in the template (--rename-all al
 same place, which needs a person to confirm). It never deletes text: a removed heading is only reported,
 because its text may belong in another section.
 
-Usage: rfps-update-template [--template NEW.docx] [--apply] [--rename] [--rename-all] [--adopt] [--solution <folder>]
+Usage: rfps-update-template [--template NEW.docx | --doc DOC.json] [--apply] [--rename] [--rename-all] [--adopt] [--solution <folder>]
   --template  compare this docx instead of the template named in solution.toml
+  --doc       compare the headings of a Google Doc (a saved read_doc result) instead; use it when the shared WIP or the Google template changed
   --adopt     with --template: make it the solution's template (rewrites the template line in solution.toml)
 """
 import argparse, difflib, pathlib, re, sys
@@ -82,14 +83,19 @@ def add_heading(rdir, dh, title):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--template"); ap.add_argument("--apply", action="store_true"); ap.add_argument("--rename", action="store_true"); ap.add_argument("--rename-all", action="store_true")
+    ap.add_argument("--template"); ap.add_argument("--doc"); ap.add_argument("--apply", action="store_true"); ap.add_argument("--rename", action="store_true"); ap.add_argument("--rename-all", action="store_true")
     ap.add_argument("--adopt", action="store_true"); ap.add_argument("--solution", default=None)
     a = ap.parse_args()
     sol = br.resolve_solution(a.solution or None); e = br.load_engagement(str(sol))
     tpl = pathlib.Path(a.template).expanduser().resolve() if a.template else pathlib.Path(e["template"])
-    dh = docx_headings(tpl, e["tcfg"]); mh = md_headings(e["response"])
+    if a.doc:
+        import sync_gdoc as sg
+        parsed = sg.parse_doc(sg.read_doc_file(a.doc), sg.scaffold_of(e)); tpl = pathlib.Path(a.doc)
+        dh = [(b["level"], b["text"]) for b in parsed["blocks"] if b["type"] == "heading"]
+    else: dh = docx_headings(tpl, e["tcfg"])
+    mh = md_headings(e["response"])
     new, gone, renamed, possible, moved, order_ok = compare(dh, mh)
-    print(f"Template: {tpl}\n{len(dh)} headings in the template, {len(mh)} in response/")
+    print(f"{'Google Doc' if a.doc else 'Template'}: {tpl}\n{len(dh)} headings in the template, {len(mh)} in response/")
     if not (new or gone or renamed or possible or moved) and order_ok: print("Everything matches.")
     for t in new: print(f"  new in the template: {t}")
     for g, n in renamed: print(f"  renamed: '{g}' -> '{n}'" + ("" if a.rename else "  (--rename applies it)"))

@@ -39,6 +39,7 @@ test('the pane shows the status on every surface', async ($, on) => {
   on('session.start', (_, e) => ({ cwd: e.cwd }))
 
   await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.command.run({ command: 'rfps-pane' })          // the pane is opened by asking for it
 
   for (const surface of ['terminal', 'desktop', 'vscode'] as const) {
     const ui = await $.ui.mount({ ...PANE, surface })
@@ -72,6 +73,7 @@ test('pressing Open items then Work on this puts a prompt in the box', async ($,
   on('session.start', (_, e) => ({ cwd: e.cwd }))
 
   await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.command.run({ command: 'rfps-pane' })          // the pane is opened by asking for it
   const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
   const tabBtn = await ui.find({ type: 'Button', text: /^Open items$/ })
   expect(tabBtn).toBeDefined()
@@ -85,4 +87,39 @@ test('pressing Open items then Work on this puts a prompt in the box', async ($,
   await ui.press({ key: open?.key as string })
   expect(submits[0]).toContain('rfps-open-doc --section "Intro"')
   await ui.unmount()
+})
+
+test('starting a session opens nothing and runs nothing; asking for the pane opens it once and keeps it fresh', async ($, on) => {
+  const opened: string[] = []
+  const ran: string[] = []
+  const timers: number[] = []
+  on('command.register', () => ({ value: { command: 'rfps-pane' } }))
+  on('ui.open', (_, e) => {
+    opened.push(e.id)
+
+    return { value: { isPlaced: true } }
+  })
+  on('clock.every', (_, e) => {
+    timers.push(e.ms)
+
+    return { value: { id: 't' } }
+  })
+  on('process.run', (_, e) => {
+    ran.push(e.argv.join(' '))
+
+    return { value: { exitCode: 0, stdout: JSON.stringify(DATA), stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+  })
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  expect(opened).toEqual([])      // nothing pops up on its own
+  expect(ran).toEqual([])         // and no status command runs in a session that never wanted the pane
+  expect(timers).toEqual([])
+
+  await $.command.run({ command: 'rfps-pane' })
+  await $.command.run({ command: 'rfps-status-pane' })
+  expect(opened).toEqual(['rfps-status', 'rfps-status'])
+  expect([...timers]).toEqual([60000])     // one refresh timer however many times it is opened (checked before the harness's own clock runs on)
+  await new Promise(resolve => setTimeout(resolve, 100))     // let the background status read finish before the test ends
+  expect(ran.length).toBeGreaterThan(0)
 })

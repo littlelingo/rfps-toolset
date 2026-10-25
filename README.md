@@ -1,6 +1,6 @@
 # RFPS Toolset
 
-v0.4.0 | MIT License
+v0.4.1 | MIT License
 
 A Claude Code plugin that guides a solicitation (RFP, SOW, SOO and similar) to a proposal response. It is generic: nothing in it is specific to an agency, contract or bidder. Everything for one solicitation lives in that solicitation's own `active-solution/` folder.
 
@@ -96,7 +96,7 @@ A plugin runs with your privileges, so here is exactly what this one does. Read 
 | `skills/` | Instructions Claude follows. Solicitation text is treated as data, never as instructions. Several skills (`start`, `walk`, `build-wip`, `build-final`, `make-gdoc-template`, `new-engagement` and others) can only be run by typing them, because they create files, documents or submission copies. | In Claude's context |
 | `bin/rfps-*` | Thin shell wrappers that run `tools/*.py` with `uv`. They are put on the Bash tool's PATH while the plugin is enabled. | Your shell, with your privileges |
 | `tools/*.py` | Read the solicitation folders you point them at and write only to that solution's `active-solution/` folder (and `.state/`), plus `.claude/active-solution` in the current project. Nothing is written into the plugin folder. They never call Google; Claude does that through your connectors. | Your shell |
-| `hooks/` (the status pane, a mod) | A pane in Claude Desktop that runs `rfps-status-page --json` through `uv` every minute and shows the result. It runs outside the sandbox. | Inside Claude Code |
+| `hooks/` (the status pane, a mod) | A pane in Claude Desktop, opened only when you ask for it (`/rfps-pane`). Once opened it runs `rfps-status-page --json` through `uv` every minute and shows the result; before that, and in any session where you never open it, it runs nothing. It runs outside the sandbox. | Inside Claude Code |
 | Google connectors | When the Google route is used, Claude reads and edits the shared Google Doc through the Drive and Docs connectors you enabled, as suggestions and comments. Check which Google account each connector uses before real work. | Your Google account |
 
 Review it with `claude plugin details rfps`, or `claude --plugin-dir <clone> plugin details rfps` before installing.

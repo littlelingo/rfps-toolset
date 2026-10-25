@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1 (2026-10-25)
+
+- **The status pane no longer opens by itself.** It used to open at every session start, in every project, and run `rfps-status-page --json` once a minute whether or not the session had anything to do with an RFP. Now a session start only registers `/rfps-pane` and `/rfps-status-pane`; opening the pane (and its first status read, and the once-a-minute refresh that follows) happens only when someone asks for it. The refresh timer is started once however often the pane is opened. A test checks that a session start opens nothing and runs nothing, and the state it needed (`rfps.watching`) is declared in `types/`. The status page (`/rfps:status-page`) was never automatic.
+
 ## 0.4.0 (2026-10-24)
 
 - One collector, several views: `open-items.md` and the status page show the choice recorded on each marker (`(mine)`, `(skipped)`), and `rfps-worklist --set` also takes a flow step id (done, skip, reset in `progress.md`). No new tracking files.

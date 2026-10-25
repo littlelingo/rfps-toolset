@@ -17,6 +17,7 @@ const itemFilterAtom = atom({ plugin: 'rfps', key: 'itemFilter' } as const, 'all
 const queryAtom = atom({ plugin: 'rfps', key: 'query' } as const, '')
 const busyAtom = atom({ plugin: 'rfps', key: 'busy' } as const, false)
 const errorAtom = atom({ plugin: 'rfps', key: 'error' } as const, '')
+const watchingAtom = atom({ plugin: 'rfps', key: 'watching' } as const, false)
 
 const SC: Record<string, string> = {
   done: '#3b8a3e',
@@ -79,6 +80,17 @@ async function refresh($: any) {
   await update($, busyAtom, () => false)
 }
 
+// Open the pane, read the status now, and (once) keep it fresh every minute. Nothing here runs until someone asks for the pane:
+// a session start only registers the commands, so no pane appears and no status command runs in a session that never wanted it.
+async function show($: any) {
+  await $.ui.open({ id: PANE, title: 'RFP status' })
+  void refresh($)
+  if (!(await read($, watchingAtom))) {
+    await update($, watchingAtom, () => true)
+    $.clock.every(60000, () => void refresh($))
+  }
+}
+
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
@@ -89,23 +101,18 @@ export const register: Register = on => {
       name: 'rfps-status-pane',
       description: 'Open the live RFP status pane beside the chat (same as /rfps-pane)',
     })
-    void $.ui.open({ id: PANE, title: 'RFP status' })
-    void refresh($)
-    $.clock.every(60000, () => void refresh($))
 
     return next(e)
   })
 
   on('command.run', { command: 'rfps-pane' }, async $ => {
-    await $.ui.open({ id: PANE, title: 'RFP status' })
-    void refresh($)
+    await show($)
 
     return { text: 'RFP status pane opened.' }
   })
 
   on('command.run', { command: 'rfps-status-pane' }, async $ => {
-    await $.ui.open({ id: PANE, title: 'RFP status' })
-    void refresh($)
+    await show($)
 
     return { text: 'RFP status pane opened.' }
   })

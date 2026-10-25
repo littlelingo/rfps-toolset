@@ -26,6 +26,7 @@ declare module 'claude-code' {
       query: string
       itemLimit: number
       busy: boolean
+      watching: boolean
       error: string
     }
   }

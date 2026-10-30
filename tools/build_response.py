@@ -25,7 +25,7 @@ from docx.oxml.ns import qn
 from docx.shared import Inches, Pt
 
 TAGS = r"GROUNDED|ASSERTION|EVIDENCE NEEDED|DECISION|OPEN|SOLUTIONING"
-ICONS = "\U0001F7E1\U0001F534\U0001F7E0\U0001F7E3"   # optional scan icon before a marker; see rfps-open-items
+ICONS = "\U0001F7E1\U0001F534\U0001F7E0\U0001F7E3\U0001F7E2"   # optional scan icon before a marker; see rfps-open-items
 TAG_RE = re.compile(r"(?:[%s]\uFE0F?[ \t]*)?\[(?:%s)[^\]]*\]" % (ICONS, TAGS), re.S)
 STRIP_TAGS = ("GROUNDED", "ASSERTION")
 COLORS = {"GROUNDED": WD_COLOR_INDEX.BRIGHT_GREEN, "ASSERTION": WD_COLOR_INDEX.YELLOW}

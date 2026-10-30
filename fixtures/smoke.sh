@@ -18,6 +18,10 @@ test -f "05 Draft Response/Response Template_WIP.docx"
 out=$(rfps-scan-sources); echo "$out" | grep -q "1 new, 0 changed" || { echo "FAIL: first scan should find 1 new file: $out" >&2; exit 1; }
 grep -q "Permission wording" active-solution/past-performance/digest.md && grep -qi "approved" active-solution/past-performance/digest.md || { echo "FAIL: digest lacks the permission wording" >&2; exit 1; }
 rfps-scan-sources | grep -q "0 new, 0 changed" || { echo "FAIL: a second scan should find nothing" >&2; exit 1; }
+mkdir -p past-performance/a/b/c/d && printf 'Deep note 2024 approved' > past-performance/a/b/c/d/deep.txt && printf 'x' > past-performance/a/old.doc
+out=$(rfps-scan-sources); echo "$out" | grep -q "deep.txt" && echo "$out" | grep -q "level 4" && echo "$out" | grep -q "NOT READ.*\.doc" || { echo "FAIL: deep folder or unsupported type not reported: $out" >&2; exit 1; }
+rm -rf past-performance/a
+rfps-scan-sources >/dev/null
 uv run --quiet --with python-docx python3 - past-performance/*.docx <<'PY'
 import sys, docx
 d = docx.Document(sys.argv[1]); d.add_paragraph("Update 2026: added a new reference."); d.save(sys.argv[1])
@@ -25,6 +29,8 @@ PY
 rfps-scan-sources | grep -q "1 new, 1 changed\|0 new, 1 changed" || { echo "FAIL: an edited file should be reported as changed" >&2; exit 1; }
 rfps-add-source FOLDER123 --type drive --label drivefolder >/dev/null
 printf '[{"id":"f1","title":"Case A.docx","mimeType":"x","modifiedTime":"2026-01-01T00:00:00Z","size":"10"},{"id":"f2","title":"Case B.pdf","mimeType":"x","modifiedTime":"2026-01-02T00:00:00Z","size":"20"}]' > "$T/listing.json"
+printf '[{"id":"d1","title":"Sub","path":"Sub","mimeType":"application/vnd.google-apps.folder"},{"id":"f1","title":"Case A.docx","path":"Sub/Case A.docx","mimeType":"x","modifiedTime":"2026-01-01T00:00:00Z","size":"10"}]' > "$T/deep.json"
+rfps-scan-sources --drive drivefolder --listing "$T/deep.json" | grep -q "NOT YET LISTED" || { echo "FAIL: an unlisted Drive subfolder was not flagged" >&2; exit 1; }
 rfps-scan-sources --drive drivefolder --listing "$T/listing.json" | grep -q "2 new or changed" || { echo "FAIL: Drive listing should show 2 new" >&2; exit 1; }
 mkdir -p active-solution/.state/text/past-performance/drivefolder
 printf 'Case A text approved 2025 $1.2M' > active-solution/.state/text/past-performance/drivefolder/f1.txt

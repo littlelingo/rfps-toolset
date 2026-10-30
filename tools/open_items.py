@@ -7,7 +7,8 @@
 Markers keep their square-bracket form ([ASSERTION: ...], [DECISION: ...], [OPEN: ...], [EVIDENCE NEEDED: ...])
 because the build and the reports read that form. This tool adds two scan aids:
   1. an optional colored icon before each marker (Markdown cannot color text, so the icon carries the color):
-       🔴 DECISION   🟠 OPEN   🟣 EVIDENCE NEEDED   🟡 ASSERTION
+       🔴 DECISION   🟠 OPEN   🟣 EVIDENCE NEEDED   🟡 ASSERTION   🟢 GROUNDED
+     (GROUNDED is marked so cited facts are easy to see, but it is not open work, so it never appears in open-items.md.)
      The build ignores the icon (and removes it with the marker in FINAL). Add or refresh the icons with --mark.
   2. open-items.md in the solution folder: every marker in one table, worked from the top down, with a link to
      the line, the section, and what it says. It is regenerated; do not edit it by hand.
@@ -23,14 +24,17 @@ KINDS = [("DECISION", "\U0001F534", "Decide, then replace the marker with the fi
          ("EVIDENCE NEEDED", "\U0001F7E3", "Claim needs a register row or a source"),
          ("ASSERTION", "\U0001F7E1", "Claim without a register row; support it or accept it knowingly")]
 ICON = {k: i for k, i, _ in KINDS}
+ICON["GROUNDED"] = "\U0001F7E2"   # marked for scanning only; not an open item
 NAMES = "|".join(k for k, _, _ in KINDS)
-MARK = re.compile(r"(?:[\U0001F7E1\U0001F534\U0001F7E0\U0001F7E3]️?[ \t]*)?(\[(%s)[^\]]*\])" % NAMES, re.S)
+ICONS = "\U0001F7E1\U0001F534\U0001F7E0\U0001F7E3\U0001F7E2"
+MARK = re.compile(r"(?:[%s]️?[ \t]*)?(\[(%s)[^\]]*\])" % (ICONS, NAMES), re.S)
+MARK_ALL = re.compile(r"(?:[%s]️?[ \t]*)?(\[(%s|GROUNDED)[^\]]*\])" % (ICONS, NAMES), re.S)
 
 def mark_files(rdir):
     n = 0
     for f in sorted(rdir.glob("*.md")):
         t = f.read_text()
-        new = MARK.sub(lambda m: ICON[m.group(2)] + " " + m.group(1), t)
+        new = MARK_ALL.sub(lambda m: ICON[m.group(2)] + " " + m.group(1), t)
         if new != t:
             f.write_text(new); n += 1
     return n

@@ -74,7 +74,7 @@ These markers are for internal review. The empathy reviewer and compliance valid
 
 **Use the open-work markers too.** Where the solicitation or the team leaves something unresolved, write `[DECISION: what must be decided]` (a choice the team makes), `[OPEN: the question or missing fact]` (needs an answer or a stated assumption) or `[EVIDENCE NEEDED: what source would support this]`. Never settle these silently in the prose.
 
-**Make the markers scannable.** Write each marker in its bracket form only; do not type the icons. After drafting, run `rfps-open-items --mark`. It puts a colored icon in front of every marker in `response/*.md` (🔴 DECISION, 🟠 OPEN, 🟣 EVIDENCE NEEDED, 🟡 ASSERTION) and writes `open-items.md` in the solution folder, a table of every marker with a link to its line, ordered decisions first. Keep the icon with its marker when you edit; the build ignores it. Tell the user where `open-items.md` is.
+**Make the markers scannable.** Write each marker in its bracket form only; do not type the icons. After drafting, run `rfps-open-items --mark`. It puts a colored icon in front of every marker in `response/*.md` (🔴 DECISION, 🟠 OPEN, 🟣 EVIDENCE NEEDED, 🟡 ASSERTION, 🟢 GROUNDED) and writes `open-items.md` in the solution folder, a table of every marker with a link to its line, ordered decisions first. Keep the icon with its marker when you edit; the build ignores it. Tell the user where `open-items.md` is.
 
 **Do not mark obvious statements.** Factual statements about methodology, process descriptions, and common knowledge do not need markers. Only substantive claims about capability, experience, and outcomes need marking.
 

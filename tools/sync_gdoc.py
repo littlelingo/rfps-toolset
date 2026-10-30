@@ -17,6 +17,7 @@ Usage (DOC.json is a saved read_doc result):
   rfps-sync-gdoc --push DOC.json                 write the update_doc arguments to build/gdoc-push.json; every addition is a suggestion
   rfps-sync-gdoc --commit                        after Claude sent the push successfully: record it as synced
   rfps-sync-gdoc --style-plan DOC.json           build/gdoc-style.json: page setup, fonts and line spacing from the Word template, plus its header and footer text (direct formatting)
+  rfps-sync-gdoc --set-folder ID_OR_LINK         record the Drive folder where the shared WIP is created and kept (wip_folder in solution.toml)
   rfps-sync-gdoc --set-template ID               record a Google Doc template (copied to start each shared WIP) as gdoc_template in solution.toml
   rfps-sync-gdoc --highlight-plan DOC.json       build/gdoc-highlight.json: color the markers and tags (suggested formatting); safe to repeat
   rfps-sync-gdoc --pull DOC.json [--apply] [--sections "A;B"]   edits others made, for approval; --apply writes response/*.md
@@ -926,6 +927,16 @@ def op_style_plan(sol, e, doc_path, st):
     print(f"{len(reqs)} formatting request(s) (page setup, fonts, line spacing) in {f}." + (f" Also add {n} (createHeader/createFooter, then insertText with the returned id; page-number fields cannot be added through the connector)." if n else "") +
           " Formatting only, so send it as a direct edit.")
 
+def drive_id(text):
+    """A Drive file or folder id from an id, a /folders/ID or /d/ID link, or an ?id= link."""
+    m = re.search(r"/(?:folders|d)/([\w-]{10,})|[?&]id=([\w-]{10,})", text)
+    return (m.group(1) or m.group(2)) if m else text.strip()
+
+def op_set_folder(sol, text):
+    fid = drive_id(text); cfg = sol / "solution.toml"; s = cfg.read_text(); line = f'wip_folder = "{fid}"'
+    s = re.sub(r"^wip_folder = .*$", line, s, flags=re.M) if re.search(r"^wip_folder = ", s, re.M) else s.rstrip("\n") + f"\n# Drive folder where the shared WIP document (and the template copy) is created and kept.\n{line}\n"
+    cfg.write_text(s); print(f"solution.toml now has {line}")
+
 def op_set_template(sol, doc_id):
     cfg = sol / "solution.toml"; s = cfg.read_text(); line = f'gdoc_template = "{doc_id}"'
     s = re.sub(r"^gdoc_template = .*$", line, s, flags=re.M) if re.search(r"^gdoc_template = ", s, re.M) else s.rstrip("\n") + f"\n# Google Doc copied to make the shared WIP document (look of the Word template).\n{line}\n"
@@ -938,7 +949,7 @@ if __name__ == "__main__":
     ap.add_argument("--commit", action="store_true"); ap.add_argument("--revision")
     ap.add_argument("--pull"); ap.add_argument("--apply", action="store_true"); ap.add_argument("--sections")
     ap.add_argument("--comments"); ap.add_argument("--url", action="store_true")
-    ap.add_argument("--comments-plan"); ap.add_argument("--comments-commit"); ap.add_argument("--kinds"); ap.add_argument("--highlight-plan"); ap.add_argument("--style-plan"); ap.add_argument("--set-template")
+    ap.add_argument("--comments-plan"); ap.add_argument("--comments-commit"); ap.add_argument("--kinds"); ap.add_argument("--highlight-plan"); ap.add_argument("--style-plan"); ap.add_argument("--set-template"); ap.add_argument("--set-folder", metavar="ID_OR_LINK")
     ap.add_argument("--promote", nargs="?", const="", help="comment ids (comma separated, or all) to turn into [OPEN] markers; list the candidates without --apply"); ap.add_argument("--comment-note", nargs=2, metavar=("ID", "TEXT")); ap.add_argument("--handled", choices=["addressed", "ignored", "open"])
     ap.add_argument("--solution", nargs="?", const="", default=None)
     a = ap.parse_args()
@@ -951,6 +962,7 @@ if __name__ == "__main__":
         print(f"Wrote {out / 'gdoc-create.html'} ({len(h):,} characters). Send it to Drive create_file with contentMimeType text/html, then read the new doc with read_doc and run --init.")
         sys.exit(0)
     if a.set_template: op_set_template(sol, a.set_template); sys.exit(0)
+    if a.set_folder: op_set_folder(sol, a.set_folder); sys.exit(0)
     if a.style_plan: op_style_plan(sol, e, a.style_plan, st); sys.exit(0)
     if a.init: op_init(sol, e, a.init, a.doc_id, a.allow_mismatch); sys.exit(0)
     if a.comments: op_comments(sol, a.comments); sys.exit(0)

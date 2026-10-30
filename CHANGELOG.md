@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- `[GROUNDED]` markers get a green circle icon like the other markers (`rfps-open-items --mark`); it is for scanning only and GROUNDED never appears in the open items.
+- Deep folders: `rfps-scan-sources` reports how many files and folders it looked at and how deep, names file types it could not read and files that gave no text; a Drive listing now covers every subfolder (`path`, `listed`), flags subfolders not yet listed and shortcuts to resolve, and the digest names Drive files by path.
+- `wip_folder` in `solution.toml` (set with `rfps-sync-gdoc --set-folder <link or id>`, or by `/rfps:build-wip --folder`) is the Drive folder where the shared WIP and the template copy are created; `wip_docx` already sets the Word location.
+- New `rfps-decode-b64` decodes a Drive download that the app saved to a file into a real .docx/.xlsx/.pdf; skills now say never to retype base64 by hand and to ask the user to download the file when only the chat has it.
+
 ## 0.4.1 (2026-10-25)
 
 - **The status pane no longer opens by itself.** It used to open at every session start, in every project, and run `rfps-status-page --json` once a minute whether or not the session had anything to do with an RFP. Now a session start only registers `/rfps-pane` and `/rfps-status-pane`; opening the pane (and its first status read, and the once-a-minute refresh that follows) happens only when someone asks for it. The refresh timer is started once however often the pane is opened. A test checks that a session start opens nothing and runs nothing, and the state it needed (`rfps.watching`) is declared in `types/`. The status page (`/rfps:status-page`) was never automatic.

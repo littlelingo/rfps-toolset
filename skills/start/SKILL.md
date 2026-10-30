@@ -3,7 +3,7 @@ name: start
 description: Front-loaded start for a new solicitation - ask once for the solicitation folder, template and past-performance locations, then run set-up, analysis, evidence, staffing, drafting, review and the first WIP build, and hand over a ranked worklist of gaps
 argument-hint: [source folder] [--word]
 disable-model-invocation: true
-allowed-tools: Bash(rfps-new-engagement:*), Bash(rfps-add-source:*), Bash(rfps-scan-sources:*), Bash(rfps-extract-docs:*), Bash(rfps-register-add:*), Bash(rfps-refresh-reports:*), Bash(rfps-open-items:*), Bash(rfps-flow-status:*), Bash(rfps-worklist:*), Bash(rfps-staffing:*), Bash(rfps-sync-gdoc:*), Bash(rfps-sync-docx:*), Bash(rfps-build-response:*), Bash(ls:*), Read, Write, Edit, Skill, AskUserQuestion
+allowed-tools: Bash(rfps-new-engagement:*), Bash(rfps-decode-b64:*), Bash(rfps-add-source:*), Bash(rfps-scan-sources:*), Bash(rfps-extract-docs:*), Bash(rfps-register-add:*), Bash(rfps-refresh-reports:*), Bash(rfps-open-items:*), Bash(rfps-flow-status:*), Bash(rfps-worklist:*), Bash(rfps-staffing:*), Bash(rfps-sync-gdoc:*), Bash(rfps-sync-docx:*), Bash(rfps-build-response:*), Bash(ls:*), Read, Write, Edit, Skill, AskUserQuestion
 ---
 
 Read `${CLAUDE_PLUGIN_ROOT}/skills/solution-guide/references/conventions.md` first; its rules (sources of truth, no invented bidder facts, evidence register, outside sources) apply to every stage below.
@@ -15,9 +15,9 @@ Take a new solicitation from the documents to a first work-in-progress (WIP) res
 Collect these in one round (use the question tool; skip what `$ARGUMENTS` or the folder already answers):
 
 1. **Source (capture) folder** holding the solicitation: the SOW or Work Order, RFP, amendments, Q&A, attachments. If `active-solution/` already exists there, tell the user and offer `/rfps:next` or `/rfps:walk` instead; never overwrite it.
-2. **Response template** .docx: use the one in the draft-response folder, or, if there is none, plan to run `generate-template` in stage 1 (its section outline still needs the user's approval).
+2. **Response template** .docx (it must be a file on disk; if it is in Drive, follow the Drive paragraph of `new-engagement` - decode a saved download with `rfps-decode-b64`, never retype it, or ask the user to download it): use the one in the draft-response folder, or, if there is none, plan to run `generate-template` in stage 1 (its section outline still needs the user's approval).
 3. **Past-performance locations**: local folders and/or a Google Drive folder, one or several, or "none yet". Material is read in place; nothing is copied or downloaded without the confirmation `add-past-performance` asks for.
-4. **Where the team works on the WIP**: Google Docs (default) or Word (`--word`).
+4. **Where the team works on the WIP**: Google Docs (default) or Word (`--word`), and the Drive folder (or local folder) it should be created and kept in.
 
 Then say in two lines what will happen and that you will only stop for a fact you cannot get from the documents, a clearance, or a choice that is the user's.
 

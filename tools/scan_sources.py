@@ -12,12 +12,14 @@ snippet, so evidence rows can be proposed from it. The digest proposes nothing i
 
 Usage: rfps-scan-sources                                   scan local sources, extract new and changed files, rebuild the digest
        rfps-scan-sources --drive LABEL --listing FILE      compare a Drive folder listing (JSON list of {id, title, mimeType, modifiedTime, size}
-                                                           saved from the connector) with the last scan; writes the pending list
+                                                           saved from the connector, one entry per file AND per subfolder, with "path" = its folder path and "listed": true on a
+                                                           folder once its contents are in the list) with the last scan; writes the pending list;
+                                                           reports subfolders not yet listed and shortcuts to resolve
        rfps-scan-sources --drive LABEL --ingest            after Claude saved each pending file's text as
                                                            .state/text/past-performance/LABEL/<id>.txt, record them as scanned
        rfps-scan-sources --digest                          rebuild the digest only
 """
-import argparse, datetime, hashlib, json, pathlib, re, sys, tomllib
+import argparse, collections, datetime, hashlib, json, os, pathlib, re, sys, tomllib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import build_response as br
 import add_source as asrc
@@ -39,11 +41,24 @@ def sha1(p):
         for chunk in iter(lambda: fh.read(1 << 20), b""): h.update(chunk)
     return h.hexdigest()
 
+def walk(root):
+    """Every file under root at any depth (symbolic links followed, loops avoided). -> files, folder count, deepest level."""
+    files, folders, deepest, seen = [], 0, 0, set()
+    for d, dirs, names in os.walk(root, followlinks=True):
+        real = os.path.realpath(d)
+        if real in seen: dirs[:] = []; continue
+        seen.add(real); folders += 1; deepest = max(deepest, len(pathlib.Path(d).relative_to(root).parts))
+        dirs.sort(); files += [pathlib.Path(d) / n for n in sorted(names)]
+    return files, folders, deepest
+
 def scan_local(sol, src, st):
     label, root = src.get("label", "source"), asrc.resolve(src["path"], sol)
     if not root.exists(): return [f"{label}: location not found: {root}"], 0, 0
     prev = st.setdefault(label, {}); out, new, changed = [], 0, 0
-    files = [root] if root.is_file() else [p for p in sorted(root.rglob("*")) if p.is_file()]
+    files, folders, deepest = ([root], 0, 0) if root.is_file() else walk(root)
+    skipped = collections.Counter(p.suffix.lower() or "(no extension)" for p in files if p.suffix.lower() not in SUFFIXES and not p.name.startswith(("~$", ".")))
+    out.append(f"{label}: looked at {len(files)} file(s) in {folders} folder(s), down to level {deepest}") if not root.is_file() else None
+    if skipped: out.append(f"{label}: NOT READ (unsupported type): " + ", ".join(f"{n} x {e}" for e, n in skipped.most_common()) + " - convert or tell the user so nothing is missed")
     seen = set()
     for p in files:
         if p.suffix.lower() not in SUFFIXES or p.name.startswith(("~$", ".")): continue
@@ -51,7 +66,8 @@ def scan_local(sol, src, st):
         was = prev.get(rel)
         if was and was["sha1"] == h: continue
         td = text_dir(sol, label); td.mkdir(parents=True, exist_ok=True)
-        (td / (rel.replace("/", "__") + ".txt")).write_text(ex.extract_file(p))
+        txt = ex.extract_file(p); (td / (rel.replace("/", "__") + ".txt")).write_text(txt)
+        if txt.startswith("EXTRACT ERROR") or len(txt.strip()) < 40: out.append(f"{label}: NO TEXT READ (error or scanned file): {rel}")
         prev[rel] = dict(sha1=h, size=p.stat().st_size, scanned=datetime.datetime.now().isoformat(timespec="seconds"), status="changed" if was else "new")
         if was: changed += 1
         else: new += 1
@@ -78,7 +94,8 @@ def digest(sol):
         body = []
         for f in files:
             name = f.name[:-4].replace("__", "/"); t = f.read_text()
-            status = (st.get(label, {}).get(name) or st.get(label, {}).get(f.name[:-4]) or {}).get("status", "")
+            rec = st.get(label, {}).get(name) or st.get(label, {}).get(f.name[:-4]) or {}
+            status = rec.get("status", ""); name = rec.get("title", name)
             yrs = sorted(set(SIGNALS[0][1].findall(t)))[:6]; amt = list(dict.fromkeys(SIGNALS[1][1].findall(t)))[:4]
             perm = [" ".join(m.group(0).split()) for m in PERMISSION.finditer(t)][:2]
             esc = lambda x: x.replace("|", "/")
@@ -90,10 +107,16 @@ def digest(sol):
 
 def drive_compare(sol, label, listing, st):
     prev = st.setdefault(label, {}); pend, same = [], 0
+    FOLDER, SHORTCUT = "application/vnd.google-apps.folder", "application/vnd.google-apps.shortcut"
+    folders = [it for it in listing if it.get("mimeType") == FOLDER]
+    drive_compare.coverage = dict(folders=len(folders), unlisted=[f.get("path") or f.get("title") or f["id"] for f in folders if not f.get("listed")],
+                                  shortcuts=[it.get("path") or it.get("title") or it["id"] for it in listing if it.get("mimeType") == SHORTCUT],
+                                  deepest=max([len((it.get("path") or "").split("/")) - 1 for it in listing] or [0]))
+    listing = [it for it in listing if it.get("mimeType") not in (FOLDER, SHORTCUT)]
     for it in listing:
         fid = it["id"]; was = prev.get(fid)
         if was and was.get("modified") == it.get("modifiedTime"): same += 1; continue
-        pend.append(dict(id=fid, title=it.get("title", fid), mimeType=it.get("mimeType", ""), modified=it.get("modifiedTime", ""), size=it.get("size", ""), status="changed" if was else "new"))
+        pend.append(dict(id=fid, title=it.get("path") or it.get("title", fid), mimeType=it.get("mimeType", ""), modified=it.get("modifiedTime", ""), size=it.get("size", ""), status="changed" if was else "new"))
     gone = [v.get("title", k) for k, v in prev.items() if k not in {i["id"] for i in listing} and v.get("status") != "removed"]
     f = sol / ".state" / "pp-drive-pending.json"; f.parent.mkdir(parents=True, exist_ok=True); f.write_text(json.dumps({label: pend}, indent=1) + "\n")
     return pend, same, gone
@@ -108,6 +131,10 @@ if __name__ == "__main__":
     if a.drive and a.listing:
         pend, same, gone = drive_compare(sol, a.drive, json.loads(pathlib.Path(a.listing).read_text()), st)
         print(f"{a.drive}: {len(pend)} new or changed file(s), {same} unchanged" + (f", {len(gone)} no longer listed" if gone else ""))
+        cv = drive_compare.coverage
+        print(f"  coverage: {cv['folders']} subfolder(s), down to level {cv['deepest']}")
+        if cv["unlisted"]: print("  NOT YET LISTED - list these folders too (search_files with parentId) and add their files to the listing: " + "; ".join(cv["unlisted"]))
+        if cv["shortcuts"]: print("  SHORTCUTS - resolve each to its target (get_file_metadata) and list the target: " + "; ".join(cv["shortcuts"]))
         for p in pend: print(f"  {p['status']}: {p['title']} ({p['mimeType'].split('.')[-1]}, {p['size'] or '?'} bytes) id {p['id']}")
         if pend: print(f"Ask the user before reading these. Then save each file's text as {text_dir(sol, a.drive)}/<id>.txt and run rfps-scan-sources --drive {a.drive} --ingest.")
         sys.exit(0)

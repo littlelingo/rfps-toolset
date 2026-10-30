@@ -164,7 +164,7 @@ def plan_pull(snap, cur, mdnew):
     return changes, conflicts, result
 
 
-TAG_RE = re.compile(r"(?:[\U0001F7E1\U0001F534\U0001F7E0\U0001F7E3]\uFE0F?[ \t]*)?\[(?:GROUNDED|ASSERTION|EVIDENCE NEEDED|DECISION|OPEN|SOLUTIONING)[^\]]*\]", re.S)
+TAG_RE = re.compile(r"(?:[\U0001F7E1\U0001F534\U0001F7E0\U0001F7E3\U0001F7E2]\uFE0F?[ \t]*)?\[(?:GROUNDED|ASSERTION|EVIDENCE NEEDED|DECISION|OPEN|SOLUTIONING)[^\]]*\]", re.S)
 
 def _tags(text): return [t.strip() for t in TAG_RE.findall(text)]
 

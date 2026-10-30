@@ -36,6 +36,8 @@ Built (first pass, 2026-10-21): `tools/flow.toml` and `tools/flow_status.py`; `/
 - **Template generation and `/update-template`** (built 2026-10-24: `/rfps:generate-template`, `/rfps:update-template`). Nothing outstanding.
 - **Google Drive adapter (connector-based):** pull inputs to a local working copy, build locally, push outputs back. Open points: native Google Docs versus `.docx`, the register as a Sheet versus CSV, per-download confirmations.
 
+- **Drive-first working model** (raised 2026-10-30 after a real-world run: "perform the work in Drive so all can drive from it"). Today the WIP document, its comments and the template copy live in Drive, while the engine's files (`response/*.md`, the register, reports, `.state/`) are local. Options: (A) Drive as the collaboration surface only, engine local (what exists); (B) a Drive folder mirroring the readable outputs (reports, open items, register as a Sheet) pushed by a sync step so everyone sees them; (C) the engine itself reading and writing Drive files through the connector (the adapter below). Also open: starting from a Google Doc template with no local .docx (headings from `read_doc`); FINAL still needs the real .docx bytes, which the connector only returns as chat base64 unless the app saves them.
+
 ## Brainstormed, not scheduled: submission packet
 
 Everything the State receives, not just the narrative. Suggested order: manifest and readiness report; people register and resumes; Attachment C fill and checks; supporting evidence packet (index; redaction deferred, above); metadata scrub and final gate. (Section 9 and the emails are deferred, above.)

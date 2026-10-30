@@ -180,6 +180,8 @@ try:
     d = {"body": {"content": [_par(1, "Plain"), _par(7, "First", bullet={"listId": "k"}), _par(14, "Second", suggestedBulletChange={"bullet": {"listId": "k"}})]}}
     kinds = [b["type"] for b in sync_gdoc.parse_doc(d)["blocks"]] if "blocks" in sync_gdoc.parse_doc(d) else None
     need(kinds == ["p", "li", "li"], "pending bullet read as plain paragraph", str(kinds))
+    run("rfps-sync-gdoc", "--set-folder", "https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOpQ?usp=sharing", cwd=cap)
+    need('wip_folder = "1AbCdEfGhIjKlMnOpQ"' in (sol / "solution.toml").read_text(), "wip_folder not recorded from a link")
     print("gdoc test passed")
 finally:
     if not os.environ.get("KEEP"): shutil.rmtree(T, ignore_errors=True)

@@ -3,14 +3,14 @@ name: build-wip
 description: Create or update the shared work-in-progress response document (a Google Doc by default, or Word with --word); approved changes go in as suggestions or tracked changes so other people's edits and comments are kept
 argument-hint: [--word] [--folder <Drive link or id>] [active-solution folder or its source folder]
 disable-model-invocation: true
-allowed-tools: Bash(rfps-sync-gdoc:*), Bash(rfps-sync-docx:*), Bash(rfps-build-response:*), Bash(rfps-use-solution:*), Bash(rfps-open-items:*), Read, Write
+allowed-tools: Bash(rfps-sync-gdoc:*), Bash(rfps-set-config:*), Bash(rfps-sync-docx:*), Bash(rfps-build-response:*), Bash(rfps-use-solution:*), Bash(rfps-open-items:*), Read, Write
 ---
 
 Read `${CLAUDE_PLUGIN_ROOT}/skills/solution-guide/references/conventions.md` first; its rules (sources of truth, no invented bidder facts, evidence register, outside sources) apply to this skill.
 
 Create or update the shared WIP document for the active solution. It is created once and then never regenerated: other people comment and edit in it. Each run applies only the response text that changed, as suggestions (Google Docs) or tracked changes (Word), so their edits and comments stay.
 
-`--folder <Drive link or id>` in `$ARGUMENTS` is recorded first with `rfps-sync-gdoc --set-folder`. For Word, `wip_docx` in `solution.toml` is the path of the file; set it to put the WIP in another local or synced folder.
+`--folder <Drive link or id>` in `$ARGUMENTS` is recorded first with `rfps-set-config wip_folder`. For Word, ask where the file should go (default: next to the template in `05 Draft Response`) and record a different place with `rfps-set-config wip_docx <path>`.
 
 Which route: **Google Docs is the default.** Use Word when `$ARGUMENTS` contains `--word` or `solution.toml` has `wip_format = "docx"`; then follow "Word" below. 
 If there is no active solution, tell the user to run `/rfps:new-engagement` or `/rfps:use-solution`.
@@ -25,7 +25,7 @@ If there is no active solution, tell the user to run `/rfps:new-engagement` or `
 
 **No document yet** (`rfps-sync-gdoc --url` says none is recorded):
 1. **Start from a copy of the Google template.** If `solution.toml` has `gdoc_template` (or the user names a Google Doc to use), copy it with Drive `copy_file` (title "<solution title> - Response WIP"; it keeps the template's page setup, fonts, header and footer). If there is none, make one first with the steps of `/rfps:make-gdoc-template` (recommended: it is reusable), then copy it. Only if the user does not want a template, run `rfps-sync-gdoc --html`, read `build/gdoc-create.html`, and create the doc from it with Drive `create_file` (`contentMimeType` `text/html`); it will have Google's default look.
-2. Put the copy in the folder named by `wip_folder` in `solution.toml` (pass it as the `parentId` of `copy_file`/`create_file`). If there is none, ask for a Drive folder (a link or ID; "My Drive" is allowed) and record the answer with `rfps-sync-gdoc --set-folder <link or id>` so it is asked once. Confirm the connector's Google account is the one the user works in. Note the new file's ID.
+2. **Where it goes.** Use `wip_folder` from `solution.toml` (pass it as the `parentId` of `copy_file`/`create_file`). If there is none, ask the user for a Drive folder (a link or ID) and record it with `rfps-set-config wip_folder <link or id>` so it is asked once. If they give none, default to the capture folder's `05 Draft Response` folder in Drive (find it by title under the capture folder with `search_files`; confirm it with the user) and record that. Never create the copy in the Drive root; if no folder can be found, ask again. Confirm the connector's Google account is the one the user works in. Note the new file's ID.
 3. Read the copy with `read_doc`, save the JSON as above, and run `rfps-sync-gdoc --init <that file> --doc-id <file ID>`. It checks that every response heading is in the doc (if not, it stops and says which: see `/rfps:update-template --doc <file>`), keeps the template's own text under headings (boilerplate, forms, evaluation lines) out of the response, and records the placeholders.
 4. Continue with "Document exists" step 1 so the response text goes in as suggestions, after the template's own text.
 

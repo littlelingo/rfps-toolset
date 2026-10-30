@@ -48,6 +48,14 @@ Then, in the solicitation's source folder (the one with `01 Solicitation Docs`, 
 
 The solution is found from the current directory (a folder at or above it holding `solution.toml`), else from the `.claude/active-solution` pointer in the current project. `/rfps:use-solution <folder>` sets the pointer.
 
+## Working With Google Drive
+
+- **Files that are already in Drive** (the solicitation, past performance, the capture folder): install Google Drive for Desktop and keep it in **Stream files** mode (not Mirror). The capture folder then appears in Finder and files download only when the tools read them; nothing is copied by hand. Leave "Back up folders" (Desktop, Documents) off so nothing else on your machine goes to Drive.
+- **Machine-local working files:** `rfps-set-config cache_dir ~/rfps-cache` keeps text caches and scratch builds on your machine, outside Drive. `/rfps:start` asks for it when the capture folder is on a Drive mount.
+- **Where outputs go:** `/rfps:start`, `/rfps:build-wip` and `/rfps:build-final` ask where the shared WIP and the FINAL copy should go and use the defaults (the capture's `05 Draft Response` and `11 Final Submission`, never the Drive root) only when you give none. `rfps-set-config` records the answers.
+- **Google-format files** (`.gdoc`, `.gsheet`, `.gslides`) on the mount are pointers only the Drive connector can read; the scan lists them and Claude reads them after you confirm.
+- **Without Drive for Desktop,** Claude can list and read Drive folders through the connector (every subfolder, after one summary and confirmation), but Drive downloads of Word templates arrive as base64 in the chat; use `rfps-decode-b64` on a saved result, or download the file into the folder yourself.
+
 ## Skills
 
 | Skill | Purpose |

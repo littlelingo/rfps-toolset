@@ -17,6 +17,7 @@ Usage: rfps-scan-sources                                   scan local sources, e
                                                            reports subfolders not yet listed and shortcuts to resolve
        rfps-scan-sources --drive LABEL --ingest            after Claude saved each pending file's text as
                                                            .state/text/past-performance/LABEL/<id>.txt, record them as scanned
+       rfps-scan-sources --text-dir [LABEL]                print the folder where extracted text is kept (cache_dir in solution.toml, else .state/)
        rfps-scan-sources --digest                          rebuild the digest only
 """
 import argparse, collections, datetime, hashlib, json, os, pathlib, re, sys, tomllib
@@ -26,11 +27,17 @@ import add_source as asrc
 import extract_docs as ex
 
 SUFFIXES = set(ex.H)
+NATIVE = {".gdoc", ".gsheet", ".gslides"}   # Google Drive for Desktop shows Google-format files as small pointers that only the connector can read
+MOUNT = re.compile(r"CloudStorage/GoogleDrive|/Google Drive/")
 
 def state_file(sol): return sol / ".state" / "pp-scan.json"
 def load_state(sol): return json.loads(state_file(sol).read_text()) if state_file(sol).is_file() else {}
 def save_state(sol, st): state_file(sol).parent.mkdir(parents=True, exist_ok=True); state_file(sol).write_text(json.dumps(st, indent=1) + "\n")
-def text_dir(sol, label): return sol / ".state" / "text" / "past-performance" / label
+def cache_root(sol):
+    """Where extracted text is kept: cache_dir/<slug> on this machine when solution.toml sets cache_dir (so it never syncs to Drive), else .state/."""
+    cfg = tomllib.loads((sol / "solution.toml").read_text())
+    return (pathlib.Path(cfg["cache_dir"]) / cfg.get("slug", sol.parent.name)) if cfg.get("cache_dir") else sol / ".state"
+def text_dir(sol, label): return cache_root(sol) / "text" / "past-performance" / label
 def sources(sol):
     f = sol / "past-performance" / "sources.toml"
     return tomllib.loads(f.read_text()).get("source", []) if f.is_file() and f.read_text().strip() else []
@@ -53,10 +60,26 @@ def walk(root):
 
 def scan_local(sol, src, st):
     label, root = src.get("label", "source"), asrc.resolve(src["path"], sol)
-    if not root.exists(): return [f"{label}: location not found: {root}"], 0, 0
+    if not root.exists():
+        hint = " - the Google Drive folder is not mounted or is offline; check Drive for Desktop (Stream files mode)" if MOUNT.search(str(root)) else ""
+        return [f"{label}: location not found: {root}{hint}"], 0, 0
     prev = st.setdefault(label, {}); out, new, changed = [], 0, 0
     files, folders, deepest = ([root], 0, 0) if root.is_file() else walk(root)
-    skipped = collections.Counter(p.suffix.lower() or "(no extension)" for p in files if p.suffix.lower() not in SUFFIXES and not p.name.startswith(("~$", ".")))
+    stubs = [p for p in files if p.suffix.lower() in NATIVE]
+    skipped = collections.Counter(p.suffix.lower() or "(no extension)" for p in files if p.suffix.lower() not in SUFFIXES | NATIVE and not p.name.startswith(("~$", ".")))
+    if stubs:
+        pend = []
+        for p in stubs:
+            try: did = json.loads(p.read_text()).get("doc_id") or json.loads(p.read_text()).get("id")
+            except (ValueError, OSError): did = None
+            if not did: out.append(f"{label}: could not read the Drive pointer {p.name}"); continue
+            rel = str(p.relative_to(root)); prev_rec = prev.get(did)
+            if prev_rec and prev_rec.get("modified") == str(int(p.stat().st_mtime)): continue
+            pend.append(dict(id=did, title=rel, mimeType="application/vnd.google-apps." + p.suffix[2:], modified=str(int(p.stat().st_mtime)), size="", status="changed" if prev_rec else "new"))
+        if pend:
+            pf = sol / ".state" / "pp-drive-pending.json"; allp = json.loads(pf.read_text()) if pf.is_file() else {}
+            allp[label] = list({x["id"]: x for x in allp.get(label, []) + pend}.values()); pf.parent.mkdir(parents=True, exist_ok=True); pf.write_text(json.dumps(allp, indent=1) + "\n")
+            out.append(f"{label}: {len(pend)} Google-format file(s) read only through the Drive connector (ask the user, then read each with read_file_content and save its text as {text_dir(sol, label)}/<id>.txt, then run rfps-scan-sources --drive {label} --ingest): " + "; ".join(f"{x['title']} ({x['id']})" for x in pend))
     out.append(f"{label}: looked at {len(files)} file(s) in {folders} folder(s), down to level {deepest}") if not root.is_file() else None
     if skipped: out.append(f"{label}: NOT READ (unsupported type): " + ", ".join(f"{n} x {e}" for e, n in skipped.most_common()) + " - convert or tell the user so nothing is missed")
     seen = set()
@@ -118,16 +141,19 @@ def drive_compare(sol, label, listing, st):
         if was and was.get("modified") == it.get("modifiedTime"): same += 1; continue
         pend.append(dict(id=fid, title=it.get("path") or it.get("title", fid), mimeType=it.get("mimeType", ""), modified=it.get("modifiedTime", ""), size=it.get("size", ""), status="changed" if was else "new"))
     gone = [v.get("title", k) for k, v in prev.items() if k not in {i["id"] for i in listing} and v.get("status") != "removed"]
-    f = sol / ".state" / "pp-drive-pending.json"; f.parent.mkdir(parents=True, exist_ok=True); f.write_text(json.dumps({label: pend}, indent=1) + "\n")
+    f = sol / ".state" / "pp-drive-pending.json"; f.parent.mkdir(parents=True, exist_ok=True); allp = json.loads(f.read_text()) if f.is_file() else {}; allp[label] = pend; f.write_text(json.dumps(allp, indent=1) + "\n")
     return pend, same, gone
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--drive"); ap.add_argument("--listing"); ap.add_argument("--ingest", action="store_true")
-    ap.add_argument("--digest", action="store_true"); ap.add_argument("--solution", default=None)
+    ap.add_argument("--digest", action="store_true"); ap.add_argument("--text-dir", nargs="?", const="", default=None, metavar="LABEL"); ap.add_argument("--solution", default=None)
     a = ap.parse_args()
     sol = br.resolve_solution(a.solution or None); st = load_state(sol)
     if a.digest: print(f"Wrote {digest(sol)}"); sys.exit(0)
+    if a.text_dir is not None:
+        d = text_dir(sol, a.text_dir) if a.text_dir else cache_root(sol) / "text"
+        d.mkdir(parents=True, exist_ok=True); print(d); sys.exit(0)
     if a.drive and a.listing:
         pend, same, gone = drive_compare(sol, a.drive, json.loads(pathlib.Path(a.listing).read_text()), st)
         print(f"{a.drive}: {len(pend)} new or changed file(s), {same} unchanged" + (f", {len(gone)} no longer listed" if gone else ""))

@@ -22,6 +22,10 @@ mkdir -p past-performance/a/b/c/d && printf 'Deep note 2024 approved' > past-per
 out=$(rfps-scan-sources); echo "$out" | grep -q "deep.txt" && echo "$out" | grep -q "level 4" && echo "$out" | grep -q "NOT READ.*\.doc" || { echo "FAIL: deep folder or unsupported type not reported: $out" >&2; exit 1; }
 rm -rf past-performance/a
 rfps-scan-sources >/dev/null
+printf '{"doc_id":"1AbCdEfGhIjKlMn","email":"x"}' > "past-performance/Case Study.gdoc"
+out=$(rfps-scan-sources); echo "$out" | grep -q "1 Google-format file" && echo "$out" | grep -q "1AbCdEfGhIjKlMn" || { echo "FAIL: Google pointer file not routed to the connector: $out" >&2; exit 1; }
+out=$(rfps-scan-sources); echo "$out" | grep -c "1AbCdEfGhIjKlMn" | grep -q "^1$" || { echo "FAIL: pointer listed twice" >&2; exit 1; }
+rm "past-performance/Case Study.gdoc"
 uv run --quiet --with python-docx python3 - past-performance/*.docx <<'PY'
 import sys, docx
 d = docx.Document(sys.argv[1]); d.add_paragraph("Update 2026: added a new reference."); d.save(sys.argv[1])
@@ -161,4 +165,8 @@ PY
 (cd "$T/gen" && out=$(rfps-update-template) && echo "$out" | grep -q "renamed: 'Management Plan' -> 'Management Approach'" && echo "$out" | grep -q "new in the template: Risk Management" || { echo "FAIL: update-template report" >&2; exit 1; }
  echo "$out" | grep -q "possibly renamed (same place, different wording): 'Executive Summary' -> 'Overview of the Response'" || { echo "FAIL: positional rename not suggested" >&2; echo "$out" >&2; exit 1; }
  rfps-update-template --apply --rename-all >/dev/null && out=$(rfps-update-template) && echo "$out" | grep -q "Everything matches" || { echo "FAIL: update-template apply" >&2; echo "$out" >&2; exit 1; })
+rfps-set-config cache_dir "$T/cache" | grep -q "build_dir" || { echo "FAIL: cache_dir not set" >&2; exit 1; }
+rfps-scan-sources --text-dir notes | grep -q "$T/cache/" || { echo "FAIL: text dir not under the cache" >&2; exit 1; }
+rfps-set-config wip_folder "https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOpQ" | grep -q "1AbCdEfGhIjKlMnOpQ" || { echo "FAIL: wip_folder" >&2; exit 1; }
+if rfps-set-config cache_dir "/Users/x/Library/CloudStorage/GoogleDrive-a/My Drive/c" >/dev/null 2>&1; then echo "FAIL: cache inside Drive accepted" >&2; exit 1; fi
 echo "smoke test passed"

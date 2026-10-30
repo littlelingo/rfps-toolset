@@ -20,7 +20,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/solution-guide/references/conventions.md` fir
   - Case study notes or drafts
   - Raw notes, emails, or meeting summaries from the capture team
 - Files may be `.md`, `.txt`, `.pdf`, `.docx`, `.xlsx`, `.pptx`, or pasted text. Accept whatever is provided.
-- Word, Excel, PowerPoint and PDF files are read as text. Run `rfps-extract-docs "<folder>" "<solution>/.state/text/<folder name>"` first (the same as `/rfps:extract`), then read the `.txt` copies. Do not parse the binary files by hand.
+- Word, Excel, PowerPoint and PDF files are read as text. Run `rfps-extract-docs "<folder>" "$(rfps-scan-sources --text-dir)/<folder name>"` first (the same as `/rfps:extract`), then read the `.txt` copies. Do not parse the binary files by hand.
 
 ## Outputs
 

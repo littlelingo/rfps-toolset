@@ -4,7 +4,9 @@
 
 - `[GROUNDED]` markers get a green circle icon like the other markers (`rfps-open-items --mark`); it is for scanning only and GROUNDED never appears in the open items.
 - Deep folders: `rfps-scan-sources` reports how many files and folders it looked at and how deep, names file types it could not read and files that gave no text; a Drive listing now covers every subfolder (`path`, `listed`), flags subfolders not yet listed and shortcuts to resolve, and the digest names Drive files by path.
-- `wip_folder` in `solution.toml` (set with `rfps-sync-gdoc --set-folder <link or id>`, or by `/rfps:build-wip --folder`) is the Drive folder where the shared WIP and the template copy are created; `wip_docx` already sets the Word location.
+- New `rfps-set-config`: `wip_folder` (Drive folder for the shared WIP and template copy), `wip_docx`, `final_copy_dir` and `cache_dir` (a folder on this machine for text caches and scratch builds, refused inside Drive). `/rfps:start`, `/rfps:build-wip` and `/rfps:build-final` ask for these locations and use the defaults (`05 Draft Response`, `11 Final Submission`, never the Drive root) only when none is given.
+- Drive for Desktop: the scan lists Google-format pointer files (`.gdoc`, `.gsheet`, `.gslides`) for the connector route, and says when a Drive mount is offline; `rfps-scan-sources --text-dir` prints where text is kept; README section "Working With Google Drive".
+- The Drive tree is summarized and confirmed once before reading.
 - New `rfps-decode-b64` decodes a Drive download that the app saved to a file into a real .docx/.xlsx/.pdf; skills now say never to retype base64 by hand and to ask the user to download the file when only the chat has it.
 
 ## 0.4.1 (2026-10-25)

@@ -1,6 +1,6 @@
 ---
 name: solution-guide
-description: Guides a proposal response from start to finish and answers "where are we", "what's next", "what's left", "what does section X need", "show the checklist", "mark X done". Reports color-coded status, suggests the next step as a question, and makes the individual tools easy to use on their own. Use for status, next-step, or checklist requests in natural language.
+description: Guides a proposal response from start to finish and answers "where are we", "what's next", "what's left", "what does section X need", "show the checklist", "mark X done", "how do I get started", "a colleague already started this, how do I jump in or join". Reports color-coded status, suggests the next step as a question, and makes the individual tools easy to use on their own. Use for status, next-step, checklist, getting-started or joining-a-teammate requests in natural language; it tells the user to type /rfps:start, the single entry point.
 ---
 
 # Solution guide

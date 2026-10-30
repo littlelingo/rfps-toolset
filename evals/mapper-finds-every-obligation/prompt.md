@@ -1,5 +1,5 @@
 ---
-description: Golden case. The requirements mapper must find every obligation in the sample RFP, apply the amendment, and not treat a "should" as mandatory. Key: fixtures/answer-key.toml.
+description: Golden case. The requirements mapper must find every obligation in the sample RFP, apply the amendment, and not treat a should as mandatory (answer key in fixtures/answer-key.toml).
 max_turns: 8
 allowed_tools: [Read, Glob, Grep, Skill, AskUserQuestion]
 runs: 3

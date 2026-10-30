@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 (2026-10-30)
 
 - Teamwork: `/rfps:start` is the single entry point and begins with an entry check (`references/entry.md`): no solution means start, an existing solution means join (never overwritten); new `rfps-collab`. Joining records your name (local), checks `cache_dir`, and briefs you on who is writing, claimed worklist items (now `mine by <name>`), recent changes and duplicate IDs. Write commands take a short lease (`.state/lease.json`); `rfps-register-add` re-reads the register before writing so simultaneous adds do not share an ID.
 

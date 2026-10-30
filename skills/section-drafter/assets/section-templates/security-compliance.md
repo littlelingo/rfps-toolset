@@ -12,7 +12,7 @@
 |---------------------|-----------------|----------------|-------------------|-------|----------|
 | [FedRAMP / SOC 2 / HIPAA / etc.] | [Specific RFP reference] | Authorized / In Process / Planned | [Date] | [What is covered] | [Audit report, certificate, etc.] |
 
-[GROUNDED: source] for each claimed authorization.
+[GROUNDED: E-nnn] for each claimed authorization.
 
 ## Data Handling & Privacy
 
@@ -44,7 +44,7 @@
 - Mean Time to Respond: [metric]
 - Post-incident reporting: [timeline and format]
 
-[GROUNDED: source] or [ASSERTION: rationale]
+[GROUNDED: E-nnn] or [ASSERTION: rationale]
 
 ## Vulnerability Management
 

@@ -26,7 +26,7 @@
 **Approach:** [How this component works in the context of this engagement]
 **Evidence:** [Prior implementation of this component in a similar context]
 
-[GROUNDED: source] or [ASSERTION: rationale]
+[GROUNDED: E-nnn] or [ASSERTION: rationale]
 
 ### [Component / Capability Area 2]
 

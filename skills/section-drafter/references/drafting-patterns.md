@@ -30,10 +30,10 @@ For compliance-heavy sections (security certifications, financial data, organiza
 Evidence should be woven into the narrative, not appended as footnotes. The evaluator should encounter the evidence as part of the argument, not as a separate exercise.
 
 **Pattern:**
-> [Specific claim] — as demonstrated in our [named engagement] for [named client], where [quantified outcome]. [GROUNDED: case study name]
+> [Specific claim] — as demonstrated in our [named engagement] for [named client], where [quantified outcome]. [GROUNDED: E-014]
 
 **Example:**
-> Our data migration approach preserves referential integrity across complex relational schemas. In our migration of 14 million records for the State of Oregon's benefits system, we achieved a 99.97% data accuracy rate with zero production rollbacks. [GROUNDED: Oregon DHS case study, 2023]
+> Our data migration approach preserves referential integrity across complex relational schemas. In our migration of 14 million records for the State of Oregon's benefits system, we achieved a 99.97% data accuracy rate with zero production rollbacks. [GROUNDED: E-014]
 
 ### What to Cite
 

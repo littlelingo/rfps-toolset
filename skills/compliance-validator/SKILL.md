@@ -137,7 +137,7 @@ Write `compliance-report.md` with:
 If any mandatory requirement fails compliance:
 - Mark the compliance report prominently: "BLOCKING: [count] mandatory requirements not met"
 - List blocking issues at the top of the report before the detailed table
-- The proposal assembler should not proceed until blocking issues are resolved
+- Resolve blocking issues before `/rfps:build-final`; the build does not check the report itself yet, only the pre-flight status does
 
 ## Graceful Degradation
 
@@ -159,6 +159,6 @@ If any mandatory requirement fails compliance:
 
 ## Integration with Other Skills
 
-- **Proposal Assembler** reads `compliance-report.md` before assembling — if critical failures exist, assembly should stop
-- **Compliance report** serves as the final quality gate; it is read by the assembler and by the human reviewer
+- **The status tools** (`rfps-refresh-reports`, `rfps-flow-status`, `rfps-worklist`) read `compliance-report.md` for the pre-flight status and the worklist; if critical failures exist, do not run the final build
+- **Compliance report** serves as the final quality gate; it is read by the status tools and by the human reviewer
 - This skill does not modify sections — it reports. Fixes are applied by the team or by re-running upstream skills

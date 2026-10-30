@@ -31,7 +31,7 @@ This template covers two frequently paired sections. If the RFP separates team a
 
 **Commitment:** [Full-time / % allocation / start date]
 
-[GROUNDED: resume on file] or [ASSERTION: rationale]
+[GROUNDED: E-nnn] or [ASSERTION: rationale]
 
 ## Team Composition
 
@@ -83,7 +83,7 @@ This template covers two frequently paired sections. If the RFP separates team a
 
 [How your approach delivers value. Not "we are cheap" but "our approach reduces cost through [specific mechanism]." Cite evidence from similar engagements where your approach produced cost savings.]
 
-[GROUNDED: source] or [ASSERTION: rationale]
+[GROUNDED: E-nnn] or [ASSERTION: rationale]
 
 ---
 

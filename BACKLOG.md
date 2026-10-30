@@ -2,6 +2,10 @@
 
 Deferred or agreed-but-not-built items, so they are not lost. Newest decisions first. Status: **deferred** (parked on purpose), **next** (agreed, not built), **open** (needs a decision).
 
+## Master plan
+
+The combined improvement plan (strategy, scoring, requirement integrity, submission safety, evidence and pricing) is in [docs/MASTER-PLAN.md](docs/MASTER-PLAN.md). Items there supersede the matching parked items below once scheduled. Phase 0 (marker examples, dangling references) done 2026-10-30.
+
 ## Deferred
 
 - **Sample fixture** (built 2026-10-23, CI added 2026-10-24, see `fixtures/` and `.github/workflows/ci.yml`). Still to do: extend it with a second amendment, a multi-level template and a staffing workbook.
@@ -54,7 +58,7 @@ Everything the State receives, not just the narrative. Suggested order: manifest
 ## Open
 
 - Which submission attachments cause the most pain is not yet clear (2026-10-21), so the packet ideas stay unscheduled; revisit after the first packet is assembled by hand.
-- Retire the `proposal-assembler` skill (superseded by `/rfps:build-final`)?
+- Retire the `proposal-assembler` skill: done. The skill no longer exists and the last references to it were removed (docs/MASTER-PLAN.md item 0.2).
 - Baseline commits: `active-solution` has no commit yet; this repo has uncommitted tool and command changes.
 - Regenerate the solicitation summary that was removed with the old ingest skill? (Not needed unless wanted.)
 

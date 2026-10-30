@@ -141,4 +141,4 @@ For each row, provide a recommended action:
 
 - **Section Drafter** reads `coverage-matrix.md` to determine, per section, which claims to ground, which to assert, and which to flag as gaps
 - **Compliance Validator** reads `coverage-matrix.md` to verify that mandatory requirements classified as Grounded or Assertable are actually addressed in the drafted sections
-- **Proposal Assembler** reads `coverage-matrix.md` to surface unaddressed gaps in the pre-flight checklist
+- **`rfps-refresh-reports`** recomputes the summary and the disqualifying-gap list from `coverage-matrix.md` for the pre-flight status

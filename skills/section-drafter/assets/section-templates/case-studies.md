@@ -28,8 +28,8 @@
 
 [Quantified outcomes. Every result should be a number or a verifiable fact.]
 
-- [Metric]: [Quantified result] [GROUNDED: source]
-- [Metric]: [Quantified result] [GROUNDED: source]
+- [Metric]: [Quantified result] [GROUNDED: E-nnn]
+- [Metric]: [Quantified result] [GROUNDED: E-nnn]
 - [Timeline]: [Delivered on/ahead of/behind schedule — with context]
 
 ### Client Reference

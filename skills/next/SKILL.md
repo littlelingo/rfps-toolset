@@ -18,4 +18,4 @@ Help the user take the next step without having to decide what it is.
 
 When the top item is the `markers` step, open the solution's `open-items.md` (run `rfps-open-items` first) and work through its table from the top, one marker at a time; if the response files lack the colored icons, tell the user `rfps-open-items --mark` adds them.
 
-Never look outside the selected sources (web, unlisted folders, other drives) without asking first; see CLAUDE.md. Each step stays usable on its own, outside this guided path.
+Never look outside the selected sources (web, unlisted folders, other drives) without asking first; see `skills/solution-guide/references/conventions.md`. Each step stays usable on its own, outside this guided path.

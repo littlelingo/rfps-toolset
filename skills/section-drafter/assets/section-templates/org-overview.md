@@ -23,7 +23,7 @@
 **Outcome:** [Quantified result — percentage improvement, cost savings, timeline adherence]
 **Key Parallel:** [Specific aspect that mirrors the current RFP's requirements]
 
-[GROUNDED: source] or [ASSERTION: rationale] on each factual claim.
+[GROUNDED: E-nnn] or [ASSERTION: rationale] on each factual claim.
 
 ## Organizational Capability
 

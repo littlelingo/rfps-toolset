@@ -135,4 +135,4 @@ The gap report is not a list of complaints. It is a decision tool. It tells the 
 - **Section Drafter** reads `brief.md` for vocabulary, tone, and grounding evidence
 - **Empathy Reviewer** reads `brief.md` for client vocabulary and tone signals
 - **Compliance Validator** reads `brief.md` for submission mechanics and format requirements
-- **Proposal Assembler** reads `gap-report.md` to surface unresolved issues in the pre-flight checklist
+- **The team** reads `gap-report.md` (linked from the status page) to resolve evidence gaps before drafting; no tool reads it automatically yet

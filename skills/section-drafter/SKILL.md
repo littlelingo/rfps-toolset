@@ -21,7 +21,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/solution-guide/references/conventions.md` fir
 
 ## Outputs
 
-- **`response/*.md`** - the response text, one file per Heading 1 of the response template docx, with every docx heading mirrored exactly (see CLAUDE.md). `/rfps:new-engagement` creates the files with the headings and empty bodies; the drafter writes text under the existing headings. It never renames, adds, or removes a heading: heading changes are made in the template docx and the files updated to match.
+- **`response/*.md`** - the response text, one file per Heading 1 of the response template docx, with every docx heading mirrored exactly (see `skills/solution-guide/references/conventions.md`). `/rfps:new-engagement` creates the files with the headings and empty bodies; the drafter writes text under the existing headings. It never renames, adds, or removes a heading: heading changes are made in the template docx and the files updated to match.
 
 ---
 
@@ -66,7 +66,7 @@ For each section, write prose following these rules:
 
 **Mark every claim.** Every substantive claim in the proposal must carry one of two markers:
 
-- `[GROUNDED: source]` — this claim is directly supported by evidence. Cite the evidence source (collateral file, case study, certification). Example: `[GROUNDED: Acme Corp case study, 2024]`
+- `[GROUNDED: E-nnn]` — this claim is directly supported by a row in the evidence register (`evidence/register.csv`). Cite its ID; the tools check that the ID exists and is cleared. Example: `[GROUNDED: E-014]`. A fact that is not in the register yet is not grounded: mark it `[EVIDENCE NEEDED: ...]` or `[ASSERTION: ...]` and offer `/rfps:add-past-performance`.
 
 - `[ASSERTION: rationale]` — this claim is reasonable but not directly evidenced. State why it is reasonable. Example: `[ASSERTION: standard capability for organizations of our size and maturity]`
 

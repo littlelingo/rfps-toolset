@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Teamwork: new `/rfps:join` and `rfps-collab`. `/rfps:start` and `/rfps:join` share one entry check (`references/entry.md`): no solution means start, an existing solution means join (never overwritten). Joining records your name (local), checks `cache_dir`, and briefs you on who is writing, claimed worklist items (now `mine by <name>`), recent changes and duplicate IDs. Write commands take a short lease (`.state/lease.json`); `rfps-register-add` re-reads the register before writing so simultaneous adds do not share an ID.
+
 - `[GROUNDED]` markers get a green circle icon like the other markers (`rfps-open-items --mark`); it is for scanning only and GROUNDED never appears in the open items.
 - Deep folders: `rfps-scan-sources` reports how many files and folders it looked at and how deep, names file types it could not read and files that gave no text; a Drive listing now covers every subfolder (`path`, `listed`), flags subfolders not yet listed and shortcuts to resolve, and the digest names Drive files by path.
 - New `rfps-set-config`: `wip_folder` (Drive folder for the shared WIP and template copy), `wip_docx`, `final_copy_dir` and `cache_dir` (a folder on this machine for text caches and scratch builds, refused inside Drive). `/rfps:start`, `/rfps:build-wip` and `/rfps:build-final` ask for these locations and use the defaults (`05 Draft Response`, `11 Final Submission`, never the Drive root) only when none is given.

@@ -3,7 +3,7 @@ name: resources
 description: Build or update the roster of roles and people, the State's role requirements, and the staffing workbook for the active solution
 argument-hint: [role name, or what to add, change or drop]
 disable-model-invocation: true
-allowed-tools: Bash(rfps-refresh-reports:*), Bash(rfps-staffing:*), Bash(rfps-flow-status:*), Read, Edit, Write
+allowed-tools: Bash(rfps-collab:*), Bash(rfps-refresh-reports:*), Bash(rfps-staffing:*), Bash(rfps-flow-status:*), Read, Edit, Write
 ---
 
 Read `${CLAUDE_PLUGIN_ROOT}/skills/solution-guide/references/conventions.md` first; its rules (sources of truth, no invented bidder facts, evidence register, outside sources) apply to this skill.

@@ -3,7 +3,7 @@ name: integrate
 description: Weave text the user added or edited into its section as an expert proposal writer would, shown for approval
 argument-hint: [part of a heading] or paste "add this to <section>: ..."
 disable-model-invocation: true
-allowed-tools: Bash(rfps-flow-status:*), Bash(rfps-open-items:*), Read, Edit
+allowed-tools: Bash(rfps-collab:*), Bash(rfps-flow-status:*), Bash(rfps-open-items:*), Read, Edit
 ---
 
 Read `${CLAUDE_PLUGIN_ROOT}/skills/solution-guide/references/conventions.md` first; its rules (sources of truth, no invented bidder facts, evidence register, outside sources) apply to this skill.

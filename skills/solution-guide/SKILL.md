@@ -11,6 +11,7 @@ The flow is a path, not a requirement. Every step is also a skill or command a u
 - Status or "where are we": run `rfps-flow-status --table` (add `--sections` for every heading, `--detail <step id or heading text>` for one item). Show the progress line, the next three items, then the groups, with 🟢 done, 🟠 needs attention, 🔴 blocking, ⚪ not started, 🔵 skipped / not applicable. Use `--table` for the default view (progress line, a Next up table, an All steps table by group); it needs no widget. Draw the inline visual from `--json` only when the user asks and the visual tools are available.
 - "What's next": follow `/rfps:next`: explain the top item briefly, ask its question, and act only after the answer.
 - "Where do I begin" for a new solicitation with no `active-solution/`, or "what is left to fix" once a WIP exists: point to `/rfps:start` (typed-only; it runs the whole path from the documents to a first WIP) or `/rfps:walk` (typed-only; works the ranked worklist one item at a time). Tell the user to type the command.
+- "Someone else already started this" / "how do I jump in": point to `/rfps:join` (typed-only). `/rfps:start` and `/rfps:join` begin with the same entry check, so either one starts a new solution or joins the existing one.
 - "Mark X done / skip X": `rfps-flow-status --set <id> done|skip|reset` (the checkbox lives in progress.md).
 - "What does <section> need": `--detail "<section text>"` and explain what is missing and who can supply it.
 - User edits to the response: use the integrate-edits skill.

@@ -11,7 +11,7 @@ Usage: rfps-register-add --claim "..." --client X --engagement Y --date 2024 --n
                          [--clearance hold|needs-permission|do-not-use|cleared --confirm-cleared] [--basis "..."] [--notes "..."] [--ban "a;b"]
        rfps-register-add --json rows.json     a list of objects with the same fields (confirm_cleared: true per row for cleared)
 """
-import argparse, csv, datetime, json, pathlib, re, sys
+import argparse, csv, datetime, json, os, pathlib, re, sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import build_response as br
 
@@ -19,7 +19,16 @@ COLUMNS = ["id", "claim", "client", "engagement", "date", "numbers", "source", "
 CLEARANCES = ["hold", "needs-permission", "do-not-use", "cleared"]
 
 def add_rows(path, rows):
-    path = pathlib.Path(path); existing = []
+    """Add rows with fresh IDs. If the register changed on disk between reading and writing (another person added rows), start again from the new file."""
+    path = pathlib.Path(path)
+    for _ in range(5):
+        before = (path.stat().st_mtime_ns, path.stat().st_size) if path.is_file() else None
+        made = _add_rows(path, rows, before)
+        if made is not None: return made
+    raise SystemExit("the register keeps changing under us (someone else is adding rows); try again in a moment")
+
+def _add_rows(path, rows, before):
+    existing = []
     if path.is_file():
         with open(path, newline="") as fh: existing = list(csv.DictReader(fh))
     top = max([int(m.group(1)) for r in existing if (m := re.match(r"E-(\d+)$", (r.get("id") or "").strip()))] or [0])
@@ -33,8 +42,11 @@ def add_rows(path, rows):
         top += 1; rid = f"E-{top:03d}"
         row = {c: (r.get(c) or "") for c in COLUMNS}; row.update(id=rid, clearance=clearance, verified=r.get("verified") or datetime.date.today().isoformat())
         existing.append(row); made.append(rid)
-    with open(path, "w", newline="") as fh:
+    tmp = path.with_name(path.name + ".tmp")
+    with open(tmp, "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=COLUMNS, lineterminator="\n"); w.writeheader(); w.writerows({c: r.get(c, "") for c in COLUMNS} for r in existing)
+    if before != ((path.stat().st_mtime_ns, path.stat().st_size) if path.is_file() else None): tmp.unlink(); return None
+    os.replace(tmp, path)
     return made
 
 if __name__ == "__main__":

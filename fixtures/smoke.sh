@@ -169,4 +169,18 @@ rfps-set-config cache_dir "$T/cache" | grep -q "build_dir" || { echo "FAIL: cach
 rfps-scan-sources --text-dir notes | grep -q "$T/cache/" || { echo "FAIL: text dir not under the cache" >&2; exit 1; }
 rfps-set-config wip_folder "https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOpQ" | grep -q "1AbCdEfGhIjKlMnOpQ" || { echo "FAIL: wip_folder" >&2; exit 1; }
 if rfps-set-config cache_dir "/Users/x/Library/CloudStorage/GoogleDrive-a/My Drive/c" >/dev/null 2>&1; then echo "FAIL: cache inside Drive accepted" >&2; exit 1; fi
+# collaboration: entry check, names, lease, claims, duplicate IDs
+export HOME="$T/home"; mkdir -p "$HOME"
+rfps-collab --resolve "$T/capture" | grep -q '"state": "found"' || { echo "FAIL: existing solution not found by the entry check" >&2; exit 1; }
+mkdir -p "$T/empty" && rfps-collab --resolve "$T/empty" | grep -q '"state": "none"' || { echo "FAIL: empty folder should resolve to none" >&2; exit 1; }
+RFPS_USER=Ann rfps-collab --lease acquire --op build-wip >/dev/null
+if RFPS_USER=Bob rfps-collab --lease acquire --op pull-wip >/dev/null 2>&1; then echo "FAIL: a second person took a live lease" >&2; exit 1; fi
+RFPS_USER=Bob rfps-collab --lease acquire --force >/dev/null; RFPS_USER=Bob rfps-collab --lease release >/dev/null
+rfps-collab --lease status | grep -q "no one" || { echo "FAIL: lease not released" >&2; exit 1; }
+rfps-collab --whoami --set "Clint" >/dev/null; [ "$(rfps-collab --whoami)" = "Clint" ] || { echo "FAIL: name not kept" >&2; exit 1; }
+NID=$(rfps-worklist --next | python3 -c "import json,sys; print(json.load(sys.stdin)[0]['id'])")
+rfps-worklist --set "$NID" mine >/dev/null; rfps-worklist --table | grep -q "mine by Clint" || { echo "FAIL: claim lacks the name" >&2; exit 1; }
+rfps-collab --briefing | grep -q "1 by Clint" || { echo "FAIL: briefing lacks claims" >&2; exit 1; }
+printf 'E-001,dup,c,,,,,hold,,,,,\n' >> active-solution/evidence/register.csv
+rfps-collab --briefing | grep -q "DUPLICATE IDS" || { echo "FAIL: duplicate ids not reported" >&2; exit 1; }
 echo "smoke test passed"

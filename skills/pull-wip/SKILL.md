@@ -2,7 +2,7 @@
 name: pull-wip
 description: Bring edits and comments that other people made in the shared WIP document (Google Doc by default, or Word with --word) back into response/*.md, shown for approval first
 argument-hint: [--word] [section heading]
-allowed-tools: Bash(rfps-sync-gdoc:*), Bash(rfps-sync-docx:*), Bash(rfps-open-items:*), Bash(rfps-flow-status:*), Read, Write, Edit
+allowed-tools: Bash(rfps-collab:*), Bash(rfps-sync-gdoc:*), Bash(rfps-sync-docx:*), Bash(rfps-open-items:*), Bash(rfps-flow-status:*), Read, Write, Edit
 ---
 
 Read `${CLAUDE_PLUGIN_ROOT}/skills/solution-guide/references/conventions.md` first; its rules (sources of truth, no invented bidder facts, evidence register, outside sources) apply to this skill.

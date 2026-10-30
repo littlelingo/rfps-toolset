@@ -2,7 +2,7 @@
 name: add-past-performance
 description: List where the bidder's past-performance material lives (local folders or a Google Drive folder, several at once), scan for new or changed files, write a digest, and propose evidence register rows for approval - never cleared on their own
 argument-hint: <folder or Drive folder> [more folders ...]
-allowed-tools: Bash(rfps-add-source:*), Bash(rfps-set-config:*), Bash(rfps-scan-sources:*), Bash(rfps-register-add:*), Bash(rfps-extract-docs:*), Bash(rfps-flow-status:*), Bash(mkdir -p:*), Read, Write
+allowed-tools: Bash(rfps-collab:*), Bash(rfps-add-source:*), Bash(rfps-set-config:*), Bash(rfps-scan-sources:*), Bash(rfps-register-add:*), Bash(rfps-extract-docs:*), Bash(rfps-flow-status:*), Bash(mkdir -p:*), Read, Write
 ---
 
 Read `${CLAUDE_PLUGIN_ROOT}/skills/solution-guide/references/conventions.md` first; its rules (no invented bidder facts, the evidence register, outside sources) apply here.

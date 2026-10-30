@@ -3,7 +3,7 @@ name: build-wip
 description: Create or update the shared work-in-progress response document (a Google Doc by default, or Word with --word); approved changes go in as suggestions or tracked changes so other people's edits and comments are kept
 argument-hint: [--word] [--folder <Drive link or id>] [active-solution folder or its source folder]
 disable-model-invocation: true
-allowed-tools: Bash(rfps-sync-gdoc:*), Bash(rfps-set-config:*), Bash(rfps-sync-docx:*), Bash(rfps-build-response:*), Bash(rfps-use-solution:*), Bash(rfps-open-items:*), Read, Write
+allowed-tools: Bash(rfps-collab:*), Bash(rfps-sync-gdoc:*), Bash(rfps-set-config:*), Bash(rfps-sync-docx:*), Bash(rfps-build-response:*), Bash(rfps-use-solution:*), Bash(rfps-open-items:*), Read, Write
 ---
 
 Read `${CLAUDE_PLUGIN_ROOT}/skills/solution-guide/references/conventions.md` first; its rules (sources of truth, no invented bidder facts, evidence register, outside sources) apply to this skill.

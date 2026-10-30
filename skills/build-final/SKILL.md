@@ -3,7 +3,7 @@ name: build-final
 description: Finalize and publish the response docx as a new copy (scaffold lines and grounded/assertion markers stripped; copied to 11 Final Submission; refuses while decisions, placeholders, or uncleared evidence remain)
 argument-hint: [active-solution folder or its source folder] [--force]
 disable-model-invocation: true
-allowed-tools: Bash(rfps-build-response:*), Bash(rfps-set-config:*), Bash(rfps-use-solution:*), Read
+allowed-tools: Bash(rfps-collab:*), Bash(rfps-build-response:*), Bash(rfps-set-config:*), Bash(rfps-use-solution:*), Read
 ---
 
 Read `${CLAUDE_PLUGIN_ROOT}/skills/solution-guide/references/conventions.md` first; its rules (sources of truth, no invented bidder facts, evidence register, outside sources) apply to this skill.

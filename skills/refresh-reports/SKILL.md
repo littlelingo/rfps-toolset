@@ -2,7 +2,7 @@
 name: refresh-reports
 description: Recompute the derived blocks in coverage-matrix.md, compliance-report.md and resource-plan.md (counts, pre-flight status, blocking list, page estimates, automated checks)
 argument-hint: [active-solution folder or its source folder]
-allowed-tools: Bash(rfps-refresh-reports:*), Read
+allowed-tools: Bash(rfps-collab:*), Bash(rfps-refresh-reports:*), Read
 ---
 
 Read `${CLAUDE_PLUGIN_ROOT}/skills/solution-guide/references/conventions.md` first; its rules (sources of truth, no invented bidder facts, evidence register, outside sources) apply to this skill.

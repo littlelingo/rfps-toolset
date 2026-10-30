@@ -3,7 +3,7 @@ name: walk
 description: Walk the ranked worklist of gaps, decisions, evidence needs and weak spots one item at a time - the tools address it, the user addresses it, or it is skipped
 argument-hint: [item id or kind]
 disable-model-invocation: true
-allowed-tools: Bash(rfps-worklist:*), Bash(rfps-open-items:*), Bash(rfps-refresh-reports:*), Bash(rfps-flow-status:*), Bash(rfps-register-add:*), Bash(rfps-sync-gdoc:*), Bash(rfps-sync-docx:*), Read, Write, Edit, Skill, AskUserQuestion
+allowed-tools: Bash(rfps-collab:*), Bash(rfps-worklist:*), Bash(rfps-open-items:*), Bash(rfps-refresh-reports:*), Bash(rfps-flow-status:*), Bash(rfps-register-add:*), Bash(rfps-sync-gdoc:*), Bash(rfps-sync-docx:*), Read, Write, Edit, Skill, AskUserQuestion
 ---
 
 Read `${CLAUDE_PLUGIN_ROOT}/skills/solution-guide/references/conventions.md` first; its rules (sources of truth, no invented bidder facts, evidence register, outside sources) apply to this skill.

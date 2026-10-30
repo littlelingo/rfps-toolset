@@ -54,7 +54,8 @@ def marker_id(x): return key("m", x["kind"], x["section"], x["text"][:60])
 def choice_of(sol, x):
     """The user's recorded choice for a marker found by open_items.scan ('' when none); lets the other views show it."""
     c = load_state(sol).get(marker_id(x), {})
-    return c.get("status", "") if c.get("status") != "open" else ""
+    if c.get("status", "open") == "open": return ""
+    return c["status"] + (f" by {c['by']}" if c.get("by") else "")
 
 def collect(sol, cfg):
     items = []
@@ -97,14 +98,14 @@ def save_state(sol, st):
 
 def open_list(sol, cfg):
     st = load_state(sol); items = collect(sol, cfg)
-    for i in items: i.update(status=st.get(i["id"], {}).get("status", "open"), note=st.get(i["id"], {}).get("note", ""))
+    for i in items: i.update(status=st.get(i["id"], {}).get("status", "open"), note=st.get(i["id"], {}).get("note", ""), by=st.get(i["id"], {}).get("by", ""))
     return items
 
 def table(items):
     out = ["| Rank | ID | Kind | Who | Where | What | Suggested next move | Status |", "|---|---|---|---|---|---|---|---|"]
     for i in items:
         t = i["text"].replace("|", "/"); t = t if len(t) <= 160 else t[:157] + "..."
-        out.append(f"| {i['rank']} | {i['id']} | {i['kind']} | {i['who']} | {i['where']} | {t} | {i['action'].replace('|', '/')} | {i['status']}{(' - ' + i['note']) if i['note'] else ''} |")
+        out.append(f"| {i['rank']} | {i['id']} | {i['kind']} | {i['who']} | {i['where']} | {t} | {i['action'].replace('|', '/')} | {i['status']}{(' by ' + i['by']) if i['by'] else ''}{(' - ' + i['note']) if i['note'] else ''} |")
     return "\n".join(out)
 
 def main():
@@ -125,7 +126,8 @@ def main():
             r = subprocess.run([fs, "--solution", str(sol), "--set", i, {"addressed": "done", "skipped": "skip", "open": "reset"}[s]], capture_output=True, text=True)
             print((r.stdout + r.stderr).strip()); sys.exit(r.returncode)
         if i not in {x["id"] for x in collect(sol, cfg)}: sys.exit(f"no item {i} in the current list")
-        st = load_state(sol); st[i] = {"status": s, "note": a.note}; save_state(sol, st)
+        import collab
+        st = load_state(sol); st[i] = {"status": s, "note": a.note, **({"by": collab.whoami()} if collab.whoami() else {})}; save_state(sol, st)
     items = open_list(sol, cfg); todo = [i for i in items if i["status"] == "open"]
     if a.json: print(json.dumps(items, indent=1))
     elif a.table: print(table(items))

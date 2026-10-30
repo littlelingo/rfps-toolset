@@ -56,10 +56,17 @@ The solution is found from the current directory (a folder at or above it holdin
 - **Google-format files** (`.gdoc`, `.gsheet`, `.gslides`) on the mount are pointers only the Drive connector can read; the scan lists them and Claude reads them after you confirm.
 - **Without Drive for Desktop,** Claude can list and read Drive folders through the connector (every subfolder, after one summary and confirmation), but Drive downloads of Word templates arrive as base64 in the chat; use `rfps-decode-b64` on a saved result, or download the file into the folder yourself.
 
+## Working With a Team
+
+- **Everyone works in the shared Google Doc** (comments, suggestions); it merges live and needs nothing installed.
+- **A second person who runs the tools** shares the solution folder in Google Drive (Drive for Desktop, Stream mode) and runs `/rfps:start` or `/rfps:join` in it. Both begin with the same entry check: no solution means start one, an existing one means join it (nothing is ever overwritten). Joining sets their name (kept on their machine), a local `cache_dir`, and shows who is writing, who has claimed which worklist items, what changed lately, and any duplicate IDs.
+- **Commands that write shared files take a lease** (`.state/lease.json`) and warn if someone else holds it; a lease older than two hours counts as free. Drive does not merge two people editing the same Markdown or CSV file at the same moment, so the lease and the claims are the guard. The register re-reads itself before writing, so two people adding evidence at once do not get the same ID.
+
 ## Skills
 
 | Skill | Purpose |
 |---|---|
+| `/rfps:join` | Join a solution someone else started: set up this machine, see who is doing what, pick up work (`/rfps:start` does the same when a solution already exists) |
 | `/rfps:start` | Front-loaded run: intake, then set-up, analysis, evidence, staffing, drafting, review and the first WIP, ending in a worklist |
 | `/rfps:walk` | Walk the ranked worklist one item at a time: tools address it, you address it, or skip |
 | `/rfps:new-engagement` | Start a solicitation: create `active-solution/` |
@@ -89,7 +96,7 @@ The solution is found from the current directory (a folder at or above it holdin
 
 ## Terminal Tools
 
-The `rfps-*` commands in `bin/` are on the PATH while the plugin is enabled: `rfps-flow-status`, `rfps-build-response`, `rfps-new-engagement`, `rfps-refresh-reports`, `rfps-open-items`, `rfps-worklist`, `rfps-decode-b64`, `rfps-staffing`, `rfps-sync-gdoc`, `rfps-sync-docx`, `rfps-open-doc`, `rfps-extract-docs`, `rfps-add-source`, `rfps-file-audit`, `rfps-status-page`, `rfps-use-solution` and `rfps-list-tools`. Run `/rfps:help` for what each is for.
+The `rfps-*` commands in `bin/` are on the PATH while the plugin is enabled: `rfps-flow-status`, `rfps-build-response`, `rfps-new-engagement`, `rfps-refresh-reports`, `rfps-open-items`, `rfps-worklist`, `rfps-collab`, `rfps-set-config`, `rfps-decode-b64`, `rfps-staffing`, `rfps-sync-gdoc`, `rfps-sync-docx`, `rfps-open-doc`, `rfps-extract-docs`, `rfps-add-source`, `rfps-file-audit`, `rfps-status-page`, `rfps-use-solution` and `rfps-list-tools`. Run `/rfps:help` for what each is for.
 
 ## Status Pane
 

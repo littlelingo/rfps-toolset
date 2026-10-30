@@ -54,6 +54,8 @@ Size: S under a day, M a few days, L about a week or more. Each item states its 
 | 1.3 | **Quote verification** inside `rfps-refresh-reports`: every quoted RFP phrase in the matrix and compliance report must appear verbatim in extracted text; otherwise a derived "unverified quote" warning | S | A planted paraphrase is flagged |
 | 1.4 | Wire 1.2 and 1.3 into `refresh-reports` autochecks and the flow's `requirements` step so "requirements recorded" is not green while unmapped obligations remain | S | `flow_status` shows the attention state |
 
+Status (2026-10-30): built. 1.2 is `rfps-sweep` (`tools/sweep.py`, helpers in `tools/solicit_text.py`, skill `/rfps:sweep`); 1.3 and the sweep both show as automated checks in `compliance-report.md`; 1.4 turns the `requirements` flow step orange when extracted solicitation text has a mandatory obligation with no row. 1.1 is `fixtures/answer-key.toml`, `fixtures/seed/coverage-matrix.md`, deterministic sweep checks in `smoke.sh`, and four model-graded cases (`mapper-finds-every-obligation`, `validator-catches-planted-failures`, `empathy-flags-planted-defects`, `drafter-marks-every-claim`). The four evals have not been run yet (model calls); run `claude plugin eval . --trust-plugin --no-publish` to record the baseline. Known limits: matching is token overlap (0.6), so a very short or heavily paraphrased row can miss or falsely match; amendments are caught only by change verbs (extended, changed, replaced, revised, deleted, amended).
+
 Why first: 1.1 makes everything after it measurable, and 1.2 and 1.3 close the silent-miss risk that sits under both the mapper and the validator.
 
 ### Phase 2: Score like an evaluator, write like a winner (weeks 4 to 7)

@@ -34,6 +34,10 @@ The coverage matrix is the drafter's decision engine. For every requirement in t
 
 ## Process
 
+### Step 0: Run the Sweep
+
+Run `rfps-sweep`. It lists every obligation sentence in the solicitation (shall, must, is required, no later than, should) and, once rows exist, which ones no row covers. Treat its list as a floor: every sentence on it ends up as a row, or as a noted decision that it is not a requirement. Quote each requirement verbatim; `rfps-refresh-reports` checks that every quote appears in the solicitation text. Re-run the sweep after mapping. The goal is no unmapped mandatory sentence.
+
 ### Step 1: Extract Explicit Requirements
 
 Re-read the RFP (not just the brief — the actual document). Extract every requirement that uses obligation language:

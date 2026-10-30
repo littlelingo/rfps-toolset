@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["python-docx", "openpyxl"]
+# dependencies = ["python-docx", "openpyxl", "pypdf", "python-pptx"]
 # ///
 """Refresh the derived parts of coverage-matrix.md, compliance-report.md and resource-plan.md.
 
@@ -18,6 +18,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import build_response as br
 import resources as rs
 import staffing as sf
+import solicit_text as st
 
 TAGS = ["ASSERTION", "EVIDENCE NEEDED", "DECISION", "OPEN", "SOLUTIONING", "GROUNDED"]
 
@@ -140,9 +141,27 @@ def refresh_compliance(sol, cfg):
         auto.append(f"| Banned phrases absent | {'Pass' if not ev['deny'] else 'Fail'} | hits: {', '.join(sorted({ph for _, ph, _ in ev['deny']})) or 'none'} |")
         auto.append(f"| Register rows not cited anywhere | Info | {', '.join(ev['unused']) or 'none'} |")
     else: auto.append("| Evidence register | Info | no register configured |")
+    try: auto += solicitation_checks(sol, cfg, rows, nrows)
+    except Exception as e: auto.append(f"| Solicitation sweep and quote check | Info | not run: {e} |")
     t = replace_block(t, "autochecks", "\n".join(auto), f.name)
     f.write_text(t)
     return f"compliance-report.md: {N} checks ({st['Pass']} pass, {st['Fail']} fail, {st['Partial']} partial, {st['Ambiguous']} ambiguous, {st['N/A']} n/a); {status}; {len(blocking)} blocking" + (("; WARN " + "; ".join(warn)) if warn else "")
+
+def solicitation_checks(sol, cfg, comp_rows, narr_rows):
+    """Table rows for the compliance report's automated checks: every obligation sentence in the solicitation has a requirement row,
+    and quoted RFP language is found verbatim in the solicitation text. Info when the solicitation text is not available."""
+    docs, note = st.load_text(sol, cfg)
+    if not docs: return [f"| Solicitation obligations all mapped | Info | not checked: {note} |", f"| Quoted RFP language found in the solicitation | Info | not checked: {note} |"]
+    f = sol / "coverage-matrix.md"
+    cov = {k: c[1] for k, c in rows_of(f.read_text(), r"R-\d{3}", 9, []).items()} if f.is_file() else {}
+    chk = {k: c[1] for k, c in list(comp_rows.items()) + list(narr_rows.items())}
+    res = st.sweep(docs, {**cov, **chk})
+    un = [r for r in res if not r["mapped"]]; um = [r for r in un if r["cls"] == "mandatory"]
+    show = "; ".join(f"{r['where'] or r['file']}: {r['text'][:70].replace('|', '/')}" for r in um[:5]) + (" ..." if len(um) > 5 else "")
+    out = [f"| Solicitation obligations all mapped | {'Pass' if not un else ('Open' if um else 'Info')} | {len(res)} obligation sentence(s) in {len(docs)} file(s); {len(un)} with no requirement row ({len(um)} mandatory){': ' + show if um else ''}. Run rfps-sweep for the list. |"]
+    badc = st.unverified_quotes(cov, docs); badk = st.unverified_quotes(chk, docs, quoted_only=True)
+    out.append(f"| Quoted RFP language found in the solicitation | {'Pass' if not (badc or badk) else 'Open'} | {len(cov)} matrix row(s), {len(chk)} check row(s); not found verbatim: {', '.join(badc + badk) or 'none'}. Source: {note}. |")
+    return out
 
 def refresh_resources(sol, cfg):
     f = sol / "resource-plan.md"

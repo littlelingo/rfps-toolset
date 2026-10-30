@@ -22,6 +22,7 @@ import argparse, datetime, difflib, json, pathlib, re, sys, tomllib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import build_response as br
 import refresh_reports as rr
+import solicit_text as sol_txt
 import docx
 
 ICON = {"done": "🟢", "attention": "🟠", "blocking": "🔴", "todo": "⚪", "skipped": "🔵"}
@@ -121,8 +122,15 @@ def d_brief_exists(c):
     f = c.sol / "brief.md"; return ("done", "brief.md present") if f.is_file() and f.stat().st_size > 300 else ("todo", "brief.md not written yet")
 def d_requirements_recorded(c):
     f = c.sol / "coverage-matrix.md"
-    n = len(rr.rows_of(f.read_text(), r"R-\d{3}", 9, [])) if f.is_file() else 0
-    return ("done", f"{n} requirements recorded") if n else ("todo", "coverage matrix has no rows")
+    rows = rr.rows_of(f.read_text(), r"R-\d{3}", 9, []) if f.is_file() else {}
+    n = len(rows)
+    if not n: return "todo", "coverage matrix has no rows"
+    try:   # cheap deterministic backstop: obligation sentences in the extracted solicitation text that no row covers (see rfps-sweep)
+        docs, _ = sol_txt.load_text(c.sol, c.cfg, live=False)
+        un = [r for r in sol_txt.sweep(docs, {k: v[1] for k, v in rows.items()}) if not r["mapped"] and r["cls"] == "mandatory"] if docs else []
+    except Exception: un = []
+    if un: return "attention", f"{n} requirements recorded, but {len(un)} mandatory obligation sentence(s) in the solicitation have no row (run rfps-sweep)"
+    return "done", f"{n} requirements recorded"
 def d_pp_sources(c):
     f = c.sol / "past-performance" / "sources.toml"
     n = len(tomllib.loads(f.read_text()).get("source", [])) if f.is_file() else 0

@@ -1,0 +1,65 @@
+# Answer key for the sample solicitation (RFP DPW-2026-017 and Amendment 1).
+# What a correct requirements pass must find. Used by smoke.sh (deterministic: rfps-sweep and the quote check)
+# and by the golden evals in evals/ (model-graded). Edit this file together with fixtures/build_sample.py.
+
+# Obligation sentences. `quote` is a distinctive verbatim fragment of the sentence in the solicitation text.
+[[obligation]]
+id = "O-01"
+quote = "web portal that lets garage supervisors schedule, reschedule and cancel"
+class = "mandatory"
+
+[[obligation]]
+id = "O-02"
+quote = "migrate the County's existing maintenance history"
+class = "mandatory"
+
+[[obligation]]
+id = "O-03"
+quote = "email reminder to the responsible driver at least 3 days"
+class = "mandatory"
+
+[[obligation]]
+id = "O-04"
+quote = "WCAG 2.1 AA accessibility"
+class = "mandatory"
+
+[[obligation]]
+id = "O-05"
+quote = "monthly utilization report"
+class = "preferred"
+
+[[obligation]]
+id = "O-06"
+quote = "Project Manager as Key Personnel"
+class = "mandatory"
+
+[[obligation]]
+id = "O-07"
+quote = "Go-live is required within 6 months"
+class = "mandatory"
+
+[[obligation]]
+id = "O-08"
+quote = "Proposals are due 2026-12-01"
+class = "mandatory"
+
+[[obligation]]
+id = "O-09"
+quote = "shall not exceed 10 pages"
+class = "mandatory"
+
+[[obligation]]
+id = "O-10"
+quote = "Questions are due 2026-11-10"
+class = "mandatory"
+
+[[obligation]]
+id = "O-11"
+quote = "go-live is extended from 6 months to 7 months"
+class = "mandatory"
+
+# Facts the golden evals rely on.
+[facts]
+page_limit = 10
+amendment_overrides = "Amendment 1 extends go-live from 6 to 7 months and makes SMS reminders optional"
+uncleared_evidence = "E-003"

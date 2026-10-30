@@ -49,6 +49,32 @@ rfps-register-add --claim "Second" --client c --clearance cleared --confirm-clea
 : > active-solution/evidence/register.csv && cp "$HERE/seed/register.csv" active-solution/evidence/register.csv   # the seed register for the rest of this script
 cp "$HERE"/seed/response/*.md active-solution/response/
 cp "$HERE/seed/register.csv" active-solution/evidence/register.csv
+# requirement sweep against the answer key: with no requirement rows every obligation is unmapped, and the sweep finds exactly the keyed ones
+rfps-sweep --json > "$T/sweep.json"
+uv run --quiet python3 - "$HERE/answer-key.toml" "$T/sweep.json" <<'PY'
+import json, sys, tomllib
+key = tomllib.load(open(sys.argv[1], "rb"))["obligation"]; got = json.load(open(sys.argv[2]))["unmapped"]
+miss = [k["id"] for k in key if not any(k["quote"].lower() in g["text"].lower() and g["cls"] == k["class"] for g in got)]
+extra = [g["text"][:60] for g in got if not any(k["quote"].lower() in g["text"].lower() for k in key)]
+sys.exit(f"sweep missed {miss}; sweep found unkeyed {extra}" if miss or extra else 0)
+PY
+if rfps-sweep --check >/dev/null 2>&1; then echo "FAIL: sweep --check passed with no requirement rows" >&2; exit 1; fi
+cp active-solution/coverage-matrix.md "$T/cm-empty.md"   # restored after the sweep checks so the worklist checks below start from an empty matrix
+cp "$HERE/seed/coverage-matrix.md" active-solution/coverage-matrix.md
+rfps-sweep | grep -q "11 obligation sentence(s) in 2 file(s); 11 covered by a requirement row, 0 unmapped" || { echo "FAIL: the seed matrix should cover every obligation" >&2; rfps-sweep >&2; exit 1; }
+rfps-sweep --check >/dev/null
+rfps-refresh-reports --solution >/dev/null
+grep -q "Solicitation obligations all mapped | Pass" active-solution/compliance-report.md && grep -q "Quoted RFP language found in the solicitation | Pass" active-solution/compliance-report.md || { echo "FAIL: autochecks for the seed matrix should pass" >&2; grep -n "Solicitation obligations\|Quoted RFP" active-solution/compliance-report.md >&2; exit 1; }
+# a dropped row, a paraphrased row and a misquoted row are each caught
+grep -v '^| R-009 ' active-solution/coverage-matrix.md > "$T/cm.md" && cp active-solution/coverage-matrix.md "$T/cm-full.md" && cp "$T/cm.md" active-solution/coverage-matrix.md
+if rfps-sweep --check >/dev/null 2>&1; then echo "FAIL: a missing row for the page limit was not caught" >&2; exit 1; fi
+rfps-refresh-reports --solution >/dev/null
+grep -q "Solicitation obligations all mapped | Open.*shall not exceed 10 pages" active-solution/compliance-report.md || { echo "FAIL: refresh did not report the unmapped page limit" >&2; exit 1; }
+cp "$T/cm-full.md" active-solution/coverage-matrix.md
+sed -i.bak 's/^| R-004 | The Contractor shall meet WCAG 2.1 AA accessibility for every public and staff page\./| R-004 | The Contractor shall meet WCAG 2.2 AAA accessibility for every public and staff page./' active-solution/coverage-matrix.md && rm active-solution/coverage-matrix.md.bak
+rfps-refresh-reports --solution >/dev/null
+grep -q "Quoted RFP language found in the solicitation | Open.*not found verbatim: R-004" active-solution/compliance-report.md || { echo "FAIL: a misquoted requirement was not caught" >&2; exit 1; }
+cp "$T/cm-empty.md" active-solution/coverage-matrix.md
 rfps-refresh-reports --solution >/dev/null
 rfps-sync-docx >/dev/null
 WIP="05 Draft Response/Response Template_WIP.docx"

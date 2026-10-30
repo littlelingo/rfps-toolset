@@ -36,6 +36,8 @@ Compliance is binary in procurement. A non-compliant proposal may be eliminated 
 
 ### Step 1: Extract Compliance Requirements
 
+Run `rfps-sweep` first and make sure each mandatory obligation sentence it lists has a check row or a coverage-matrix row. `rfps-refresh-reports` repeats this as an automated check and also verifies that language quoted from the RFP appears verbatim in the solicitation text.
+
 Re-read the RFP and extract every explicit compliance requirement. These fall into categories:
 
 **Submission Format Requirements:**

@@ -11,7 +11,7 @@ the "use it when" hint and the related slash command come from the HINTS table b
 import ast, json, pathlib, re, sys
 
 ROOT = pathlib.Path(__file__).resolve().parent
-SKIP = {"resources.py"}   # helper module imported by other tools, not run on its own
+SKIP = {"resources.py", "solicit_text.py"}   # helper module imported by other tools, not run on its own
 HINTS = {
     "new_engagement.py": ("Starting a new solicitation", "/rfps:new-engagement"),
     "worklist.py": ("One ranked list of markers, requirement gaps and compliance failures left after the first WIP, with the choice made on each", "/rfps:walk"),
@@ -22,6 +22,7 @@ HINTS = {
     "flow_status.py": ("Seeing where you are, what is next, and which sections changed since last integrated", "/rfps:status, /rfps:next, /rfps:step"),
     "extract_docs.py": ("Turning PDFs, Word, Excel and PowerPoint files into searchable text for the analysis skills", "/rfps:extract"),
     "refresh_reports.py": ("After editing the coverage matrix, compliance report, roster or response, to recompute counts, status and page estimates", "/rfps:refresh-reports"),
+    "sweep.py": ("Finding obligation sentences in the solicitation (shall, must, no later than ...) that no requirement row covers, so none is missed", "/rfps:sweep"),
     "open_items.py": ("Finding every decision, open question, evidence gap and assertion in the response; add --mark to put the colored icons in the files", "/rfps:open-items"),
     "build_response.py": ("Pouring the response text into the Word template: a work-in-progress copy, or the final submission copy", "/rfps:build-wip, /rfps:build-final"),
     "staffing.py": ("Creating the staffing and pricing workbook and keeping it in step with the roster", "/rfps:resources"),

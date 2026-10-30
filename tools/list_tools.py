@@ -17,7 +17,7 @@ HINTS = {
     "worklist.py": ("One ranked list of markers, requirement gaps and compliance failures left after the first WIP, with the choice made on each", "/rfps:walk"),
     "decode_b64.py": ("Turning a base64 download saved from the Drive connector into a real .docx/.xlsx/.pdf (never retype base64 by hand)", "/rfps:new-engagement, /rfps:start"),
     "set_config.py": ("Setting where the shared WIP and the FINAL copy go, and a machine-local cache folder that never syncs to Drive", "/rfps:start, /rfps:build-wip, /rfps:build-final"),
-    "collab.py": ("Working with other people: deciding between starting and joining, your name for claims, who is writing now, duplicate IDs, a briefing for someone joining", "/rfps:join, /rfps:start"),
+    "collab.py": ("Working with other people: deciding between starting and joining, your name for claims, who is writing now, duplicate IDs, a briefing for someone joining", "/rfps:start"),
     "use_solution.py": ("Switching between solicitations, or checking which one is active", "/rfps:use-solution"),
     "flow_status.py": ("Seeing where you are, what is next, and which sections changed since last integrated", "/rfps:status, /rfps:next, /rfps:step"),
     "extract_docs.py": ("Turning PDFs, Word, Excel and PowerPoint files into searchable text for the analysis skills", "/rfps:extract"),

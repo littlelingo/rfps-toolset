@@ -1,10 +1,10 @@
 # Entry check: start a new solution or join the one that exists
 
-Used by `/rfps:start` and `/rfps:join`. Both run this check first, so a person never has to know which applies. Never create a solution where one exists, never offer "start over" (a fresh solution is a deliberate rename or archive done by hand), and never overwrite.
+Used by `/rfps:start`, the single entry point. It runs this check first, so a person never has to know whether a solution exists. Never create a solution where one exists, never offer "start over" (a fresh solution is a deliberate rename or archive done by hand), and never overwrite.
 
 1. **Resolve.** Run `rfps-collab --resolve [<folder the user named>]`. It looks at the folder, in `active-solution/` inside it, and above it. If the user named no folder and the result is `none`, ask for the source (capture) folder and resolve that one.
-2. **`state: none`** - there is no solution. Say so. If `looks_empty` is true, or the folder has no solicitation documents, confirm it is the right folder before creating anything. Then follow the start path (`/rfps:start`, intake onward). If this was reached from `/rfps:join`, say that nobody has started one here and ask whether to start it now.
-3. **`state: found`** - a solution exists at `solution`. Tell the user in one line (title, where it is) and follow the join path below. If this was reached from `/rfps:start`, say that you are joining instead of starting.
+2. **`state: none`** - there is no solution. Say so. If `looks_empty` is true, or the folder has no solicitation documents, confirm it is the right folder before creating anything. Then follow the start path (`/rfps:start`, intake onward). 
+3. **`state: found`** - a solution exists at `solution`. Tell the user in one line (title, where it is) and follow the join path below. Say that you are joining the existing solution instead of starting a new one.
 4. **`state: many`** - list them and ask which one; never guess.
 
 ## Join path

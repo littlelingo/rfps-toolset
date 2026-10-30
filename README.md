@@ -59,15 +59,14 @@ The solution is found from the current directory (a folder at or above it holdin
 ## Working With a Team
 
 - **Everyone works in the shared Google Doc** (comments, suggestions); it merges live and needs nothing installed.
-- **A second person who runs the tools** shares the solution folder in Google Drive (Drive for Desktop, Stream mode) and runs `/rfps:start` or `/rfps:join` in it. Both begin with the same entry check: no solution means start one, an existing one means join it (nothing is ever overwritten). Joining sets their name (kept on their machine), a local `cache_dir`, and shows who is writing, who has claimed which worklist items, what changed lately, and any duplicate IDs.
+- **A second person who runs the tools** shares the solution folder in Google Drive (Drive for Desktop, Stream mode) and runs `/rfps:start` in it. It begins with an entry check: no solution means start one, an existing one means join it (nothing is ever overwritten). Joining sets their name (kept on their machine), a local `cache_dir`, and shows who is writing, who has claimed which worklist items, what changed lately, and any duplicate IDs.
 - **Commands that write shared files take a lease** (`.state/lease.json`) and warn if someone else holds it; a lease older than two hours counts as free. Drive does not merge two people editing the same Markdown or CSV file at the same moment, so the lease and the claims are the guard. The register re-reads itself before writing, so two people adding evidence at once do not get the same ID.
 
 ## Skills
 
 | Skill | Purpose |
 |---|---|
-| `/rfps:join` | Join a solution someone else started: set up this machine, see who is doing what, pick up work (`/rfps:start` does the same when a solution already exists) |
-| `/rfps:start` | Front-loaded run: intake, then set-up, analysis, evidence, staffing, drafting, review and the first WIP, ending in a worklist |
+| `/rfps:start` | The one entry point. With an existing solution in the folder it joins it (your machine, who is doing what, claim work); otherwise front-loaded run: intake, then set-up, analysis, evidence, staffing, drafting, review and the first WIP, ending in a worklist |
 | `/rfps:walk` | Walk the ranked worklist one item at a time: tools address it, you address it, or skip |
 | `/rfps:new-engagement` | Start a solicitation: create `active-solution/` |
 | `/rfps:use-solution` | Show or set the active solution |

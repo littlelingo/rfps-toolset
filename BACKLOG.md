@@ -58,4 +58,4 @@ Everything the State receives, not just the narrative. Suggested order: manifest
 - Baseline commits: `active-solution` has no commit yet; this repo has uncommitted tool and command changes.
 - Regenerate the solicitation summary that was removed with the old ingest skill? (Not needed unless wanted.)
 
-- Team use on Drive (2026-10-30): built the entry check, join, lease, named claims and the register recheck. Still open: a stronger answer for two people editing the same Markdown at once than the lease and a warning; roster and requirement IDs are only checked for duplicates, not rechecked before writing; a "what changed since I last looked" view that is more than file times.
+- Team use on Drive (2026-10-30): built the entry check (in /rfps:start), the join path, lease, named claims and the register recheck. Still open: a stronger answer for two people editing the same Markdown at once than the lease and a warning; roster and requirement IDs are only checked for duplicates, not rechecked before writing; a "what changed since I last looked" view that is more than file times.

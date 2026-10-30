@@ -1,6 +1,6 @@
 ---
 name: start
-description: Front-loaded start for a new solicitation - ask once for the solicitation folder, template and past-performance locations, then run set-up, analysis, evidence, staffing, drafting, review and the first WIP build, and hand over a ranked worklist of gaps
+description: The one entry point - joins the solution if one already exists in the folder, otherwise starts a new solicitation: ask once for the solicitation folder, template and past-performance locations, then run set-up, analysis, evidence, staffing, drafting, review and the first WIP build, and hand over a ranked worklist of gaps
 argument-hint: [source folder] [--word]
 disable-model-invocation: true
 allowed-tools: Bash(rfps-new-engagement:*), Bash(rfps-collab:*), Bash(rfps-set-config:*), Bash(rfps-decode-b64:*), Bash(rfps-add-source:*), Bash(rfps-scan-sources:*), Bash(rfps-extract-docs:*), Bash(rfps-register-add:*), Bash(rfps-refresh-reports:*), Bash(rfps-open-items:*), Bash(rfps-flow-status:*), Bash(rfps-worklist:*), Bash(rfps-staffing:*), Bash(rfps-sync-gdoc:*), Bash(rfps-sync-docx:*), Bash(rfps-build-response:*), Bash(ls:*), Read, Write, Edit, Skill, AskUserQuestion
@@ -10,7 +10,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/solution-guide/references/conventions.md` fir
 
 Take a new solicitation from the documents to a first work-in-progress (WIP) response in one run, asking only at the start and for what cannot be decided, then hand over a ranked list of what is left. Each stage is an existing skill or tool that also works on its own; this skill only orders them. Where a stage names a typed-only skill (`build-wip`), read its `SKILL.md` under `${CLAUDE_PLUGIN_ROOT}/skills/` and follow it.
 
-## 0. Entry check
+## 0. Entry check (new solution or an existing one)
 
 First follow `${CLAUDE_PLUGIN_ROOT}/skills/solution-guide/references/entry.md` with `$ARGUMENTS`' folder. If a solution already exists there, that file's join path replaces everything below: stop after it. Only when it reports `none` continue with the intake.
 

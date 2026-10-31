@@ -43,7 +43,7 @@ def load_text(sol, cfg, text_dir=None, live=True):
     docs = [(p.name, ex.extract_file(p)) for p in sorted(src.rglob("*")) if p.is_file() and p.suffix.lower() in ex.H]
     return docs, f"extracted from {src} (run /rfps:extract to keep a text copy)"
 
-MANDATORY = re.compile(r"\b(shall(?: not)?|must(?: not)?|is required|are required|required to|is mandatory|are mandatory|no later than|not (?:to )?exceed|minimum of|(?:is|are) due|(?:is|are) (?:extended|changed|replaced|revised|deleted|amended))\b", re.I)
+MANDATORY = re.compile(r"\b(shall(?: not)?|must(?: not)?|may not|cannot|(?:is|are) prohibited|is required|are required|required to|is mandatory|are mandatory|no later than|not (?:to )?exceed|minimum of|(?:is|are) due|(?:is|are) (?:extended|changed|replaced|revised|deleted|amended))\b", re.I)
 PREFERRED = re.compile(r"\b(should|is preferred|are preferred|desirable|encouraged|additional (?:points|consideration)|points will be awarded)\b", re.I)
 ACTOR_WILL = re.compile(r"\b(?:contractor|offeror|vendor|bidder|proposer|respondent)\b[^.;]{0,60}\bwill\b", re.I)
 

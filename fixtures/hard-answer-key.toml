@@ -1,0 +1,120 @@
+# Answer key for fixtures/hard-rfp.txt: a longer, messier fictional solicitation with obligations buried in background text, a table,
+# a footnote and a conditional, "will" and "may not" phrasing, and an amendment that changes three earlier values.
+# Used by smoke.sh (rfps-sweep must find every keyed obligation) and by evals/mapper-finds-buried-obligations (model-graded).
+# evals/mapper-finds-buried-obligations/prompt.md embeds fixtures/hard-rfp.txt verbatim; smoke.sh checks they have not drifted apart.
+
+[[obligation]]
+id = "H-01"
+quote = "registered in the State vendor portal"
+class = "mandatory"
+
+[[obligation]]
+id = "H-02"
+quote = "build a mobile inspection application that works without a network connection"
+class = "mandatory"
+
+[[obligation]]
+id = "H-03"
+quote = "import the existing culvert inventory"
+class = "mandatory"
+
+[[obligation]]
+id = "H-04"
+quote = "maintain 99.5 percent availability"
+class = "mandatory"
+
+[[obligation]]
+id = "H-05"
+quote = "encouraged to propose a mobile-friendly public map"
+class = "preferred"
+
+[[obligation]]
+id = "H-06"
+quote = "may not be substituted"
+class = "mandatory"
+
+[[obligation]]
+id = "H-07"
+quote = "letter of commitment from each subcontractor"
+class = "mandatory"
+
+[[obligation]]
+id = "H-08"
+quote = "shall demonstrate it to all three district offices"
+class = "mandatory"
+
+[[obligation]]
+id = "H-09"
+quote = "must deliver it to the Project Director"
+class = "mandatory"
+
+[[obligation]]
+id = "H-10"
+quote = "At least 12 hours per district is required"
+class = "mandatory"
+
+[[obligation]]
+id = "H-11"
+quote = "Go-live is required within 7 months"
+class = "mandatory"
+
+[[obligation]]
+id = "H-12"
+quote = "must be submitted as a separate file"
+class = "mandatory"
+
+[[obligation]]
+id = "H-13"
+quote = "must submit a plan to obtain one within 12 months"
+class = "mandatory"
+
+[[obligation]]
+id = "H-14"
+quote = "due 2026-12-01"
+class = "mandatory"
+
+[[obligation]]
+id = "H-15"
+quote = "shall not exceed 10 pages"
+class = "mandatory"
+
+[[obligation]]
+id = "H-16"
+quote = "11-point font or larger"
+class = "mandatory"
+
+[[obligation]]
+id = "H-17"
+quote = "signed Attachment B"
+class = "mandatory"
+
+[[obligation]]
+id = "H-18"
+quote = "Questions are due 2026-11-12"
+class = "mandatory"
+
+[[obligation]]
+id = "H-19"
+quote = "due date is extended from 2026-12-01 to 2026-12-15"
+class = "mandatory"
+
+[[obligation]]
+id = "H-20"
+quote = "page limit in Section 6 is changed from 10 pages to 12 pages"
+class = "mandatory"
+
+[[obligation]]
+id = "H-21"
+quote = "Go-live in Section 4 is changed from 7 months to 8 months"
+class = "mandatory"
+
+[[obligation]]
+id = "H-22"
+quote = "earns additional points"
+class = "preferred"
+
+# Values that are true after the amendment (what a correct answer must report).
+[final_values]
+due_date = "2026-12-15"
+page_limit = 12
+go_live_months = 8

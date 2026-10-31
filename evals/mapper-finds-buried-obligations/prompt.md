@@ -1,0 +1,44 @@
+---
+description: Hard golden case. The mapper must find obligations buried in background text, a table, a footnote and conditional phrasing, and report the values left standing after an amendment (key in fixtures/hard-answer-key.toml).
+max_turns: 8
+allowed_tools: [Read, Glob, Grep, Skill, AskUserQuestion]
+runs: 3
+---
+
+Use the requirements mapper approach on the solicitation text below. The full text is here; do not look for files. List every requirement as a numbered list with its source clause, whether it is mandatory or only preferred, and quote it. Then state the final due date, page limit and go-live period after the amendment.
+
+# Request for Proposals DPW-2026-031 (fictional)
+Harbor County Department of Public Works seeks a contractor for the Culvert Inspection and Reporting System.
+
+# 1. Background
+The County maintains 1,900 culverts. Inspection records are kept on paper by three district offices. Offerors must be registered in the State vendor portal before the proposal is submitted. The County will not accept late proposals.
+
+# 2. Scope of Work
+2.1 The Contractor shall build a mobile inspection application that works without a network connection and synchronizes when a connection returns.
+2.2 The Contractor shall import the existing culvert inventory, including GPS coordinates, before the first inspection season.
+2.3 The Contractor will maintain 99.5 percent availability of the reporting system, measured monthly.
+2.4 Offerors are encouraged to propose a mobile-friendly public map of culvert status.
+2.5 Key Personnel may not be substituted without the written approval of the Contracting Officer.
+2.6 If the Contractor subcontracts more than 30 percent of the work, the Contractor shall provide a letter of commitment from each subcontractor.
+
+# 3. Deliverables
+| Deliverable | Due | Notes |
+| Inspection application, pilot release | Month 4 | The Contractor shall demonstrate it to all three district offices |
+| Monthly status report | 5th business day of each month | The Contractor must deliver it to the Project Director |
+| Final training for district staff | Month 9 | At least 12 hours per district is required |
+
+# 4. Period of Performance
+Eighteen months from the Notice to Proceed. Go-live is required within 7 months of the Notice to Proceed.
+
+# 5. Evaluation
+Proposals are evaluated on Technical Approach (35 percent), Management Plan (25 percent), Past Performance (25 percent) and Small Business Participation (15 percent). Participation of at least 10 percent earns additional points. Price is evaluated separately and must be submitted as a separate file.
+* Offerors that do not hold a current SOC 2 Type II report must submit a plan to obtain one within 12 months.
+
+# 6. Submission
+Proposals are due 2026-12-01 no later than 2:00 PM Eastern by email to bids@harbor.example. The narrative response shall not exceed 10 pages. Text shall be 11-point font or larger with 1-inch margins. A signed Attachment B (Certifications) is required with the proposal. Questions are due 2026-11-12.
+
+# Amendment 2 (supersedes the base RFP and Amendment 1 where they differ)
+Change 1: The proposal due date is extended from 2026-12-01 to 2026-12-15.
+Change 2: The page limit in Section 6 is changed from 10 pages to 12 pages.
+Change 3: Go-live in Section 4 is changed from 7 months to 8 months of the Notice to Proceed.
+Question 4: Is the SOC 2 plan counted in the page limit? Answer: No. The plan is an attachment.

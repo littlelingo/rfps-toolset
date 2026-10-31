@@ -59,6 +59,17 @@ extra = [g["text"][:60] for g in got if not any(k["quote"].lower() in g["text"].
 sys.exit(f"sweep missed {miss}; sweep found unkeyed {extra}" if miss or extra else 0)
 PY
 if rfps-sweep --check >/dev/null 2>&1; then echo "FAIL: sweep --check passed with no requirement rows" >&2; exit 1; fi
+# the harder solicitation (buried obligations, a table, a footnote, an amendment that changes three values): same check, plus the hard eval embeds it verbatim
+mkdir -p "$T/hard" && cp "$HERE/hard-rfp.txt" "$T/hard/hard-rfp.txt"
+rfps-sweep --json --text-dir "$T/hard" > "$T/hard.json"
+uv run --quiet python3 - "$HERE/hard-answer-key.toml" "$T/hard.json" "$HERE/hard-rfp.txt" "$HERE/../evals/mapper-finds-buried-obligations/prompt.md" <<'PY'
+import json, sys, tomllib
+key = tomllib.load(open(sys.argv[1], "rb"))["obligation"]; got = json.load(open(sys.argv[2]))["unmapped"]
+miss = [k["id"] for k in key if not any(k["quote"].lower() in g["text"].lower() and g["cls"] == k["class"] for g in got)]
+extra = [g["text"][:60] for g in got if not any(k["quote"].lower() in g["text"].lower() for k in key)]
+if miss or extra: sys.exit(f"hard sweep missed {miss}; found unkeyed {extra}")
+if not open(sys.argv[4]).read().endswith(open(sys.argv[3]).read()): sys.exit("evals/mapper-finds-buried-obligations/prompt.md no longer embeds fixtures/hard-rfp.txt verbatim")
+PY
 cp active-solution/coverage-matrix.md "$T/cm-empty.md"   # restored after the sweep checks so the worklist checks below start from an empty matrix
 cp "$HERE/seed/coverage-matrix.md" active-solution/coverage-matrix.md
 rfps-sweep | grep -q "11 obligation sentence(s) in 2 file(s); 11 covered by a requirement row, 0 unmapped" || { echo "FAIL: the seed matrix should cover every obligation" >&2; rfps-sweep >&2; exit 1; }

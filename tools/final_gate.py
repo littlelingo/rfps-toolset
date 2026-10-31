@@ -9,8 +9,8 @@ Checks (Pass, Fail or Info), each from the file itself or from the solution's ow
   or placeholders; required wording present; no links to Google Docs or Drive; approximate margins and the fonts used;
   metadata (author, creator, subject, keywords); blocking items in the compliance report; unresolved response markers;
   evidence cited that is not cleared; open rows in submission.md.
-Margins are measured from where text sits on the page: the left margin is exact for left-aligned text, the others are
-approximate (a footer or page number counts), so only the left margin can fail.
+Margins are measured from where text sits on the page: the left margin is exact for left-aligned text, top and bottom are
+approximate (a header, footer or page number counts), the right margin is not measured, and only the left margin can fail.
 
 Optional in solution.toml:
   [final_gate]
@@ -109,7 +109,7 @@ def run(sol, cfg, eng, pdf_arg):
     L, R, T, B = text_margins(reader)
     if L is not None:
         inch = lambda v: f"{v / 72:.2f}"
-        note = f"left {inch(L)} in (exact for left-aligned text); right {inch(R)}, top {inch(T)}, bottom {inch(B)} in (approximate; a footer counts as text)"
+        note = f"left {inch(L)} in (exact for left-aligned text); top {inch(T)}, bottom {inch(B)} in (approximate; a header, footer or page number counts as text); right not measured"
         if g.get("margin_inches"): add("Left margin at least the required size", "Pass" if L / 72 >= float(g["margin_inches"]) - 0.05 else "Fail", f"{note}; required {g['margin_inches']} in")
         else: add("Margins", "Info", note)
     fl = fonts_of(reader)

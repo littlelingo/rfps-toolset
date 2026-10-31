@@ -24,6 +24,6 @@ When the submission file is a PDF exported from a Google Doc, `build-final` stil
 2. File, Download, PDF document. Save it in `final_copy_dir` (default `11 Final Submission`).
 3. Run `/rfps:final-gate`. It checks the PDF itself (pages, text, markers, links, margins, metadata, blocking items, open forms) and `--scrub` writes a copy without personal metadata.
 
-Do not export the shared WIP document: it carries suggestions, comments, highlights and internal markers. An automated route that fills a clean copy of the Google template and exports it through the Drive connector is planned but not built; it needs a live test of the connector's PDF export first.
+Do not export the shared WIP document: it carries suggestions, comments, highlights and internal markers. An automated route that fills a clean copy of the Google template and exports it through the Drive connector is planned but not built; the connector's PDF export works (tested live), but filling a clean copy of the template with direct edits has not been tested yet. If you export through the Drive connector yourself, the saved result decodes with `rfps-decode-b64`.
 
 Do not edit the template docx or any `response/*.md` or `evidence/register.csv` file as part of this command.

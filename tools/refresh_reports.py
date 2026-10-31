@@ -154,16 +154,24 @@ def refresh_compliance(sol, cfg):
     else: auto.append("| Evidence register | Info | no register configured |")
     try: auto += solicitation_checks(sol, cfg, rows, nrows)
     except Exception as e: auto.append(f"| Solicitation sweep and quote check | Info | not run: {e} |")
-    try: auto += lt.checks(sol, cfg, group_texts(resp, order))
-    except Exception as e: auto.append(f"| Writing lint | Info | not run: {e} |")
-    try: auto += cr.checks(sol, cfg)
-    except Exception as e: auto.append(f"| Requirement cross-reference | Info | not run: {e} |")
-    try: auto += cn.checks(sol, cfg)
-    except Exception as e: auto.append(f"| Numbers agree | Info | not run: {e} |")
+    thin = tw < 150   # too little text for the writing, cross-reference, figure and theme checks to say anything useful
+    if thin: auto.append(f"| Writing, cross-reference, figures and theme checks | Info | they start once the response has about 150 words (now {tw}) |")
+    if not thin:
+        try: auto += lt.checks(sol, cfg, group_texts(resp, order))
+        except Exception as e: auto.append(f"| Writing lint | Info | not run: {e} |")
+        try: auto += cr.checks(sol, cfg)
+        except Exception as e: auto.append(f"| Requirement cross-reference | Info | not run: {e} |")
+        try: auto += cn.checks(sol, cfg)
+        except Exception as e: auto.append(f"| Numbers agree | Info | not run: {e} |")
     try: auto += currency_checks(sol, cfg)
     except Exception as e: auto.append(f"| Reviews current and submission steps | Info | not run: {e} |")
-    try: auto += strategy_checks(sol, resp, order, pages, cfg.get("page_limit"))
+    try: auto += [] if thin else strategy_checks(sol, resp, order, pages, cfg.get("page_limit"))
     except Exception as e: auto.append(f"| Win themes and page budget | Info | not run: {e} |")
+    hdr, body = auto[:1], auto[1:]   # worst first: failures, then open items, then passes and information
+    cell = lambda r: ([x.strip() for x in r.strip().strip("|").split("|")] + ["", ""])[1]
+    body.sort(key=lambda r: {"Fail": 0, "Open": 1, "Pass": 2}.get(cell(r), 3))
+    cnt = collections.Counter(cell(r) for r in body)
+    auto = [f"**{cnt['Fail']} fail, {cnt['Open']} open, {cnt['Pass']} pass, {cnt['Info']} for information.** The ones that need you are first.", ""] + hdr + body
     t = replace_block(t, "autochecks", "\n".join(auto), f.name)
     f.write_text(t)
     return f"compliance-report.md: {N} checks ({st['Pass']} pass, {st['Fail']} fail, {st['Partial']} partial, {st['Ambiguous']} ambiguous, {st['N/A']} n/a); {status}; {len(blocking)} blocking" + (("; WARN " + "; ".join(warn)) if warn else "")

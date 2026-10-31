@@ -4,6 +4,7 @@
 #
 # kind = "auto"   state is detected from files by rfps-flow-status (check = detector name)
 # kind = "manual" cannot be detected; the user checks it off in progress.md or says so
+# optional = true  the step helps but is never required: it is hidden from the status views until it needs attention (or --all), and is not counted in the progress bar.
 # group order is the display order. A user can mark any step done ([x]) or skipped / not applicable ([-])
 # in the solution's progress.md; that choice wins over detection.
 
@@ -36,6 +37,8 @@ ask = "Is the response template docx the right one? If there is none, should I g
 
 [[step]]
 id = "bid"
+optional = true
+short = "bid decision"
 group = "Set up"
 title = "Bid decision recorded (go or no-go, with the reasons)"
 command = "/rfps:capture"
@@ -72,6 +75,8 @@ ask = "Have any amendments or Q&A answers been issued since the solicitation?"
 
 [[step]]
 id = "questions"
+optional = true
+short = "questions to the agency"
 group = "Understand"
 title = "Questions to the agency drafted, sent and answers logged (or confirmed none)"
 command = "/rfps:questions"
@@ -106,6 +111,8 @@ ask = "Which clients or owners still need to approve use of their material?"
 
 [[step]]
 id = "strategy"
+optional = true
+short = "win themes"
 group = "Draft"
 title = "Evaluation factors and win themes recorded"
 command = "/rfps:win-strategy"
@@ -178,6 +185,8 @@ ask = "Do you want me to run the compliance checks and refresh the report?"
 
 [[step]]
 id = "evalsim"
+optional = true
+short = "second-reader score"
 group = "Review"
 title = "Scored by an independent second reader, weakest factors addressed"
 command = "/rfps:evaluator-simulator"
@@ -232,6 +241,8 @@ ask = "Is the PDF exported? Do you want it checked now?"
 
 [[step]]
 id = "debrief"
+optional = true
+short = "debrief and lessons"
 group = "After"
 title = "Outcome, agency feedback and lessons captured"
 kind = "manual"

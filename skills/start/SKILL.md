@@ -31,7 +31,7 @@ Then say in two lines what will happen and that you will only stop for a fact yo
 
 The path is the flow defined in `${CLAUDE_PLUGIN_ROOT}/tools/flow.toml`, not a second copy of it. Run `rfps-flow-status --json` and work through its steps in order, up to and including `wip`. For each step that is not done, run its `command` (a skill, or the tool the step names); run the skills named below with the intake answers as their inputs. After each step give one line with links to what was written, then re-run `rfps-flow-status` and carry on. Steps already done are left alone, so `/rfps:start` can be run again to resume.
 
-Do not run these steps; they depend on people and become worklist items instead: `amendments` (unless the analyzer found some to log), `debrief`, `cleared`, `markers`, `integrated`, `attachments`, `docreview`, `final`.
+Optional steps (`bid`, `questions`, `strategy`, `evalsim`, `debrief`) are marked `optional` in the flow and are not counted in the progress bar. Run `bid`, `questions` and `strategy` in proposal mode as below; skip `debrief` and `evalsim`. Do not run these steps; they depend on people and become worklist items instead: `amendments` (unless the analyzer found some to log), `debrief`, `cleared`, `markers`, `integrated`, `attachments`, `docreview`, `final`.
 
 Rules that differ from running the skills one by one:
 
@@ -42,7 +42,7 @@ Rules that differ from running the skills one by one:
 - `questions`: follow `questions` in proposal mode. Draft questions from the gaps, ambiguities and conflicts the analysis found, as Draft rows; send nothing and ask nothing. The hand-over asks which to keep and send.
 - `bid`: follow `capture` in proposal mode. Write a proposed bid view from the brief and the gaps and leave Decision as Undecided; the decision is the user's and is asked in the hand-over.
 - `strategy`: follow `win-strategy` in proposal mode. Candidate themes come from the cleared register rows and the strongest requirements; they are written marked "(proposed)" and wait for the user's approval.
-- `evalsim`: follow `evaluator-simulator` (one fresh-agent run) once `compliance` is done, then `rfps-refresh-reports`. Report the ratings; do not fix anything it finds.
+- `evalsim`: do not run it here. It costs a model run and reads best on a draft that people have worked on. Mention in the hand-over that a second-reader score is available (`/rfps:evaluator-simulator`, or just ask).
 - `compliance`: finish with `rfps-refresh-reports`.
 - `wip`: follow `build-wip` (Google Doc by default, Word for `--word`). Never run `build-final`.
 
@@ -50,6 +50,9 @@ If a step fails, stop there, say what failed and how to resume, and do not hide 
 
 ## 3. Hand over
 
-1. Run `rfps-worklist`; report the counts by kind and how many are blockers.
-2. Give a short honest summary: what exists now (WIP link, brief, matrix, register rows by clearance), what is thin or unsupported, and what the tools could not decide.
-3. Put the starting points in front of the user, each as a short proposal with its link: the draft questions to the agency (keep, rewrite or drop each, and the deadline to send them), the proposed bid view (Go or No-go, and what they would change), the candidate win themes (confirm, edit or drop each), and the second reader's weakest factors. Then ask one question: walk the worklist now with `/rfps:walk`, or stop here.
+Keep this to one short message. The user should be able to read it in under a minute and answer in one line.
+
+1. Run `rfps-worklist`; give the counts by kind and how many are blockers, in one sentence.
+2. In three or four lines say what exists now (WIP link, brief, matrix, register rows by clearance), what is thin or unsupported, and what the tools could not decide.
+3. **Drafts to react to, in one block:** "I also drafted a bid view (it says <Go or No-go, in a few words> and leaves the decision to you), <N> draft questions for the agency (due <date>), and <N> candidate win themes (each marked proposed)." Link the three files. Then: "Say *accept* to keep all three as drafted, or name any you want changed." Do not walk through them unless asked. A second-reader score of the draft is available on request.
+4. Ask one question: walk the worklist now with `/rfps:walk`, or stop here.

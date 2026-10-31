@@ -304,6 +304,16 @@ def compute(c):
         out.append({**s, "state": state, "detail": detail, "mark": mark})
     return out
 
+HIDDEN = []   # optional steps left out of the current view (set by main)
+
+def visible(steps, show_all=False):
+    """Core steps plus any optional step that needs attention; the rest are listed on one line."""
+    shown = [s for s in steps if show_all or not s.get("optional") or s["state"] in ("attention", "blocking")]
+    return shown, [s for s in steps if s not in shown]
+
+def hidden_line():
+    return ("Optional, not shown (just ask for any, or use --all): " + "; ".join(f"{s.get('short', s['title'])} ({s['command']})" for s in HIDDEN)) if HIDDEN else ""
+
 def bar(n, d): k = round(10 * n / d) if d else 0; return "█" * k + "░" * (10 - k)
 
 def write_progress(c, steps):
@@ -334,7 +344,8 @@ def cmd_status(c, steps):
     for s in steps:
         if s["group"] != g: g = s["group"]; out += ["", g]
         out.append(f"  {ICON[s['state']]} {s['id']:<14} {s['title']} - {s['detail']}")
-    out += ["", "More: --sections (every heading) | --detail <step id or heading text> | --set <id> done|skip|reset | progress.md has the checklist"]
+    if HIDDEN: out += ["", hidden_line()]
+    out += ["", "More: --sections (every heading) | --detail <step id or heading text> | --set <id> done|skip|reset | --all (include optional steps) | progress.md has the checklist"]
     return "\n".join(out)
 
 def cmd_table(c, steps):
@@ -352,6 +363,7 @@ def cmd_table(c, steps):
         grp = f"**{s['group']}**" if s["group"] != g else ""
         g = s["group"]
         out.append(f"| {grp} | {s['title']} | {ICON[s['state']]} | {s['detail']} |")
+    if HIDDEN: out += ["", f"*{hidden_line()}*"]
     return "\n".join(out)
 
 def cmd_sections(c):
@@ -430,7 +442,7 @@ def main():
     ap.add_argument("--sections", action="store_true"); ap.add_argument("--detail"); ap.add_argument("--set", nargs=2, metavar=("ID", "VALUE"))
     ap.add_argument("--changed", action="store_true"); ap.add_argument("--baseline", nargs="?", const="", default=None); ap.add_argument("--unbaseline", nargs="?", const="", default=None)
     ap.add_argument("--validated", metavar="NAME", help="record the current response text as just checked by compliance, empathy or evalsim")
-    ap.add_argument("--table", action="store_true"); ap.add_argument("--json", action="store_true"); ap.add_argument("--no-write", action="store_true")
+    ap.add_argument("--table", action="store_true"); ap.add_argument("--json", action="store_true"); ap.add_argument("--no-write", action="store_true"); ap.add_argument("--all", action="store_true", help="include the optional steps that are hidden until they need attention")
     a = ap.parse_args()
     c = Ctx(br.resolve_solution(a.solution or None))
     if a.set: print(cmd_set(c, a.set[0], a.set[1])); return
@@ -438,15 +450,17 @@ def main():
     if a.baseline is not None: print(cmd_baseline(c, a.baseline)); return
     if a.unbaseline is not None: print(cmd_unbaseline(c, a.unbaseline)); return
     if a.changed: print(cmd_changed(c)); return
-    steps = compute(c)
-    if not a.no_write: write_progress(c, steps)
+    every = compute(c)
+    if not a.no_write: write_progress(c, every)
+    steps, hidden = visible(every, a.all); HIDDEN[:] = hidden
     if a.json:
         st = heading_states(c)
         print(json.dumps({"steps": [{k: s[k] for k in ("id", "group", "title", "state", "detail", "command", "help", "ask") if k in s} for s in steps],
+                          "optional_hidden": [{"id": s["id"], "title": s["title"], "command": s.get("command", "")} for s in hidden],
                           "sections": [{"heading": h, "level": c.resp[h][0], "state": st[h][0], "notes": st[h][1], "words": len(c.resp[h][1].split())} for h in c.order]}, indent=1)); return
     if a.table: print(cmd_table(c, steps)); return
     if a.sections: print(cmd_sections(c)); return
-    if a.detail: print(cmd_detail(c, steps, a.detail)); return
+    if a.detail: print(cmd_detail(c, every, a.detail)); return
     print(cmd_status(c, steps))
 
 main()

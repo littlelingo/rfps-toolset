@@ -89,14 +89,14 @@ cp "$T/cm-empty.md" active-solution/coverage-matrix.md
 rfps-refresh-reports --solution >/dev/null
 # bid decision, win strategy (themes, page budget, weights on the worklist) and the second reader's ratings; scaffolds are restored afterwards
 for f in capture.md win-strategy.md evaluation-sim.md solution.toml; do cp "active-solution/$f" "$T/$f.bak"; done
-rfps-flow-status --table | grep -q "bid decision not recorded" || { echo "FAIL: an Undecided capture.md should leave the bid step open" >&2; exit 1; }
+rfps-flow-status --table --all | grep -q "bid decision not recorded" || { echo "FAIL: an Undecided capture.md should leave the bid step open" >&2; exit 1; }
 cp "$HERE/seed/capture.md" active-solution/capture.md
-rfps-flow-status --table | grep -q "Go, pWin 55%" || { echo "FAIL: a recorded Go decision was not read" >&2; exit 1; }
+rfps-flow-status --table --all | grep -q "Go, pWin 55%" || { echo "FAIL: a recorded Go decision was not read" >&2; exit 1; }
 cp "$HERE/seed/win-strategy.md" active-solution/win-strategy.md
 printf 'page_limit = 10\n' >> active-solution/solution.toml
-rfps-flow-status --table | grep -q "4 factor(s), 3 theme(s)" || { echo "FAIL: the win strategy was not read" >&2; exit 1; }
+rfps-flow-status --table --all | grep -q "4 factor(s), 3 theme(s)" || { echo "FAIL: the win strategy was not read" >&2; exit 1; }
 sed 's/| Your maintenance history/| (proposed) Your maintenance history/' active-solution/win-strategy.md > "$T/ws-prop.md" && cp active-solution/win-strategy.md "$T/ws-keep.md" && cp "$T/ws-prop.md" active-solution/win-strategy.md
-rfps-flow-status --table | grep -q "1 proposed theme(s) waiting for your approval: T-02" || { echo "FAIL: a proposed theme should wait for approval in the flow" >&2; exit 1; }
+rfps-flow-status --table --all | grep -q "1 proposed theme(s) waiting for your approval: T-02" || { echo "FAIL: a proposed theme should wait for approval in the flow" >&2; exit 1; }
 cp "$T/ws-keep.md" active-solution/win-strategy.md
 rfps-refresh-reports --solution >/dev/null
 grep -q "Win themes carried through the response | Pass" active-solution/compliance-report.md || { echo "FAIL: seed themes should be carried through the seed response" >&2; grep -n "Win themes" active-solution/compliance-report.md >&2; exit 1; }
@@ -111,16 +111,16 @@ cp "$HERE/seed/evaluation-sim.md" active-solution/evaluation-sim.md
 rfps-refresh-reports --solution | grep -q "evaluation-sim.md: 4 factor" || { echo "FAIL: ratings not read" >&2; exit 1; }
 grep -q "Weighted score" active-solution/evaluation-sim.md && grep -q "Technical Approach (Marginal)" active-solution/evaluation-sim.md || { echo "FAIL: evaluation summary not filled in" >&2; exit 1; }
 rfps-worklist --table | grep -q "Weak factor (Marginal)" || { echo "FAIL: a Marginal factor should be on the worklist" >&2; exit 1; }
-rfps-flow-status --table | grep -q "1 factor(s) rated in the bottom of the scale: Technical Approach" || { echo "FAIL: the second reader's weakest factor not shown in the flow" >&2; exit 1; }
+rfps-flow-status --table --all | grep -q "1 factor(s) rated in the bottom of the scale: Technical Approach" || { echo "FAIL: the second reader's weakest factor not shown in the flow" >&2; exit 1; }
 for f in capture.md win-strategy.md evaluation-sim.md solution.toml; do cp "$T/$f.bak" "active-solution/$f"; done
 rfps-refresh-reports --solution >/dev/null
 # validation staleness, amendments, the submission checklist and the PDF final gate; restored afterwards
 cp active-solution/solution.toml "$T/sol3.bak"; cp active-solution/amendments/log.md "$T/amlog.bak"; cp active-solution/submission.md "$T/sub3.bak"; cp active-solution/response/02-technical-approach.md "$T/resp02.bak"
 printf 'tone review notes\n' > active-solution/review-notes.md
 rfps-flow-status --validated empathy | grep -q "Recorded 4 response file" || { echo "FAIL: --validated did not record the response files" >&2; exit 1; }
-rfps-flow-status --table | grep -q "reviewed; no section has changed since" || { echo "FAIL: an unchanged review should read as current" >&2; exit 1; }
+rfps-flow-status --table --all | grep -q "reviewed; no section has changed since" || { echo "FAIL: an unchanged review should read as current" >&2; exit 1; }
 printf '\nOne more sentence.\n' >> active-solution/response/02-technical-approach.md
-rfps-flow-status --table | grep -q "1 section(s) changed since the tone review: 02-technical-approach.md" || { echo "FAIL: the edited section was not named as stale" >&2; exit 1; }
+rfps-flow-status --table --all | grep -q "1 section(s) changed since the tone review: 02-technical-approach.md" || { echo "FAIL: the edited section was not named as stale" >&2; exit 1; }
 rfps-refresh-reports --solution >/dev/null
 grep -q "Tone review matches the current text | Open.*02-technical-approach.md" active-solution/compliance-report.md || { echo "FAIL: stale review not in the automated checks" >&2; exit 1; }
 cp "$T/resp02.bak" active-solution/response/02-technical-approach.md; rm active-solution/review-notes.md active-solution/.state/validated.json
@@ -139,7 +139,7 @@ if rfps-final-gate --pdf "$T/clean.pdf" >/dev/null 2>&1; then echo "FAIL: the ga
 grep -q "Mandatory forms and steps in submission.md are done | Fail.*M-01" active-solution/final-gate.md || { echo "FAIL: open form not reported by the gate" >&2; exit 1; }
 sed -i.bak 's/| 2020-01-01 | Open |/| 2020-01-01 | Done |/' active-solution/submission.md && rm active-solution/submission.md.bak
 rfps-final-gate --pdf "$T/clean.pdf" >/dev/null || { echo "FAIL: a clean PDF with every form done should pass" >&2; cat active-solution/final-gate.md >&2; exit 1; }
-rfps-flow-status --table | grep -q "clean.pdf passed" || { echo "FAIL: the flow did not show the gate result" >&2; exit 1; }
+rfps-flow-status --table --all | grep -q "clean.pdf passed" || { echo "FAIL: the flow did not show the gate result" >&2; exit 1; }
 if rfps-final-gate --pdf "$T/defects.pdf" --scrub >/dev/null 2>&1; then echo "FAIL: the gate passed a PDF with planted defects" >&2; exit 1; fi
 for want in "Page count within page_limit | Fail" "No internal markers, register IDs or placeholders | Fail" "Required wording present: Attachment B | Fail" "No links to Google Docs, Drive or local addresses | Fail" "Metadata free of names and emails | Fail"; do
   grep -qF "$want" active-solution/final-gate.md || { echo "FAIL: the gate missed: $want" >&2; exit 1; }
@@ -183,13 +183,18 @@ grep -q "Numbers match the solicitation | Pass" active-solution/compliance-repor
 # writing lint, the requirement cross-reference, the exhibit plan, questions to the agency and the new flow steps; restored afterwards
 cp active-solution/coverage-matrix.md "$T/cm5.bak"; cp active-solution/win-strategy.md "$T/ws5.bak"; cp active-solution/questions.md "$T/q5.bak"; cp active-solution/solution.toml "$T/sol5.bak"
 cp active-solution/response/02-technical-approach.md "$T/p502.bak"; cp active-solution/response/03-management-plan.md "$T/p503.bak"
-rfps-flow-status --table | grep -q "Questions to the agency drafted" && rfps-flow-status --table | grep -q "Outcome, agency feedback and lessons captured" || { echo "FAIL: the questions and debrief steps are missing from the flow" >&2; exit 1; }
+rfps-flow-status --table --all | grep -q "Questions to the agency drafted" && rfps-flow-status --table --all | grep -q "Outcome, agency feedback and lessons captured" || { echo "FAIL: the questions and debrief steps are missing from the flow" >&2; exit 1; }
+# lean status: optional steps are left out of the default view, named on one line, and not counted in the progress bar
+rfps-flow-status --table | grep -q "Optional, not shown" || { echo "FAIL: the default status should name the optional steps it leaves out" >&2; exit 1; }
+if rfps-flow-status --table | grep -q "Questions to the agency drafted"; then echo "FAIL: an optional step with nothing to do should be hidden from the default status" >&2; exit 1; fi
+rfps-flow-status --table | grep -q "of 21 steps done" || { echo "FAIL: the progress bar should count the 21 core steps" >&2; rfps-flow-status --table | head -3 >&2; exit 1; }
 printf '\nOur robust, seamless platform from a world-class team will be deployed. The checks will be run. Reports will be written. Users will be trained. Training will be scheduled. We use the XYZ module and our team leverages synergies.\n\nThe portal gives each supervisor one calendar that refuses a double booking, so a preventive maintenance appointment either holds or is moved before the day it was due, and supervisors stop losing bay time to collisions.\n' >> active-solution/response/02-technical-approach.md
 printf '\nThe portal gives each supervisor one calendar that refuses a double booking, so a preventive maintenance appointment either holds or is moved before the day it was due, and supervisors stop losing bay time to collisions.\n' >> active-solution/response/03-management-plan.md
 rfps-refresh-reports --solution >/dev/null
 for want in "Writing: no empty superlatives or buzzwords | Open.*Technical Approach" "commitments name who does them | Open" "acronyms defined on first use | Open.*XYZ" "no near-duplicate paragraphs across sections | Open"; do
   grep -q "$want" active-solution/compliance-report.md || { echo "FAIL: the lint missed: $want" >&2; grep -n "Writing:" active-solution/compliance-report.md >&2; exit 1; }
 done
+grep -q "fail, .* open, .* pass, .* for information" active-solution/compliance-report.md || { echo "FAIL: the automated checks should start with a count line" >&2; exit 1; }
 rfps-lint | grep -q "superlatives: 1" || { echo "FAIL: rfps-lint did not list the planted superlatives" >&2; exit 1; }
 printf '\n[lint]\nmute = ["superlatives"]\n' >> active-solution/solution.toml
 rfps-refresh-reports --solution >/dev/null
@@ -210,10 +215,11 @@ rfps-refresh-reports --solution >/dev/null
 grep -q "Exhibits planned for the heavily weighted factors | Open.*Technical Approach" active-solution/compliance-report.md || { echo "FAIL: a weighted factor with no exhibit was not listed" >&2; exit 1; }
 printf '| Q-01 | RFP 2.2: does the existing maintenance history include the archive from before 2019? | R-002 | 2020-01-01 | Draft | | |\n' >> active-solution/questions.md
 rfps-worklist --table | grep -q "Question deadline passed" || { echo "FAIL: an unsent question past its deadline should be on the worklist" >&2; exit 1; }
-rfps-flow-status --table | grep -q "1 question(s) still a draft" || { echo "FAIL: the flow did not show the unsent question" >&2; exit 1; }
+rfps-flow-status --table --all | grep -q "1 question(s) still a draft" || { echo "FAIL: the flow did not show the unsent question" >&2; exit 1; }
+rfps-flow-status --table | grep -q "1 question(s) still a draft" || { echo "FAIL: an optional step that needs attention should appear in the default status" >&2; exit 1; }
 sed -i.bak 's/| Draft | | |$/| Answered | Yes, from 2015. | - |/' active-solution/questions.md && rm active-solution/questions.md.bak
 rfps-worklist --table | grep -q "Answer not logged" || { echo "FAIL: an answer not logged as Q&A should be on the worklist" >&2; exit 1; }
-rfps-flow-status --table | grep -q "answer(s) not logged in amendments/log.md: Q-01" || { echo "FAIL: the flow did not show the unlogged answer" >&2; exit 1; }
+rfps-flow-status --table --all | grep -q "answer(s) not logged in amendments/log.md: Q-01" || { echo "FAIL: the flow did not show the unlogged answer" >&2; exit 1; }
 rfps-refresh-reports --solution >/dev/null
 grep -q "Questions to the agency | Open.*answered but not logged in amendments/log.md: Q-01" active-solution/compliance-report.md || { echo "FAIL: unlogged answer not in the automated checks" >&2; exit 1; }
 sed -i.bak 's/| Answered | Yes, from 2015. | - |$/| Answered | Yes, from 2015. | 2 |/' active-solution/questions.md && rm active-solution/questions.md.bak
@@ -317,7 +323,7 @@ assert "every staff page" in x, "reviewer edit was lost"
 assert "four parts" in x, "non-colliding change was not pushed"
 assert "post it online" not in x, "colliding change overwrote the reviewer"
 PY
-rfps-flow-status --table >/dev/null
+rfps-flow-status --table --all >/dev/null
 rfps-build-response --solution --mode wip >/dev/null
 test -f active-solution/build/*_WIP.docx
 rfps-build-response --solution --mode final >/dev/null

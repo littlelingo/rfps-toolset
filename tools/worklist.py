@@ -9,6 +9,7 @@ Collects, from the solution's own files:
   - coverage-matrix.md rows classified Gap, and rows whose action is Assert with caveat, Seek evidence or Escalate
   - compliance-report.md rows whose status is Fail, Partial or Ambiguous
   - evaluation-sim.md factors the second reader rated in the lower half of the scale
+  - amendments/log.md rows whose response or analysis is not marked done, and submission.md rows not Done (overdue ones rank first)
 Markers in a section whose evaluation factor has a weight in win-strategy.md move up the list (30 percent or more by two places, 15 percent or more by one).
 and ranks them (blockers first). Each item says who can act on it: the tools ("tool"), the user ("you"), or either.
 What was done about each item (addressed, mine, skipped) is kept in .state/worklist.json, keyed by a stable id, so
@@ -99,6 +100,18 @@ def collect(sol, cfg):
             items.append(dict(id=key("c", rid), rank=1 if (mand and st.lower().startswith("fail")) else 5, kind=f"Compliance {st}", who="either",
                               action=col(cols, cells, "Remediation") or "Fix and re-run /rfps:compliance-validator", where=f"compliance-report.md {rid}",
                               section=head, text=f"{rid} {col(cols, cells, 'Requirement')}"))
+    for a in sg.amendments(sol):   # an amendment supersedes the base solicitation where they differ, so one not yet applied outranks ordinary open work
+        undone = [k for k, v in (("response", a["response_updated"]), ("analysis", a["analysis_rerun"])) if v.strip().lower() not in ("yes", "y", "done", "n/a", "na")]
+        if undone: items.append(dict(id=key("am", a["id"]), rank=1, kind="Amendment not applied", who="either",
+                                     action="Re-run the sweep and the analysis, update the affected requirement rows and response text, then mark this row in amendments/log.md", where=f"amendments/log.md #{a['id']}",
+                                     section=a["type"] or "Amendment", text=f"Amendment {a['id']} ({a['file']}): {a['change']} - not yet applied to the {' and '.join(undone)}; affects {a['affected'] or 'unknown requirements'}"))
+    for r in sg.submission(sol):   # mandatory forms and steps not yet done; overdue first
+        if r["status"].lower() in ("done", "n/a", "na"): continue
+        import datetime
+        try: late = datetime.date.fromisoformat(r["due"][:10]) < datetime.date.today()
+        except ValueError: late = False
+        items.append(dict(id=key("sub", r["id"]), rank=1 if late else 4, kind="Overdue submission step" if late else "Submission step", who="you",
+                          action="Get it done and mark it Done in submission.md", where=f"submission.md {r['id']}", section=r["owner"] or "Submission", text=f"{r['id']} {r['item']} (due {r['due'] or 'unset'})"))
     for r in sg.evalsim(sol)["rows"]:   # factors the independent second reader rated in the lower half of the scale
         p = sg.rating_points(r["rating"], sg.evalsim(sol)["scale"])
         if p is None or p > 0.5: continue

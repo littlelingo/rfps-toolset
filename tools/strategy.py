@@ -41,6 +41,22 @@ def capture(sol):
     d = "go" if d == "go" else ("no-go" if d in ("no-go", "no go", "nogo") else "undecided")
     return dict(decision=d, pwin=_num(field(r"Probability of win[^|]*")), decided_by=field("Decided by"), date=field("Date"))
 
+def submission(sol):
+    """-> [dict(id, item, source, owner, due, status, notes)] from submission.md (the mandatory forms and steps tracker); [] when the file is missing."""
+    f = pathlib.Path(sol) / "submission.md"
+    if not f.is_file(): return []
+    return [dict(id=k, item=c[1], source=c[2], owner=c[3], due=c[4], status=c[5], notes=c[6]) for k, c in rows(f.read_text(), r"M-\d{2}", 7).items()]
+
+def amendments(sol):
+    """-> [dict(id, type, date, file, change, affected, response_updated, analysis_rerun)] from amendments/log.md; rows with a number in the first cell."""
+    f = pathlib.Path(sol) / "amendments" / "log.md"
+    if not f.is_file(): return []
+    out = []
+    for line in f.read_text().split("\n"):
+        c = _cells(line) if line.startswith("|") else []
+        if len(c) == 8 and re.match(r"^\d+$", c[0]): out.append(dict(id=c[0], type=c[1], date=c[2], file=c[3], change=c[4], affected=c[5], response_updated=c[6], analysis_rerun=c[7]))
+    return out
+
 def strategy(sol):
     """-> dict(factors=[...], themes=[...]) from win-strategy.md. Factor: id, factor, weight, heading. Theme: id, theme, discriminator, proof, benefit, phrase."""
     f = pathlib.Path(sol) / "win-strategy.md"

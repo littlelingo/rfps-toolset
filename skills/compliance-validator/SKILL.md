@@ -134,6 +134,10 @@ Write `compliance-report.md` with:
 - Cross-reference consistency notes
 - Pre-flight status: whether the proposal is ready for assembly or has blocking issues
 
+### Step 7b: Record what was checked
+
+After writing the report, run `rfps-refresh-reports` and then `rfps-flow-status --validated compliance`. That records which version of each response file this check looked at, so the flow can name exactly the sections edited since.
+
 ### Step 8: Surface Blocking Issues
 
 If any mandatory requirement fails compliance:

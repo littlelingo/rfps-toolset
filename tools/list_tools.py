@@ -22,6 +22,7 @@ HINTS = {
     "flow_status.py": ("Seeing where you are, what is next, and which sections changed since last integrated", "/rfps:status, /rfps:next, /rfps:step"),
     "extract_docs.py": ("Turning PDFs, Word, Excel and PowerPoint files into searchable text for the analysis skills", "/rfps:extract"),
     "refresh_reports.py": ("After editing the coverage matrix, compliance report, roster or response, to recompute counts, status and page estimates", "/rfps:refresh-reports"),
+    "final_gate.py": ("Checking the PDF that will be submitted: page count and size, text, internal markers, required wording, links, metadata, blocking items and open forms; --scrub writes a cleaned copy", "/rfps:final-gate"),
     "sweep.py": ("Finding obligation sentences in the solicitation (shall, must, no later than ...) that no requirement row covers, so none is missed", "/rfps:sweep"),
     "open_items.py": ("Finding every decision, open question, evidence gap and assertion in the response; add --mark to put the colored icons in the files", "/rfps:open-items"),
     "build_response.py": ("Pouring the response text into the Word template: a work-in-progress copy, or the final submission copy", "/rfps:build-wip, /rfps:build-final"),

@@ -86,6 +86,10 @@ For substantive issues (VENDOR-CENTRIC, GENERIC, VOCABULARY-MISMATCH), provide a
 
 Save each annotated file as `review/[file]-reviewed.md`. The original `response/[file].md` is never changed by this skill and remains the only working text — the reviewed version is a new file.
 
+### Step 5b: Record what was reviewed
+
+Once the annotated files and `review-notes.md` are written, run `rfps-flow-status --validated empathy` to record which version of each response file was reviewed.
+
 ### Step 6: Produce Review Notes
 
 Write `review-notes.md` summarizing:

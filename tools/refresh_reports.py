@@ -20,6 +20,7 @@ import resources as rs
 import staffing as sf
 import solicit_text as st
 import strategy as sg
+import validated as vd
 
 TAGS = ["ASSERTION", "EVIDENCE NEEDED", "DECISION", "OPEN", "SOLUTIONING", "GROUNDED"]
 
@@ -144,6 +145,8 @@ def refresh_compliance(sol, cfg):
     else: auto.append("| Evidence register | Info | no register configured |")
     try: auto += solicitation_checks(sol, cfg, rows, nrows)
     except Exception as e: auto.append(f"| Solicitation sweep and quote check | Info | not run: {e} |")
+    try: auto += currency_checks(sol, cfg)
+    except Exception as e: auto.append(f"| Reviews current and submission steps | Info | not run: {e} |")
     try: auto += strategy_checks(sol, resp, order, pages, cfg.get("page_limit"))
     except Exception as e: auto.append(f"| Win themes and page budget | Info | not run: {e} |")
     t = replace_block(t, "autochecks", "\n".join(auto), f.name)
@@ -164,6 +167,25 @@ def solicitation_checks(sol, cfg, comp_rows, narr_rows):
     out = [f"| Solicitation obligations all mapped | {'Pass' if not un else ('Open' if um else 'Info')} | {len(res)} obligation sentence(s) in {len(docs)} file(s); {len(un)} with no requirement row ({len(um)} mandatory){': ' + show if um else ''}. Run rfps-sweep for the list. |"]
     badc = st.unverified_quotes(cov, docs); badk = st.unverified_quotes(chk, docs, quoted_only=True)
     out.append(f"| Quoted RFP language found in the solicitation | {'Pass' if not (badc or badk) else 'Open'} | {len(cov)} matrix row(s), {len(chk)} check row(s); not found verbatim: {', '.join(badc + badk) or 'none'}. Source: {note}. |")
+    return out
+
+def currency_checks(sol, cfg):
+    """Automated checks: each review still matches the response text it looked at, and the submission checklist has nothing overdue or due within three days."""
+    out = []
+    for name, label in (("compliance", "Compliance check"), ("empathy", "Tone review"), ("evalsim", "Second-reader run")):
+        ch = vd.stale(sol, cfg, name)
+        out.append(f"| {label} matches the current text | {'Info' if ch is None else ('Pass' if not ch else 'Open')} | " + ("never recorded (run rfps-flow-status --validated " + name + " after it)" if ch is None else ("no section changed since" if not ch else f"changed since: {', '.join(ch)}")) + " |")
+    sub_rows = sg.submission(sol)
+    if sub_rows:
+        import datetime
+        today = datetime.date.today(); late, soon, open_ = [], [], 0
+        for r in sub_rows:
+            if r["status"].lower() in ("done", "n/a", "na"): continue
+            open_ += 1
+            try: d = datetime.date.fromisoformat(r["due"][:10])
+            except ValueError: continue
+            (late if d < today else soon if (d - today).days <= 3 else []).append(f"{r['id']} {r['item'][:40]} ({r['due'][:10]})")
+        out.append(f"| Submission checklist | {'Open' if late or soon else ('Info' if open_ else 'Pass')} | {len(sub_rows)} item(s), {open_} not done" + (f"; overdue: {'; '.join(late)}" if late else "") + (f"; due within 3 days: {'; '.join(soon)}" if soon else "") + " |")
     return out
 
 def group_texts(resp, order):

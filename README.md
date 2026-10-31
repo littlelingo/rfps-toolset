@@ -85,6 +85,8 @@ The solution is found from the current directory (a folder at or above it holdin
 | `/rfps:integrate`, `/rfps:integrate-edits` | Weave your edits into their section for approval |
 | `/rfps:empathy-reviewer` | Tone and client-centricity pass |
 | `/rfps:compliance-validator` | Pass/fail check against the explicit requirements |
+| `/rfps:submission` | Keep the checklist of mandatory forms, signatures and deadlines; draft the submission or acknowledgement email for you to send |
+| `/rfps:final-gate` | Check the exported PDF (pages, text, markers, links, margins, metadata, blocking items, open forms) and write a cleaned copy |
 | `/rfps:evaluator-simulator` | An independent second reader rates each evaluation factor and names the change that most raises it |
 | `/rfps:sweep` | List solicitation obligation sentences that no requirement row covers |
 | `/rfps:refresh-reports` | Recompute counts, pre-flight status, page estimates and the solicitation checks |
@@ -99,7 +101,7 @@ The solution is found from the current directory (a folder at or above it holdin
 
 ## Terminal Tools
 
-The `rfps-*` commands in `bin/` are on the PATH while the plugin is enabled: `rfps-flow-status`, `rfps-build-response`, `rfps-new-engagement`, `rfps-refresh-reports`, `rfps-sweep`, `rfps-open-items`, `rfps-worklist`, `rfps-collab`, `rfps-set-config`, `rfps-decode-b64`, `rfps-staffing`, `rfps-sync-gdoc`, `rfps-sync-docx`, `rfps-open-doc`, `rfps-extract-docs`, `rfps-add-source`, `rfps-file-audit`, `rfps-status-page`, `rfps-use-solution` and `rfps-list-tools`. Run `/rfps:help` for what each is for.
+The `rfps-*` commands in `bin/` are on the PATH while the plugin is enabled: `rfps-flow-status`, `rfps-build-response`, `rfps-new-engagement`, `rfps-refresh-reports`, `rfps-sweep`, `rfps-final-gate`, `rfps-open-items`, `rfps-worklist`, `rfps-collab`, `rfps-set-config`, `rfps-decode-b64`, `rfps-staffing`, `rfps-sync-gdoc`, `rfps-sync-docx`, `rfps-open-doc`, `rfps-extract-docs`, `rfps-add-source`, `rfps-file-audit`, `rfps-status-page`, `rfps-use-solution` and `rfps-list-tools`. Run `/rfps:help` for what each is for.
 
 ## Status Pane
 

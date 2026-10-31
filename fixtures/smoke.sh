@@ -114,6 +114,40 @@ rfps-worklist --table | grep -q "Weak factor (Marginal)" || { echo "FAIL: a Marg
 rfps-flow-status --table | grep -q "1 factor(s) rated in the bottom of the scale: Technical Approach" || { echo "FAIL: the second reader's weakest factor not shown in the flow" >&2; exit 1; }
 for f in capture.md win-strategy.md evaluation-sim.md solution.toml; do cp "$T/$f.bak" "active-solution/$f"; done
 rfps-refresh-reports --solution >/dev/null
+# validation staleness, amendments, the submission checklist and the PDF final gate; restored afterwards
+cp active-solution/solution.toml "$T/sol3.bak"; cp active-solution/amendments/log.md "$T/amlog.bak"; cp active-solution/submission.md "$T/sub3.bak"; cp active-solution/response/02-technical-approach.md "$T/resp02.bak"
+printf 'tone review notes\n' > active-solution/review-notes.md
+rfps-flow-status --validated empathy | grep -q "Recorded 4 response file" || { echo "FAIL: --validated did not record the response files" >&2; exit 1; }
+rfps-flow-status --table | grep -q "reviewed; no section has changed since" || { echo "FAIL: an unchanged review should read as current" >&2; exit 1; }
+printf '\nOne more sentence.\n' >> active-solution/response/02-technical-approach.md
+rfps-flow-status --table | grep -q "1 section(s) changed since the tone review: 02-technical-approach.md" || { echo "FAIL: the edited section was not named as stale" >&2; exit 1; }
+rfps-refresh-reports --solution >/dev/null
+grep -q "Tone review matches the current text | Open.*02-technical-approach.md" active-solution/compliance-report.md || { echo "FAIL: stale review not in the automated checks" >&2; exit 1; }
+cp "$T/resp02.bak" active-solution/response/02-technical-approach.md; rm active-solution/review-notes.md active-solution/.state/validated.json
+printf '| 1 | Amendment | 2026-10-25 | Amendment 1.docx | Go-live extended to 7 months | R-007 | No | No |\n' >> active-solution/amendments/log.md
+rfps-worklist --table | grep -q "Amendment not applied" || { echo "FAIL: an unapplied amendment should be on the worklist" >&2; exit 1; }
+sed -i.bak 's/| R-007 | No | No |/| R-007 | Yes | Yes |/' active-solution/amendments/log.md && rm active-solution/amendments/log.md.bak
+if rfps-worklist --table | grep -q "Amendment not applied"; then echo "FAIL: an applied amendment should leave the worklist" >&2; exit 1; fi
+cp "$T/amlog.bak" active-solution/amendments/log.md
+printf '| M-01 | Signed Attachment B (Certifications) | RFP 6 | Pat | 2020-01-01 | Open | |\n' >> active-solution/submission.md
+rfps-worklist --table | grep -q "Overdue submission step" || { echo "FAIL: an overdue form should be on the worklist" >&2; exit 1; }
+rfps-refresh-reports --solution >/dev/null
+grep -q "Submission checklist | Open.*overdue: M-01" active-solution/compliance-report.md || { echo "FAIL: overdue form not in the automated checks" >&2; exit 1; }
+printf 'page_limit = 10\n[final_gate]\nrequired_text = ["Attachment B"]\nmargin_inches = 1.0\n' >> active-solution/solution.toml
+uv run --quiet "$HERE/make_pdf.py" clean "$T/clean.pdf"; uv run --quiet "$HERE/make_pdf.py" defects "$T/defects.pdf"
+if rfps-final-gate --pdf "$T/clean.pdf" >/dev/null 2>&1; then echo "FAIL: the gate passed with an open mandatory form" >&2; exit 1; fi
+grep -q "Mandatory forms and steps in submission.md are done | Fail.*M-01" active-solution/final-gate.md || { echo "FAIL: open form not reported by the gate" >&2; exit 1; }
+sed -i.bak 's/| 2020-01-01 | Open |/| 2020-01-01 | Done |/' active-solution/submission.md && rm active-solution/submission.md.bak
+rfps-final-gate --pdf "$T/clean.pdf" >/dev/null || { echo "FAIL: a clean PDF with every form done should pass" >&2; cat active-solution/final-gate.md >&2; exit 1; }
+rfps-flow-status --table | grep -q "clean.pdf passed" || { echo "FAIL: the flow did not show the gate result" >&2; exit 1; }
+if rfps-final-gate --pdf "$T/defects.pdf" --scrub >/dev/null 2>&1; then echo "FAIL: the gate passed a PDF with planted defects" >&2; exit 1; fi
+for want in "Page count within page_limit | Fail" "No internal markers, register IDs or placeholders | Fail" "Required wording present: Attachment B | Fail" "No links to Google Docs, Drive or local addresses | Fail" "Metadata free of names and emails | Fail"; do
+  grep -qF "$want" active-solution/final-gate.md || { echo "FAIL: the gate missed: $want" >&2; exit 1; }
+done
+test -f "$T/defects_scrubbed.pdf" || { echo "FAIL: --scrub wrote no cleaned copy" >&2; exit 1; }
+rfps-final-gate --pdf "$T/defects_scrubbed.pdf" | grep -q "Metadata free of names and emails | Pass" || { echo "FAIL: the cleaned copy still has personal metadata" >&2; exit 1; }
+cp "$T/sol3.bak" active-solution/solution.toml; cp "$T/sub3.bak" active-solution/submission.md; rm -f active-solution/final-gate.md
+rfps-refresh-reports --solution >/dev/null
 rfps-sync-docx >/dev/null
 WIP="05 Draft Response/Response Template_WIP.docx"
 uv run --quiet --with python-docx python3 - "$WIP" <<'PY'

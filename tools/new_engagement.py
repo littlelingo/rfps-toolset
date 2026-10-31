@@ -107,7 +107,7 @@ def main():
     (sol / "amendments" / "log.md").write_text("# Amendment and Q&A log\n\n| # | Type | Date received | File (in 01 Solicitation Docs) | What changed | Requirement IDs affected | Response updated | Analysis re-run |\n|---|------|---------------|--------------------------------|--------------|--------------------------|------------------|-----------------|\n| | | | | | | | |\n")
     tdir = pathlib.Path(__file__).parent / "templates"
     for fn, srcf in (("coverage-matrix.md", tdir / "coverage-matrix.md"), ("compliance-report.md", tdir / "compliance-report.md"),
-                     ("capture.md", tdir / "capture.md"), ("win-strategy.md", tdir / "win-strategy.md"), ("evaluation-sim.md", tdir / "evaluation-sim.md"),
+                     ("capture.md", tdir / "capture.md"), ("submission.md", tdir / "submission.md"), ("win-strategy.md", tdir / "win-strategy.md"), ("evaluation-sim.md", tdir / "evaluation-sim.md"),
                      ("resource-plan.md", PLUGIN_ROOT / "skills" / "resource-planner" / "assets" / "resource-plan-template.md")):
         (sol / fn).write_text(srcf.read_text().replace("{title}", a.title or src.name))
     (sol / ".gitignore").write_text("build/\n.state/text/\n.DS_Store\n")

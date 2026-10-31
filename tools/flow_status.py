@@ -10,6 +10,7 @@ Usage (the active-solution pointer is used when --solution is omitted):
   rfps-flow-status --detail <id|text>   what a step or a section still needs (step id or part of a heading)
   rfps-flow-status --set <id> done|skip|reset   change your override for a step in progress.md
   rfps-flow-status --changed            sections whose text changed since the last integration (with diffs)
+  rfps-flow-status --validated NAME     record the response text as just checked (compliance, empathy or evalsim); the step then names the sections edited since
   rfps-flow-status --baseline [text]    record current text as integrated (all sections, or headings matching text)
   rfps-flow-status --unbaseline [text]  forget the integrated version (all sections, or headings matching text) so /rfps:integrate reviews them
   rfps-flow-status --table              the same status as markdown tables (the default view for /rfps:status; needs no widget)
@@ -24,6 +25,7 @@ import build_response as br
 import refresh_reports as rr
 import solicit_text as sol_txt
 import strategy as sg
+import validated as vd
 import docx
 
 ICON = {"done": "🟢", "attention": "🟠", "blocking": "🔴", "todo": "⚪", "skipped": "🔵"}
@@ -151,7 +153,9 @@ def d_strategy_recorded(c):
 def d_evalsim_run(c):
     e = sg.evalsim(c.sol); f = c.sol / "evaluation-sim.md"
     if not e["rows"]: return "todo", "no second-reader ratings yet"
-    if f.stat().st_mtime < c.newest: return "attention", "response changed since the last second-reader run"
+    ch = vd.stale(c.sol, c.cfg, "evalsim")
+    if ch: return "attention", f"{len(ch)} section(s) changed since the last second-reader run: {', '.join(ch[:4])}"
+    if ch is None and f.stat().st_mtime < c.newest: return "attention", "response changed since the last second-reader run"
     pts = [(r, sg.rating_points(r["rating"], e["scale"])) for r in e["rows"]]
     low = [r["factor"] for r, p in pts if p is not None and p <= 0.25]
     return ("attention", f"{len(low)} factor(s) rated in the bottom of the scale: {', '.join(low[:4])}") if low else ("done", f"{len(e['rows'])} factor(s) rated, none in the bottom of the scale")
@@ -208,6 +212,8 @@ def collections_total(c):
 def d_empathy_reviewed(c):
     f = c.sol / "review-notes.md"
     if not f.is_file(): return "todo", "no review yet"
+    ch = vd.stale(c.sol, c.cfg, "empathy")
+    if ch is not None: return ("done", "reviewed; no section has changed since") if not ch else ("attention", f"{len(ch)} section(s) changed since the tone review: {', '.join(ch[:4])}")
     return ("done", "reviewed after the latest changes") if f.stat().st_mtime >= c.newest else ("attention", "response changed since the review")
 def d_compliance_ok(c):
     f = c.sol / "compliance-report.md"
@@ -217,6 +223,8 @@ def d_compliance_ok(c):
     bl = [k for k, v in rows.items() if v[3] == "Yes" and v[4] == "Fail"]
     pa = [k for k, v in rows.items() if v[4] in ("Partial", "Ambiguous")]
     if bl: return "blocking", f"{len(bl)} blocking check(s): {', '.join(bl[:6])}{' ...' if len(bl) > 6 else ''}"
+    ch = vd.stale(c.sol, c.cfg, "compliance")
+    if ch: return "attention", f"{len(ch)} section(s) changed since the compliance check: {', '.join(ch[:4])}"
     return ("attention", f"{len(pa)} partial or ambiguous check(s)") if pa else ("done", f"{len(rows)} checks, none blocking")
 def newest_build(c, suffix):
     ds = [pathlib.Path(c.eng["out"])] + ([pathlib.Path(c.eng["final_copy"])] if c.eng.get("final_copy") else [])
@@ -258,6 +266,13 @@ def d_final_current(c):
     f = newest_build(c, "FINAL")
     if not f: return "todo", "no final build yet"
     return ("done", f"{f.name} is current") if f.stat().st_mtime >= c.newest else ("attention", "response changed since the last final build")
+def d_final_gate_ok(c):
+    f = c.sol / "final-gate.md"
+    if not f.is_file(): return "todo", "the exported PDF has not been checked (run /rfps:final-gate)"
+    t = f.read_text(); m = re.search(r"\*\*Result: (PASS|FAIL[^*]*)\*\*( for (\S+))?", t)
+    if not m: return "todo", "final-gate.md has no result"
+    if m.group(1).startswith("FAIL"): return "blocking", f"{m.group(1).strip()} (see final-gate.md)"
+    return ("done", f"{m.group(3) or 'the PDF'} passed") if f.stat().st_mtime >= c.newest else ("attention", "response changed since the final gate ran; export and check again")
 DETECT = {n[2:]: fn for n, fn in globals().items() if n.startswith("d_")}
 
 def load_flow(): return tomllib.loads((pathlib.Path(__file__).resolve().parent / "flow.toml").read_text())["step"]
@@ -382,6 +397,10 @@ def cmd_changed(c):
             out.append(f"## {h}\n" + ("(new text, nothing integrated before)\n" if not old else "") + "\n".join(d[:80]) + ("\n..." if len(d) > 80 else ""))
     return "\n\n".join(out) or "No section has changed since the last integration."
 
+def cmd_validated(c, name):
+    if name not in vd.NAMES: sys.exit(f"--validated takes one of: {', '.join(vd.NAMES)}")
+    return f"Recorded {vd.record(c.sol, c.cfg, name)} response file(s) as checked by {name}; it is stale only for sections that change after this."
+
 def cmd_baseline(c, text):
     c.state_dir.mkdir(exist_ok=True); n = 0
     for h in c.order:
@@ -402,10 +421,12 @@ def main():
     ap.add_argument("--solution", nargs="?", const="", default=None)
     ap.add_argument("--sections", action="store_true"); ap.add_argument("--detail"); ap.add_argument("--set", nargs=2, metavar=("ID", "VALUE"))
     ap.add_argument("--changed", action="store_true"); ap.add_argument("--baseline", nargs="?", const="", default=None); ap.add_argument("--unbaseline", nargs="?", const="", default=None)
+    ap.add_argument("--validated", metavar="NAME", help="record the current response text as just checked by compliance, empathy or evalsim")
     ap.add_argument("--table", action="store_true"); ap.add_argument("--json", action="store_true"); ap.add_argument("--no-write", action="store_true")
     a = ap.parse_args()
     c = Ctx(br.resolve_solution(a.solution or None))
     if a.set: print(cmd_set(c, a.set[0], a.set[1])); return
+    if a.validated: print(cmd_validated(c, a.validated)); return
     if a.baseline is not None: print(cmd_baseline(c, a.baseline)); return
     if a.unbaseline is not None: print(cmd_unbaseline(c, a.unbaseline)); return
     if a.changed: print(cmd_changed(c)); return

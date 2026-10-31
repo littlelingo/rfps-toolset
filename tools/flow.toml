@@ -181,8 +181,8 @@ id = "attachments"
 group = "Package"
 title = "Separate attachments ready (resumes, price form, evidence, signatures)"
 kind = "manual"
-command = "see the compliance report's attachment rows"
-help = "The response narrative is built by this tool. Resumes, the price form, the supporting evidence and signature pages are prepared separately; check this off when they are ready."
+command = "/rfps:submission"
+help = "The response narrative is built by this tool. Resumes, the price form, the supporting evidence, signature pages and acknowledgements are prepared separately. List them in submission.md (/rfps:submission) with owner and due date; the worklist and the final gate hold the open ones. Check this off when they are all ready."
 ask = "Which attachments are still open?"
 
 [[step]]
@@ -211,3 +211,12 @@ command = "/rfps:build-final"
 check = "final_current"
 help = "Run /rfps:build-final once nothing blocks it. It writes a new finished copy and also places one in final_copy_dir."
 ask = "Ready to try the final build?"
+
+[[step]]
+id = "gate"
+group = "Package"
+title = "Exported PDF passes the final gate"
+command = "/rfps:final-gate"
+check = "final_gate_ok"
+help = "Export the final Google Doc to PDF into the final submission folder, then run /rfps:final-gate. It checks page count and size, text, internal markers, links to the working document, required wording, metadata, blocking items and open forms in submission.md."
+ask = "Is the PDF exported? Do you want it checked now?"

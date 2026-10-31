@@ -12,6 +12,7 @@ import csv, pathlib, re
 import evidence_checks as ec
 
 FIRST, LAST = 5, 200
+CEILING = re.compile(r"\b(?:ceiling|budget|not[- ]to[- ]exceed|nte|maximum (?:amount|value|price|funding|contract|total)|total amount|funding|estimated value)\b", re.I)
 
 def _num(v):
     try: return float(str(v).strip().replace("$", "").replace(",", ""))
@@ -45,11 +46,11 @@ def rate_sheet(sol, cfg):
 
 def stated_figures(plan_text):
     """[(item, dollars)] from the 'Figures stated by the solicitation' table in resource-plan.md for rows that read as a ceiling or budget."""
-    m = re.search(r"## Figures stated by the solicitation(.*?)(?=\n## )", plan_text, re.S)
+    m = re.search(r"## Figures stated by the solicitation(.*?)(?=\n## |\Z)", plan_text, re.S)
     out = []
     for line in (m.group(1) if m else "").split("\n"):
         c = [x.strip() for x in line.strip().strip("|").split("|")] if line.startswith("|") else []
-        if len(c) >= 2 and re.search(r"ceiling|budget|not.to.exceed|nte|maximum|total amount|funding|estimated value", c[0], re.I):
+        if len(c) >= 2 and CEILING.search(c[0]) and re.search(r"\$|\bmillion\b|\bthousand\b|\busd\b|\bdollars?\b", c[1], re.I):
             v = ec.parse_money(c[1])
             if v: out.append((c[0], v))
     return out

@@ -31,7 +31,14 @@ def cited_clauses(text):
         out |= set(re.findall(r"\d+(?:\.\d+)*", m.group(1)))
     return out
 
+_MEMO = {}
+
 def build(sol, cfg):
+    """Built once per run: refresh-reports asks for the checks and then for the file."""
+    if str(sol) not in _MEMO: _MEMO[str(sol)] = _build(sol, cfg)
+    return _MEMO[str(sol)]
+
+def _build(sol, cfg):
     f = sol / "coverage-matrix.md"
     reqs = sg.rows(f.read_text(), r"R-\d{3}", 9) if f.is_file() else {}
     groups = lint.groups_of(sol, cfg); start, acc = {}, 0
@@ -39,6 +46,7 @@ def build(sol, cfg):
         start[h] = 1 + int(acc / 500); acc += len(re.findall(r"\S+", lint.clean(t)))
     cites = {h: cited_clauses(lint.clean(t)) for h, t in groups.items()}
     sents = {h: [s for l in lint.body_lines(t) for s in re.split(r"(?<=[.;!?])\s+", l) if len(s.split()) >= 5] for h, t in groups.items()}
+    stoks = {h: [st._tokens(s) for s in sents[h]] for h in groups}
     rows = []
     for rid, c in reqs.items():
         text, source, mand = c[1], c[2], c[3].lower().startswith(("y", "m"))
@@ -49,7 +57,7 @@ def build(sol, cfg):
         if not found:
             for h in groups:
                 rt = st._tokens(text)
-                best = max((len(rt & st._tokens(s)) / len(rt) for s in sents[h]), default=0) if rt else 0
+                best = max((len(rt & x) / len(rt) for x in stoks[h]), default=0) if rt else 0
                 if best >= 0.5: found[h] = f"wording ({best:.0%} shared)"
         note = "an amendment change: applied through the requirement it changes" if source.lower().startswith("amendment") else ("a submission step: tracked in submission.md" if PROCEDURAL.search(text) else "")
         rows.append(dict(id=rid, text=text, source=source, mandatory=mand and not note, found=found, note=note, implicit="(implicit)" in text.lower()))

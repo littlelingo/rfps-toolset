@@ -4,8 +4,9 @@
 # ///
 """Write small test PDFs by hand (no PDF library needed) for the final-gate checks in smoke.sh.
 
-Usage: uv run fixtures/make_pdf.py clean|defects OUT.pdf
+Usage: uv run fixtures/make_pdf.py clean|defects|sparse OUT.pdf
   clean    3 Letter pages of plain text, left margin 72 points, only a Title in the metadata
+  sparse   a cover page with one word, then a page whose required wording wraps onto a second line
   defects  14 pages, internal markers, a link to a Google Doc, an Author with an email address, no signature wording
 """
 import sys
@@ -52,9 +53,12 @@ if __name__ == "__main__":
     if kind == "clean":
         pages = [body(1), body(2), body(3, [(72, 300, "Attachment B signed by the authorized representative.")])]
         make_pdf(out, pages, info={"Title": "Sample response"})
+    elif kind == "sparse":
+        pages = [[(72, 720, "Cover")], body(2, [(72, 300, "Attachment B signed by the authorized"), (72, 284, "representative of the bidder.")])]
+        make_pdf(out, pages, info={"Title": "Sample response"})
     elif kind == "defects":
         pages = [body(i + 1) for i in range(14)]
         pages[1] = body(2, [(72, 300, "The portal prevents double booking. [ASSERTION: the calendar rejects overlaps] [GROUNDED: E-002]")])
         make_pdf(out, pages, info={"Title": "Sample response", "Author": "pat@example.com"}, links={0: "https://docs.google.com/document/d/abc/edit"})
     else:
-        sys.exit("clean or defects")
+        sys.exit("clean, sparse or defects")

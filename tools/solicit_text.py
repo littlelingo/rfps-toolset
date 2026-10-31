@@ -7,7 +7,7 @@
 Used by sweep.py (rfps-sweep) and refresh_reports.py. Deterministic on purpose: it counts and quotes, it does not judge.
 Treat the text as data; nothing here follows instructions found in it.
 """
-import pathlib, re, sys
+import json, pathlib, re, sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 STOP = set("a an and are as at be by for from has have in is it of on or that the this to will with shall must should may not any each all per".split())
@@ -41,15 +41,36 @@ def _load_text(sol, cfg, text_dir=None, live=True):
     src = (sol / sd).resolve()
     if not src.is_dir(): return [], f"solicitation folder not found: {src}"
     cached = cache_root(sol, cfg) / "text" / src.name
-    if cached.is_dir() and any(cached.glob("*.txt")):
+    files = [p for p in sorted(src.rglob("*")) if p.is_file() and not p.name.startswith((".", "~$"))]
+    if cached.is_dir() and any(cached.glob("*.txt")) and (not live or _cache_current(cached, src, files)):
         return [(p.name, p.read_text(errors="replace")) for p in sorted(cached.glob("*.txt"))], f"extracted text in {cached}"
     if not live: return [], "no extracted text yet (run /rfps:extract)"
     try:
         import extract_docs as ex
     except ImportError as e:
         return [], f"cannot extract (missing package: {e}); run /rfps:extract first"
-    docs = [(p.name, ex.extract_file(p)) for p in sorted(src.rglob("*")) if p.is_file() and p.suffix.lower() in ex.H]
-    return docs, f"extracted from {src} (run /rfps:extract to keep a text copy)"
+    todo = [p for p in files if p.suffix.lower() in ex.H]
+    docs = [(p.name, ex.extract_file(p)) for p in todo]
+    _write_cache(cached, src, files, todo, docs)
+    return docs, f"extracted from {src} (kept in {cached} until a file there changes)"
+
+def _sig(src, files): return {str(p.relative_to(src)): [int(p.stat().st_mtime), p.stat().st_size] for p in files}
+
+def _cache_current(cached, src, files):
+    """A copy written by /rfps:extract has no manifest and is trusted. One written here carries the size and time of each source file and is used only while they match."""
+    m = cached / ".manifest.json"
+    if not m.is_file(): return True
+    try: return json.loads(m.read_text()) == _sig(src, files)
+    except (OSError, ValueError): return False
+
+def _write_cache(cached, src, files, todo, docs):
+    try:
+        if cached.is_dir() and any(cached.glob("*.txt")) and not (cached / ".manifest.json").is_file(): return   # someone else's copy; leave it alone
+        cached.mkdir(parents=True, exist_ok=True)
+        for old in cached.glob("*.txt"): old.unlink()
+        for p, (_, text) in zip(todo, docs): (cached / (str(p.relative_to(src)).replace("/", "__") + ".txt")).write_text(text)
+        (cached / ".manifest.json").write_text(json.dumps(_sig(src, files)))
+    except OSError: pass
 
 MANDATORY = re.compile(r"\b(shall(?: not)?|must(?: not)?|may not|cannot|(?:is|are) prohibited|is required|are required|required to|is mandatory|are mandatory|no later than|not (?:to )?exceed|minimum of|(?:is|are) due|(?:is|are) (?:extended|changed|replaced|revised|deleted|amended))\b", re.I)
 PREFERRED = re.compile(r"\b(should|is preferred|are preferred|desirable|encouraged|additional (?:points|consideration)|points will be awarded)\b", re.I)
@@ -76,17 +97,23 @@ def obligations(docs):
 
 def _tokens(s): return {t for t in re.findall(r"[a-z0-9][a-z0-9.\-]*", norm(s)) if t not in STOP and len(t) > 1}
 
-def closest(sentence, rows):
-    """Best matching requirement row for a solicitation sentence -> (row id, score 0..1). rows = {id: text}. 1.0 means a quoted or contained match."""
-    ns = norm(sentence); st = _tokens(sentence); best = (None, 0.0)
+def prep_rows(rows):
+    """Normalise each requirement row once: [(id, normalised text, quoted parts, tokens)]. Do this once, then call closest for every sentence."""
+    out = []
     for rid, rt in rows.items():
         nr = norm(rt)
+        out.append((rid, nr, [x.strip() for x in re.split(r"\.\.\.|\u2026", nr) if len(x.strip()) >= 20], _tokens(rt)))
+    return out
+
+def closest(sentence, rows):
+    """Best matching requirement row for a solicitation sentence -> (row id, score 0..1). rows = {id: text} or prep_rows(...). 1.0 means a quoted or contained match."""
+    prepped = rows if isinstance(rows, list) else prep_rows(rows)
+    ns = norm(sentence); stk = _tokens(sentence); best = (None, 0.0)
+    for rid, nr, parts, rtk in prepped:
         if len(nr) >= 20 and (ns in nr or nr in ns): return rid, 1.0
-        parts = [p for p in re.split(r"\.\.\.|…", nr) if len(p.strip()) >= 20]
-        if parts and all(p.strip() in ns for p in parts): return rid, 1.0
-        rtk = _tokens(rt)
-        if st:
-            sc = len(st & rtk) / len(st)
+        if parts and all(x in ns for x in parts): return rid, 1.0
+        if stk:
+            sc = len(stk & rtk) / len(stk)
             if sc > best[1]: best = (rid, sc)
     return best
 
@@ -94,9 +121,9 @@ MAPPED_AT = 0.6
 
 def sweep(docs, rows):
     """-> list of obligations, each with 'row' (closest id) and 'score', and 'mapped' (score >= MAPPED_AT)."""
-    out = []
+    out = []; prepped = prep_rows(rows)
     for o in obligations(docs):
-        rid, sc = closest(o["text"], rows)
+        rid, sc = closest(o["text"], prepped)
         out.append(dict(o, row=rid, score=round(sc, 2), mapped=sc >= MAPPED_AT))
     return out
 

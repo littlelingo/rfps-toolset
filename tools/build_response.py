@@ -35,7 +35,7 @@ INLINE = re.compile(r"(\*\*[^*]+\*\*|\*[^*\s][^*]*\*|`[^`]+`)")
 
 def load_register(path):
     rows = {}
-    with open(path, newline="") as f:
+    with open(path, newline="", encoding="utf-8-sig") as f:   # Excel adds a byte order mark
         for r in csv.DictReader(f):
             rows[r["id"].strip()] = r
     return rows

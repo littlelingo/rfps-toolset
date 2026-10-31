@@ -92,12 +92,14 @@ def run(sol, cfg, eng, pdf_arg):
     for p in reader.pages:
         try: texts.append(p.extract_text() or "")
         except Exception: texts.append("")
-    thin = [i + 1 for i, t in enumerate(texts) if len(t.strip()) < 80]
-    add("Text can be extracted", "Pass" if not thin else "Fail", "every page has text" if not thin else f"page(s) with little or no text (scanned images?): {', '.join(map(str, thin[:10]))}")
+    empty = [i + 1 for i, t in enumerate(texts) if not t.strip()]; sparse = [i + 1 for i, t in enumerate(texts) if 0 < len(t.strip()) < 80]
+    add("Text can be extracted", "Pass" if not empty else "Fail", ("every page has text" if not empty else f"page(s) with no text at all (scanned images?): {', '.join(map(str, empty[:10]))}") + (f"; page(s) with very little text, check they are meant to be (cover, signature, blank): {', '.join(map(str, sparse[:10]))}" if sparse else ""))
     leaks = [(i + 1, m.group(0)[:40]) for i, t in enumerate(texts) for m in LEAK.finditer(t)]
     add("No internal markers, register IDs or placeholders", "Pass" if not leaks else "Fail", "none found" if not leaks else "; ".join(f"page {p}: {s}" for p, s in leaks[:8]) + (" ..." if len(leaks) > 8 else ""))
-    full = "\n".join(texts).lower()
-    for phrase in g.get("required_text", []): add(f"Required wording present: {phrase}", "Pass" if phrase.lower() in full else "Fail", "found" if phrase.lower() in full else "not found in the extracted text")
+    full = re.sub(r"\s+", " ", "\n".join(texts)).lower()   # wording can wrap onto the next line
+    for phrase in g.get("required_text", []):
+        hit = re.sub(r"\s+", " ", phrase).strip().lower() in full
+        add(f"Required wording present: {phrase}", "Pass" if hit else "Fail", "found" if hit else "not found in the extracted text")
     links = []
     for i, p in enumerate(reader.pages):
         for a in (p.get("/Annots") or []):
@@ -135,7 +137,7 @@ def run(sol, cfg, eng, pdf_arg):
     except Exception as e: add("Evidence cited is cleared", "Info", f"not checked: {e}")
     sub = sg.submission(sol)
     if sub:
-        opn = [r for r in sub if r["status"].lower() not in ("done", "n/a", "na")]
+        opn = [r for r in sub if not sg.is_done(r["status"])]
         add("Mandatory forms and steps in submission.md are done", "Pass" if not opn else "Fail", f"{len(sub)} item(s)" + (f"; open: {', '.join(r['id'] + ' ' + r['item'][:40] for r in opn[:5])}" if opn else ", all done"))
     else: add("Mandatory forms and steps in submission.md are done", "Info", "submission.md has no rows; list the signature page, forms and acknowledgements with /rfps:submission")
     return pdf, rows

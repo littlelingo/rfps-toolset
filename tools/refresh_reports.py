@@ -198,17 +198,19 @@ def currency_checks(sol, cfg):
     for name, label in (("compliance", "Compliance check"), ("empathy", "Tone review"), ("evalsim", "Second-reader run")):
         ch = vd.stale(sol, cfg, name)
         out.append(f"| {label} matches the current text | {'Info' if ch is None else ('Pass' if not ch else 'Open')} | " + ("never recorded (run rfps-flow-status --validated " + name + " after it)" if ch is None else ("no section changed since" if not ch else f"changed since: {', '.join(ch)}")) + " |")
+    bad = sg.malformed(sol)
+    out.append(f"| Living tables are well formed | {'Pass' if not bad else 'Open'} | " + ("no row has a missing cell or a stray '|'" if not bad else f"{len(bad)} row(s) the tools skip until fixed: " + "; ".join(bad[:4]) + (" ..." if len(bad) > 4 else "")) + " |")
     qs = sg.questions(sol)
     if qs:
         import datetime
         today = datetime.date.today(); unsent, unlogged = [], []
         for q in qs:
-            s = q["status"].lower()
+            s = sg.status_word(q["status"])
             if s == "draft": unsent.append(q["id"])
             if s == "answered" and q["logged"].strip() in ("", "-"): unlogged.append(q["id"])
         late = []
         for q in qs:
-            if q["status"].lower() == "draft":
+            if sg.status_word(q["status"]) == "draft":
                 try:
                     if (datetime.date.fromisoformat(q["due"][:10]) - today).days <= 3: late.append(q["id"])
                 except ValueError: pass
@@ -218,7 +220,7 @@ def currency_checks(sol, cfg):
         import datetime
         today = datetime.date.today(); late, soon, open_ = [], [], 0
         for r in sub_rows:
-            if r["status"].lower() in ("done", "n/a", "na"): continue
+            if sg.is_done(r["status"]): continue
             open_ += 1
             try: d = datetime.date.fromisoformat(r["due"][:10])
             except ValueError: continue
@@ -271,7 +273,7 @@ def strategy_checks(sol, resp, order, pages, limit):
         out.append(f"| Exhibits planned for the heavily weighted factors | {'Pass' if not none else 'Open'} | {len(ex)} exhibit(s) planned, {len(undone)} not done" + (f"; no exhibit planned for: {', '.join(none)}" if none else "") + " |")
     return out
 
-def refresh_evalsim(sol):
+def refresh_evalsim(sol, cfg):
     """Fill the derived summary of evaluation-sim.md: weighted score on the scale, the weakest factors, and whether the response changed since the run."""
     f = sol / "evaluation-sim.md"
     if not f.is_file(): return "evaluation-sim.md: not present"
@@ -283,11 +285,11 @@ def refresh_evalsim(sol):
     else:
         wt = sum((r["weight"] or 1) for r, _ in ok); score = sum((r["weight"] or 1) * p for r, p in ok) / wt if wt else 0
         worst = sorted(ok, key=lambda x: x[1])[:3]
-        newest = max([p.stat().st_mtime for p in (sol / "response").glob("*.md")] or [0])
+        ch = vd.stale(sol, cfg, "evalsim")
         summ = [f"**Weighted score:** {score * 100:.0f} of 100 across {len(ok)} rated factor(s) (best rating = 100, worst = 0 on the scale above). A second reader's view, not the agency's.",
                 "**Weakest factors:** " + (", ".join(f"{r['factor']} ({r['rating']})" for r, _ in worst) or "none"),
                 f"**Ratings not on the scale:** {', '.join(off) or 'none'}",
-                "**Response changed since this run:** " + ("yes, re-run the simulator" if newest > f.stat().st_mtime else "no")]
+                "**Response changed since this run:** " + ("unknown: record the run with rfps-flow-status --validated evalsim right after it" if ch is None else ("no" if not ch else f"yes, re-run the simulator ({', '.join(ch)})"))]
     f.write_text(replace_block(t, "evalsummary", "\n".join(summ), f.name))
     return f"evaluation-sim.md: {len(rated)} factor(s) rated"
 
@@ -361,7 +363,7 @@ def main():
     a = ap.parse_args()
     sol = br.resolve_solution(a.solution or None)
     cfg = tomllib.loads((sol / "solution.toml").read_text())
-    print(refresh_coverage(sol)); print(refresh_compliance(sol, cfg)); print(refresh_resources(sol, cfg)); print(refresh_evalsim(sol))
+    print(refresh_coverage(sol)); print(refresh_compliance(sol, cfg)); print(refresh_resources(sol, cfg)); print(refresh_evalsim(sol, cfg))
     try: n, m = cr.write(sol, cfg); print(f"cross-reference.md: {n} requirement(s), {m} mandatory with no answering section found")
     except Exception as e: print(f"cross-reference.md: not written ({e})")
     import open_items; n, _ = open_items.write(sol, cfg); print(f"open-items.md: {n} markers listed")

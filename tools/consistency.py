@@ -14,18 +14,19 @@ wording, so it reports candidates for a person to look at, not verdicts. It read
 
 Usage: rfps-consistency [--solution [folder]] [--text-dir <folder of extracted .txt>]
 """
-import argparse, pathlib, re, sys, tomllib
+import argparse, collections, pathlib, re, sys, tomllib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import build_response as br
 import solicit_text as st
 import resources as rs
 
 WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12}
-UNITS = r"(business days|calendar days|working days|months?|days?|weeks?|years?|hours?|pages?|percent|%)"
+UNITS = r"((?:business days|calendar days|working days|months?|days?|weeks?|years?|hours?|pages?|percent)\b|%)"
 NUM = r"(\d[\d,]*(?:\.\d+)?|" + "|".join(WORDS) + r")"
-QTY = re.compile(r"(?<![\w$.-])" + NUM + r"[\s-]*" + UNITS + r"\b", re.I)
+QTY = re.compile(r"(?<![\w$.-])" + NUM + r"[\s-]*" + UNITS, re.I)
 MONEY = re.compile(r"\$\s?(\d[\d,]*(?:\.\d+)?)\s*(million|thousand|[KMB])?\b", re.I)
 FROM_TO = re.compile(r"from\s+" + NUM + r"\s*" + UNITS + r"?\s+to\s+" + NUM + r"\s*" + UNITS + r"?", re.I)
+CHANGE_VERB = re.compile(r"\b(?:extended|changed|revised|amended|replaced|increased|reduced|decreased|updated|modified|shortened|lengthened)\b", re.I)
 MIN_W = re.compile(r"at least|minimum|no fewer|not less|or more|no less", re.I)
 MAX_W = re.compile(r"within|no later|not exceed|no more|maximum|up to|at most|not more|less than|or fewer|or less", re.I)
 GENERIC = set("contractor offeror vendor county state agency proposal response shall must will required within least after before each every per project work system portal provide ensure deliver deliverable".split())
@@ -61,14 +62,15 @@ def response_sentences(sol, cfg):
         lvl, body, omit = resp[h]
         if omit: continue
         clean = br.TAG_RE.sub("", body)
-        for s in sentences([(h, re.sub(r"[|*`]", " ", clean))]): out.append(dict(s, where=h))
+        for s in sentences([(h, re.sub(r"[|*`]", " ", clean))]):
+            q = quantities(s["text"]); out.append(dict(s, where=h, q=q, c=ctx(s["text"]) if q else set()))
     return out
 
 def rules(docs):
     """The figures the solicitation sets: [{value, unit, dir ('min','max','exact'), ctx, text, where, old}] with amendment changes applied (old = the replaced figure)."""
     sents = sentences(docs); changes = []; base = []
     for s in sents:
-        m = FROM_TO.search(s["text"])
+        m = FROM_TO.search(s["text"]) if CHANGE_VERB.search(s["text"]) else None
         if m:
             u = unit_of(m.group(2) or m.group(4) or "")
             if u: changes.append(dict(old=val(m.group(1)), new=val(m.group(3)), unit=u, ctx=ctx(s["text"]), s=s))
@@ -95,9 +97,9 @@ def ok(rule, v):
 def against_solicitation(rs_, resp):
     found = []
     for r in resp:
-        for v, u in quantities(r["text"]):
+        for v, u in r["q"]:
             for rule in rs_:
-                if rule["unit"] != u or len(rule["ctx"] & ctx(r["text"])) < 2: continue
+                if rule["unit"] != u or len(rule["ctx"] & r["c"]) < 2: continue
                 if rule["old"] is not None and v == rule["old"] and v != rule["value"]:
                     found.append(dict(kind="superseded", section=r["where"], resp=r["text"], rfp=rule["text"], note=f"uses {v:g} {u}, the figure an amendment replaced with {rule['value']:g}"))
                 elif not ok(rule, v):
@@ -109,14 +111,25 @@ def against_solicitation(rs_, resp):
     return out
 
 def across_sections(resp):
-    found = []; qs = [(r, quantities(r["text"]), ctx(r["text"])) for r in resp]
+    """Pairs of sentences in different sections that give different figures for what looks like the same thing. Sentences are paired only when they
+    share three or more content words, found through an index of words, so the cost follows the real overlaps and not the square of the sentences."""
+    qs = [(r, r["q"], r["c"]) for r in resp if r["q"]]
+    inv = collections.defaultdict(list)
+    for i, (_, _, c_) in enumerate(qs):
+        for w in c_: inv[w].append(i)
+    common = {w for w, l in inv.items() if len(l) > 150}   # a word in that many sentences says nothing about which two belong together
+    found = []
     for i, (a, qa, ca) in enumerate(qs):
-        for b, qb, cb in qs[i + 1:]:
+        counts = collections.Counter(j for w in ca - common for j in inv[w] if j > i)
+        for j, n in counts.items():
+            if n < 3: continue
+            b, qb, cb = qs[j]
             if a["where"] == b["where"] or len(ca & cb) < 3: continue
             for va, ua in qa:
                 for vb, ub in qb:
                     if ua == ub and va != vb and not any(ua == u2 and va == v2 for v2, u2 in qb) and not any(ub == u2 and vb == v2 for v2, u2 in qa):
                         found.append(dict(kind="sections", section=f"{a['where']} / {b['where']}", resp=a["text"], rfp=b["text"], note=f"{va:g} {ua} here, {vb:g} {ub} there, about the same thing"))
+        if len(found) > 400: break   # past this the list is noise; fix the first ones and run again
     seen, out = set(), []
     for f in found:
         k = (f["resp"][:50], f["rfp"][:50])

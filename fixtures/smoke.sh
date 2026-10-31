@@ -226,6 +226,86 @@ sed -i.bak 's/| Answered | Yes, from 2015. | - |$/| Answered | Yes, from 2015. |
 if rfps-worklist --table | grep -q "Answer not logged"; then echo "FAIL: a logged answer should leave the worklist" >&2; exit 1; fi
 cp "$T/cm5.bak" active-solution/coverage-matrix.md; cp "$T/ws5.bak" active-solution/win-strategy.md; cp "$T/q5.bak" active-solution/questions.md; rm -f active-solution/cross-reference.md
 rfps-refresh-reports --solution >/dev/null
+# fixes from the independent review: settings stay above the tables, a register saved by Excel survives, free-text statuses, % figures,
+# wrapped wording and sparse pages in the gate, price figures, rows the tools cannot read, and the speed of the sweep; restored afterwards
+fail() { echo "FAIL: $1" >&2; exit 1; }
+cp active-solution/solution.toml "$T/sol6.bak"; cp active-solution/evidence/register.csv "$T/reg6.bak"; cp active-solution/amendments/log.md "$T/am6.bak"
+cp active-solution/submission.md "$T/sub6.bak"; cp active-solution/evaluation-sim.md "$T/ev6.bak"; cp active-solution/questions.md "$T/q6.bak"; cp active-solution/response/03-management-plan.md "$T/r036.bak"
+printf '\n[final_gate]\nexclude_pages = 1\n' >> active-solution/solution.toml
+rfps-set-config wip_folder 1AbCdEfGhIjKlMnOpQ >/dev/null
+rfps-sync-gdoc --set-template 1TemplateDocIdForSmokeTest >/dev/null
+rfps-set-config cache_dir "$T/cache6" >/dev/null
+python3 -c "
+import tomllib, sys
+c = tomllib.load(open('active-solution/solution.toml', 'rb'))
+ok = c.get('wip_folder') == '1AbCdEfGhIjKlMnOpQ' and c.get('gdoc_template') == '1TemplateDocIdForSmokeTest' and c.get('cache_dir') and c.get('build_dir') and set(c['final_gate']) == {'exclude_pages'}
+sys.exit(0 if ok else 'a setting landed inside [final_gate] instead of the top level')" || fail "settings must stay above the tables in solution.toml"
+cp "$T/sol6.bak" active-solution/solution.toml
+printf '\357\273\277' > "$T/bom.csv"; cat "$T/reg6.bak" >> "$T/bom.csv"; cp "$T/bom.csv" active-solution/evidence/register.csv
+rfps-register-add --claim "BOM test" --client c >/dev/null
+python3 - active-solution/evidence/register.csv <<'PY' || fail "a register with a byte order mark was damaged by rfps-register-add"
+import csv, sys
+rd = csv.DictReader(open(sys.argv[1], newline="", encoding="utf-8-sig")); ids = [r["id"] for r in rd]
+assert "" not in ids and len(set(ids)) == len(ids) and "E-004" in ids, ids
+assert not any(c.startswith("﻿") for c in rd.fieldnames), rd.fieldnames
+PY
+cp "$T/reg6.bak" active-solution/evidence/register.csv
+cp "$HERE/seed/evaluation-sim.md" active-solution/evaluation-sim.md
+rfps-flow-status --validated evalsim >/dev/null; rfps-refresh-reports --solution >/dev/null
+grep -q "Response changed since this run:\*\* no" active-solution/evaluation-sim.md || fail "a second-reader run just recorded should read as current"
+printf '\nOne more sentence.\n' >> active-solution/response/03-management-plan.md
+rfps-refresh-reports --solution >/dev/null; rfps-refresh-reports --solution >/dev/null
+grep -q "Response changed since this run:\*\* yes, re-run the simulator (03-management-plan.md)" active-solution/evaluation-sim.md || fail "the stale second-reader warning must survive a second refresh"
+cp "$T/r036.bak" active-solution/response/03-management-plan.md; cp "$T/ev6.bak" active-solution/evaluation-sim.md; rm -f active-solution/.state/validated.json
+printf '| 1 | Amendment | 2026-10-25 | Amendment 1.docx | Go-live extended | R-007 | Yes - section 3.2 | Done 2026-05-02 |\n' >> active-solution/amendments/log.md
+printf '| M-01 | Signed Attachment B | RFP 6 | Pat | 2020-01-01 | Done (emailed 2026-10-01) | |\n' >> active-solution/submission.md
+printf '| Q-01 | RFP 2.2: does the history include the archive? | R-002 | 2020-01-01 | Draft - waiting for legal | | |\n' >> active-solution/questions.md
+rfps-worklist --table > "$T/wl6.txt"
+if grep -q "Amendment not applied" "$T/wl6.txt"; then fail "free-text 'Yes - section 3.2' and 'Done 2026-05-02' mean the amendment is applied"; fi
+if grep -q "Submission step" "$T/wl6.txt"; then fail "'Done (emailed 2026-10-01)' means the form is done"; fi
+grep -q "Question deadline passed" "$T/wl6.txt" || fail "'Draft - waiting for legal' is still a draft past its deadline"
+cp "$T/am6.bak" active-solution/amendments/log.md; cp "$T/sub6.bak" active-solution/submission.md; cp "$T/q6.bak" active-solution/questions.md
+uv run --quiet --with python-docx --with openpyxl python3 - "$HERE/../tools" <<'PY' || fail "consistency percent or from-to handling"
+import sys; sys.path.insert(0, sys.argv[1]); import consistency as c
+assert c.quantities("at least 30% of staff") == [(30.0, "percent")], c.quantities("at least 30% of staff")
+assert c.quantities("within 10 percent") == [(10.0, "percent")]
+rl = c.rules([("x", "The training ranges from 2 to 5 days. The Contractor shall deliver training within 2 days.")])
+assert [(r["value"], r["old"]) for r in rl] == [(2.0, None)], rl
+rl = c.rules([("x", "The Contractor shall deliver at least 10% of work onsite."), ("y", "Change 1: The onsite share is changed from 10% to 20%.")])
+assert any(r["value"] == 20.0 and r["old"] == 10.0 for r in rl), rl
+t1 = "The help desk answers every urgent supervisor request within 3 days of receipt."
+t2 = "Urgent supervisor requests reach the help desk and are answered within 5 days of receipt."
+resp = [dict(where=w, text=t, q=c.quantities(t), c=c.ctx(t)) for w, t in (("Technical Approach", t1), ("Management Plan", t2))]
+found = c.across_sections(resp)
+assert len(found) == 1 and "3 day" in found[0]["note"] and "5 day" in found[0]["note"], found
+PY
+uv run --quiet "$HERE/make_pdf.py" sparse "$T/sparse.pdf"
+printf 'page_limit = 10\n[final_gate]\nrequired_text = ["authorized representative"]\n' >> active-solution/solution.toml
+rfps-final-gate --pdf "$T/sparse.pdf" >/dev/null || { cat active-solution/final-gate.md >&2; fail "a cover page with one word and wording that wraps onto a second line must not fail the gate"; }
+grep -q "Text can be extracted | Pass.*very little text" active-solution/final-gate.md && grep -q "Required wording present: authorized representative | Pass" active-solution/final-gate.md || fail "the gate should pass the sparse page and the wrapped wording, and mention the sparse page"
+cp "$T/sol6.bak" active-solution/solution.toml; rm -f active-solution/final-gate.md
+uv run --quiet --with openpyxl python3 - "$HERE/../tools" <<'PY' || fail "price view stated figures"
+import sys; sys.path.insert(0, sys.argv[1]); import pricing
+plan = "## Figures stated by the solicitation\n\n| Item | Value | Source | Notes |\n|---|---|---|---|\n| Number of interviews | 3 | RFP | |\n| Maximum pages | 50 | RFP | |\n| Not-to-exceed ceiling | $100,000 | RFP 4 | |\n"
+assert pricing.stated_figures(plan) == [("Not-to-exceed ceiling", 100000.0)], pricing.stated_figures(plan)
+PY
+printf '| M-02 | A form with a stray pipe | RFP 6 | Pat | 2030-01-01 | Open | note | extra |\n' >> active-solution/submission.md
+rfps-refresh-reports --solution >/dev/null
+grep -q "Living tables are well formed | Open.*M-02" active-solution/compliance-report.md || fail "a table row with a stray pipe was dropped without a word"
+cp "$T/sub6.bak" active-solution/submission.md; rfps-refresh-reports --solution >/dev/null
+test -f "active-solution/.state/text/01 Solicitation Docs/.manifest.json" || fail "the extracted solicitation text should be kept between runs"
+rfps-sweep | head -1 | grep -q "extracted text in" || fail "the second run should use the kept text"
+touch "01 Solicitation Docs/RFP DPW-2026-017.docx"
+rfps-sweep | head -1 | grep -q "extracted from" || fail "a changed solicitation file must be read again"
+rfps-sweep | head -1 | grep -q "extracted text in" || fail "the re-read text should be kept again"
+uv run --quiet --with python-docx python3 - "$HERE/../tools" <<'PY' || fail "the sweep is too slow on a large solicitation"
+import sys, time; sys.path.insert(0, sys.argv[1]); import solicit_text as st
+rows = {f"R-{i:03d}": f"The Contractor shall provide service number {i} for the County including reports, training, support and maintenance of item {i % 37}." for i in range(300)}
+docs = [("big", "\n".join(f"{n}.1 The Contractor shall deliver item {n % 250} with report {n} including training and support for staff {n % 41}." for n in range(2000)))]
+t0 = time.time(); res = st.sweep(docs, rows); dt = time.time() - t0
+assert len(res) == 2000 and dt < 3, (len(res), round(dt, 1))
+PY
+rfps-refresh-reports --solution >/dev/null
 uv run --quiet --with openpyxl python3 - "$HERE/../tools" "$T" <<'PY'
 import csv, pathlib, sys, openpyxl
 sys.path.insert(0, sys.argv[1]); import pricing

@@ -101,13 +101,13 @@ def collect(sol, cfg):
                               action=col(cols, cells, "Remediation") or "Fix and re-run /rfps:compliance-validator", where=f"compliance-report.md {rid}",
                               section=head, text=f"{rid} {col(cols, cells, 'Requirement')}"))
     for a in sg.amendments(sol):   # an amendment supersedes the base solicitation where they differ, so one not yet applied outranks ordinary open work
-        undone = [k for k, v in (("response", a["response_updated"]), ("analysis", a["analysis_rerun"])) if v.strip().lower() not in ("yes", "y", "done", "n/a", "na")]
+        undone = [k for k, v in (("response", a["response_updated"]), ("analysis", a["analysis_rerun"])) if not sg.is_done(v)]
         if undone: items.append(dict(id=key("am", a["id"]), rank=1, kind="Amendment not applied", who="either",
                                      action="Re-run the sweep and the analysis, update the affected requirement rows and response text, then mark this row in amendments/log.md", where=f"amendments/log.md #{a['id']}",
                                      section=a["type"] or "Amendment", text=f"Amendment {a['id']} ({a['file']}): {a['change']} - not yet applied to the {' and '.join(undone)}; affects {a['affected'] or 'unknown requirements'}"))
     import datetime as _dt
     for q in sg.questions(sol):   # questions to the agency: a draft near the deadline, and an answer not yet logged as a Q&A amendment
-        s = q["status"].lower()
+        s = sg.status_word(q["status"])
         try: days = (_dt.date.fromisoformat(q["due"][:10]) - _dt.date.today()).days
         except ValueError: days = None
         if s == "draft" and days is not None and days <= 3:
@@ -117,7 +117,7 @@ def collect(sol, cfg):
             items.append(dict(id=key("ql", q["id"]), rank=2, kind="Answer not logged", who="either", action="Log the answer in amendments/log.md, re-run the sweep and apply it to the requirements and response",
                               where=f"questions.md {q['id']}", section="Questions", text=f"{q['id']} {q['question']} - answered: {q['answer']}"))
     for r in sg.submission(sol):   # mandatory forms and steps not yet done; overdue first
-        if r["status"].lower() in ("done", "n/a", "na"): continue
+        if sg.is_done(r["status"]): continue
         import datetime
         try: late = datetime.date.fromisoformat(r["due"][:10]) < datetime.date.today()
         except ValueError: late = False

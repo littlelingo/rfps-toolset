@@ -3,7 +3,7 @@ name: start
 description: The one entry point - joins the solution if one already exists in the folder, otherwise starts a new solicitation: ask once for the solicitation folder, template and past-performance locations, then run set-up, analysis, evidence, staffing, drafting, review and the first WIP build, and hand over a ranked worklist of gaps
 argument-hint: [source folder] [--word]
 disable-model-invocation: true
-allowed-tools: Bash(rfps-new-engagement:*), Bash(rfps-collab:*), Bash(rfps-set-config:*), Bash(rfps-decode-b64:*), Bash(rfps-add-source:*), Bash(rfps-scan-sources:*), Bash(rfps-extract-docs:*), Bash(rfps-register-add:*), Bash(rfps-refresh-reports:*), Bash(rfps-open-items:*), Bash(rfps-flow-status:*), Bash(rfps-worklist:*), Bash(rfps-staffing:*), Bash(rfps-sync-gdoc:*), Bash(rfps-sync-docx:*), Bash(rfps-build-response:*), Bash(ls:*), Read, Write, Edit, Skill, AskUserQuestion
+allowed-tools: Bash(rfps-new-engagement:*), Bash(rfps-collab:*), Bash(rfps-set-config:*), Bash(rfps-decode-b64:*), Bash(rfps-add-source:*), Bash(rfps-scan-sources:*), Bash(rfps-extract-docs:*), Bash(rfps-register-add:*), Bash(rfps-refresh-reports:*), Bash(rfps-open-items:*), Bash(rfps-flow-status:*), Bash(rfps-worklist:*), Bash(rfps-staffing:*), Bash(rfps-sync-gdoc:*), Bash(rfps-sync-docx:*), Bash(rfps-build-response:*), Bash(rfps-sweep:*), Bash(rfps-lint:*), Bash(rfps-crossref:*), Bash(rfps-consistency:*), Bash(ls:*), Read, Write, Edit, Skill, AskUserQuestion
 ---
 
 Read `${CLAUDE_PLUGIN_ROOT}/skills/solution-guide/references/conventions.md` first; its rules (sources of truth, no invented bidder facts, evidence register, outside sources) apply to every stage below.

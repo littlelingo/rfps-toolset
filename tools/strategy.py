@@ -27,7 +27,34 @@ def _num(s):
     m = re.search(r"\d+(?:\.\d+)?", s or "")
     return float(m.group(0)) if m else None
 
+DONE_WORDS = {"yes", "y", "done", "complete", "completed", "applied", "n/a", "na", "none"}
+
+def status_word(s):
+    """The first word of a status cell, lower case: 'Done 2026-05-02' -> 'done', 'Yes - section 3.2' -> 'yes', 'N/A' -> 'n/a'."""
+    m = re.match(r"\s*([a-z/]+)", (s or "").lower())
+    return m.group(1) if m else ""
+
+def is_done(s):
+    """True for a status that means finished or not needed, however it is worded after the first word."""
+    t = (s or "").strip().lower()
+    return status_word(t) in DONE_WORDS or t.startswith(("not applicable", "no change", "not needed"))
+
 def norm(s): return re.sub(r"\s+", " ", re.sub(r"[*_`\"]+", "", s or "")).strip().lower()
+
+_TABLES = {"coverage-matrix.md": [(r"R-\d{3}", 9)], "compliance-report.md": [(r"[FCSPN]-\d{3}", 7)], "win-strategy.md": [(r"W-\d{2}", 5), (r"T-\d{2}", 6), (r"X-\d{2}", 6)],
+           "submission.md": [(r"M-\d{2}", 7)], "questions.md": [(r"Q-\d{2}", 7)], "evaluation-sim.md": [(r"V-\d{3}", 9)]}
+
+def malformed(sol):
+    """Table rows in the living documents whose first cell is an ID but whose cell count is wrong (usually a stray '|'). The parsers skip such rows, so they are listed here."""
+    out = []
+    for fn, specs in _TABLES.items():
+        f = pathlib.Path(sol) / fn
+        if not f.is_file(): continue
+        for line in _strip_derived(f.read_text()).split("\n"):
+            for idre, n in specs:
+                m = re.match(r"^\| (%s) \|" % idre, line)
+                if m and len(_cells(line)) != n: out.append(f"{fn} {m.group(1)} has {len(_cells(line))} cells, expected {n}")
+    return out
 
 def capture(sol):
     """-> dict(decision, pwin, decided_by, date) from capture.md; decision is 'go', 'no-go' or 'undecided'. None when the file is missing."""

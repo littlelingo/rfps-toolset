@@ -162,8 +162,8 @@ def d_evalsim_run(c):
 def d_questions_logged(c):
     qs = sg.questions(c.sol)
     if not qs: return "todo", "no questions listed yet (run /rfps:questions, or skip this step if there is nothing to ask)"
-    draft = [q["id"] for q in qs if q["status"].lower() == "draft"]
-    unlogged = [q["id"] for q in qs if q["status"].lower() == "answered" and q["logged"].strip() in ("", "-")]
+    draft = [q["id"] for q in qs if sg.status_word(q["status"]) == "draft"]
+    unlogged = [q["id"] for q in qs if sg.status_word(q["status"]) == "answered" and q["logged"].strip() in ("", "-")]
     if unlogged: return "attention", f"{len(unlogged)} answer(s) not logged in amendments/log.md: {', '.join(unlogged)}"
     if draft: return "attention", f"{len(draft)} question(s) still a draft, not sent: {', '.join(draft[:5])}"
     return "done", f"{len(qs)} question(s): none waiting to be sent or logged"

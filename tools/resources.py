@@ -24,7 +24,7 @@ def roster_path(sol, cfg):
 def load(path):
     p = pathlib.Path(path)
     if not p.is_file(): return None
-    with open(p, newline="") as fh:
+    with open(p, newline="", encoding="utf-8-sig") as fh:   # Excel adds a byte order mark
         rows = [{k: (v or "").strip() for k, v in r.items() if k} for r in csv.DictReader(fh)]
     return [r for r in rows if r.get("id") or r.get("role")]
 

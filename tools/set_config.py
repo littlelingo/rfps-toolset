@@ -18,6 +18,7 @@ Usage: rfps-set-config KEY [VALUE] [--solution [folder]]
 import argparse, pathlib, re, sys, tomllib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import build_response as br
+import tomlio
 
 KEYS = {"wip_folder", "wip_docx", "final_copy_dir", "cache_dir"}
 
@@ -25,11 +26,7 @@ def drive_id(text):
     m = re.search(r"/(?:folders|d)/([\w-]{10,})|[?&]id=([\w-]{10,})", text)
     return (m.group(1) or m.group(2)) if m else text.strip()
 
-def put(cfgfile, key, value):
-    s = cfgfile.read_text(); line = f'{key} = "{value}"'
-    if re.search(rf"^{key} = ", s, re.M): s = re.sub(rf"^{key} = .*$", lambda m: line, s, flags=re.M)
-    else: s = s.rstrip("\n") + f"\n{line}\n"
-    cfgfile.write_text(s)
+def put(cfgfile, key, value): tomlio.set_key(cfgfile, key, value)
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)

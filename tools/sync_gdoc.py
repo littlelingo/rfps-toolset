@@ -37,6 +37,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import docx
 import build_response as br
 import sync_core
+import tomlio
 
 PH_FALLBACK = {"[text]", "text", "[insert table or graphic]"}
 SUGGEST = {"writeMode": "SUGGEST"}
@@ -933,14 +934,13 @@ def drive_id(text):
     return (m.group(1) or m.group(2)) if m else text.strip()
 
 def op_set_folder(sol, text):
-    fid = drive_id(text); cfg = sol / "solution.toml"; s = cfg.read_text(); line = f'wip_folder = "{fid}"'
-    s = re.sub(r"^wip_folder = .*$", line, s, flags=re.M) if re.search(r"^wip_folder = ", s, re.M) else s.rstrip("\n") + f"\n# Drive folder where the shared WIP document (and the template copy) is created and kept.\n{line}\n"
-    cfg.write_text(s); print(f"solution.toml now has {line}")
+    fid = drive_id(text)
+    tomlio.set_key(sol / "solution.toml", "wip_folder", fid, "Drive folder where the shared WIP document (and the template copy) is created and kept.")
+    print(f'solution.toml now has wip_folder = "{fid}"')
 
 def op_set_template(sol, doc_id):
-    cfg = sol / "solution.toml"; s = cfg.read_text(); line = f'gdoc_template = "{doc_id}"'
-    s = re.sub(r"^gdoc_template = .*$", line, s, flags=re.M) if re.search(r"^gdoc_template = ", s, re.M) else s.rstrip("\n") + f"\n# Google Doc copied to make the shared WIP document (look of the Word template).\n{line}\n"
-    cfg.write_text(s); print(f"solution.toml now has {line}")
+    tomlio.set_key(sol / "solution.toml", "gdoc_template", doc_id, "Google Doc copied to make the shared WIP document (look of the Word template).")
+    print(f'solution.toml now has gdoc_template = "{doc_id}"')
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)

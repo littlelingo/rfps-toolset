@@ -32,7 +32,7 @@ CLEARANCES = ["hold", "needs-permission", "do-not-use", "cleared"]
 
 def _read(path):
     if not path.is_file(): return [], list(COLUMNS)
-    with open(path, newline="") as fh:
+    with open(path, newline="", encoding="utf-8-sig") as fh:   # Excel adds a byte order mark
         rd = csv.DictReader(fh); rows = list(rd); head = list(rd.fieldnames or [])
     return rows, COLUMNS + [c for c in head if c not in COLUMNS]   # keep any extra columns a person added
 

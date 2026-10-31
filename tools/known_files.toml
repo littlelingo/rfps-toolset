@@ -2,6 +2,6 @@
 # Anything else is "unlisted" until it is recorded in the solution's provenance.md.
 expected = [
   "solution.toml", ".gitignore", ".DS_Store", "progress.md", "external-sources.md", "provenance.md",
-  "brief.md", "gap-report.md", "capture.md", "win-strategy.md", "evaluation-sim.md", "submission.md", "final-gate.md", "coverage-matrix.md", "compliance-report.md", "resource-plan.md", "review-notes.md", "open-items.md",
+  "brief.md", "gap-report.md", "capture.md", "win-strategy.md", "evaluation-sim.md", "submission.md", "final-gate.md", "questions.md", "cross-reference.md", "orals-prep.md", "debrief.md", "coverage-matrix.md", "compliance-report.md", "resource-plan.md", "review-notes.md", "open-items.md",
   ".state/**", ".git/**", "response/*.md", "response/resources.csv", "review/*.md", "evidence/**", "past-performance/**", "amendments/**", "build/**",
 ]

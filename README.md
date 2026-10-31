@@ -77,6 +77,7 @@ The solution is found from the current directory (a folder at or above it holdin
 | `/rfps:make-gdoc-template` | Build a Google Doc version of the Word template to copy for each shared WIP document |
 | `/rfps:extract` | Turn PDF, Word, Excel and PowerPoint files into searchable text |
 | `/rfps:collateral-analyzer` | Brief and gap report from the provided collateral |
+| `/rfps:questions` | Draft and track questions to the agency, with the reason, deadline and status of each, and log the answers |
 | `/rfps:capture` | Record the bid decision: go or no-go, probability of winning and why, competitors, what must be true |
 | `/rfps:requirements-mapper` | Coverage matrix of requirements to evidence |
 | `/rfps:win-strategy` | Evaluation factors with weights and 3 to 5 win themes (discriminator, proof, benefit, key phrase) that every section carries |
@@ -86,6 +87,8 @@ The solution is found from the current directory (a folder at or above it holdin
 | `/rfps:empathy-reviewer` | Tone and client-centricity pass |
 | `/rfps:compliance-validator` | Pass/fail check against the explicit requirements |
 | `/rfps:submission` | Keep the checklist of mandatory forms, signatures and deadlines; draft the submission or acknowledgement email for you to send |
+| `/rfps:orals` | Prepare for an oral presentation or demonstration: outline by factor, likely questions, rehearsal checklist |
+| `/rfps:debrief` | After the decision, record the outcome and the agency's feedback and list what is reusable |
 | `/rfps:final-gate` | Check the exported PDF (pages, text, markers, links, margins, metadata, blocking items, open forms) and write a cleaned copy |
 | `/rfps:evaluator-simulator` | An independent second reader rates each evaluation factor and names the change that most raises it |
 | `/rfps:sweep` | List solicitation obligation sentences that no requirement row covers |
@@ -101,7 +104,7 @@ The solution is found from the current directory (a folder at or above it holdin
 
 ## Terminal Tools
 
-The `rfps-*` commands in `bin/` are on the PATH while the plugin is enabled: `rfps-flow-status`, `rfps-build-response`, `rfps-new-engagement`, `rfps-refresh-reports`, `rfps-sweep`, `rfps-consistency`, `rfps-final-gate`, `rfps-open-items`, `rfps-worklist`, `rfps-collab`, `rfps-set-config`, `rfps-decode-b64`, `rfps-staffing`, `rfps-sync-gdoc`, `rfps-sync-docx`, `rfps-open-doc`, `rfps-extract-docs`, `rfps-add-source`, `rfps-file-audit`, `rfps-status-page`, `rfps-use-solution` and `rfps-list-tools`. Run `/rfps:help` for what each is for.
+The `rfps-*` commands in `bin/` are on the PATH while the plugin is enabled: `rfps-flow-status`, `rfps-build-response`, `rfps-new-engagement`, `rfps-refresh-reports`, `rfps-sweep`, `rfps-consistency`, `rfps-lint`, `rfps-crossref`, `rfps-final-gate`, `rfps-open-items`, `rfps-worklist`, `rfps-collab`, `rfps-set-config`, `rfps-decode-b64`, `rfps-staffing`, `rfps-sync-gdoc`, `rfps-sync-docx`, `rfps-open-doc`, `rfps-extract-docs`, `rfps-add-source`, `rfps-file-audit`, `rfps-status-page`, `rfps-use-solution` and `rfps-list-tools`. Run `/rfps:help` for what each is for.
 
 ## Status Pane
 

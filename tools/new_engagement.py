@@ -11,7 +11,7 @@ Creates in active-solution/:
   evidence/                register.csv (header only) and README.md
   past-performance/        sources.toml (locations of past-performance material, read in place, never copied)
   amendments/              README.md and log.md for State amendments and Q&A answers
-  capture.md (bid decision), win-strategy.md (factors and themes), evaluation-sim.md (second-reader ratings)   living documents
+  capture.md (bid decision), questions.md (questions to the agency), win-strategy.md (factors and themes), evaluation-sim.md (second-reader ratings)   living documents
   coverage-matrix.md, compliance-report.md, resource-plan.md   living report skeletons (rows added by the analysis skills; derived blocks by /rfps:refresh-reports)
   .gitignore               build/ and .state/text/
 and runs `git init` there when the folder is on a local disk (skipped on a Google Drive mount, where Drive's
@@ -113,7 +113,7 @@ def main():
     (sol / "amendments" / "log.md").write_text("# Amendment and Q&A log\n\n| # | Type | Date received | File (in 01 Solicitation Docs) | What changed | Requirement IDs affected | Response updated | Analysis re-run |\n|---|------|---------------|--------------------------------|--------------|--------------------------|------------------|-----------------|\n| | | | | | | | |\n")
     tdir = pathlib.Path(__file__).parent / "templates"
     for fn, srcf in (("coverage-matrix.md", tdir / "coverage-matrix.md"), ("compliance-report.md", tdir / "compliance-report.md"),
-                     ("capture.md", tdir / "capture.md"), ("submission.md", tdir / "submission.md"), ("win-strategy.md", tdir / "win-strategy.md"), ("evaluation-sim.md", tdir / "evaluation-sim.md"),
+                     ("capture.md", tdir / "capture.md"), ("submission.md", tdir / "submission.md"), ("questions.md", tdir / "questions.md"), ("win-strategy.md", tdir / "win-strategy.md"), ("evaluation-sim.md", tdir / "evaluation-sim.md"),
                      ("resource-plan.md", PLUGIN_ROOT / "skills" / "resource-planner" / "assets" / "resource-plan-template.md")):
         (sol / fn).write_text(srcf.read_text().replace("{title}", a.title or src.name))
     (sol / ".gitignore").write_text("build/\n.state/text/\n.DS_Store\n")

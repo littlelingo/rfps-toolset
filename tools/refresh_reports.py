@@ -24,6 +24,8 @@ import validated as vd
 import evidence_checks as ec
 import consistency as cn
 import pricing as pr
+import lint as lt
+import crossref as cr
 
 TAGS = ["ASSERTION", "EVIDENCE NEEDED", "DECISION", "OPEN", "SOLUTIONING", "GROUNDED"]
 
@@ -152,6 +154,10 @@ def refresh_compliance(sol, cfg):
     else: auto.append("| Evidence register | Info | no register configured |")
     try: auto += solicitation_checks(sol, cfg, rows, nrows)
     except Exception as e: auto.append(f"| Solicitation sweep and quote check | Info | not run: {e} |")
+    try: auto += lt.checks(sol, cfg, group_texts(resp, order))
+    except Exception as e: auto.append(f"| Writing lint | Info | not run: {e} |")
+    try: auto += cr.checks(sol, cfg)
+    except Exception as e: auto.append(f"| Requirement cross-reference | Info | not run: {e} |")
     try: auto += cn.checks(sol, cfg)
     except Exception as e: auto.append(f"| Numbers agree | Info | not run: {e} |")
     try: auto += currency_checks(sol, cfg)
@@ -184,6 +190,21 @@ def currency_checks(sol, cfg):
     for name, label in (("compliance", "Compliance check"), ("empathy", "Tone review"), ("evalsim", "Second-reader run")):
         ch = vd.stale(sol, cfg, name)
         out.append(f"| {label} matches the current text | {'Info' if ch is None else ('Pass' if not ch else 'Open')} | " + ("never recorded (run rfps-flow-status --validated " + name + " after it)" if ch is None else ("no section changed since" if not ch else f"changed since: {', '.join(ch)}")) + " |")
+    qs = sg.questions(sol)
+    if qs:
+        import datetime
+        today = datetime.date.today(); unsent, unlogged = [], []
+        for q in qs:
+            s = q["status"].lower()
+            if s == "draft": unsent.append(q["id"])
+            if s == "answered" and q["logged"].strip() in ("", "-"): unlogged.append(q["id"])
+        late = []
+        for q in qs:
+            if q["status"].lower() == "draft":
+                try:
+                    if (datetime.date.fromisoformat(q["due"][:10]) - today).days <= 3: late.append(q["id"])
+                except ValueError: pass
+        out.append(f"| Questions to the agency | {'Open' if late or unlogged else ('Info' if unsent else 'Pass')} | {len(qs)} question(s); {len(unsent)} still a draft" + (f"; due within 3 days or overdue and not sent: {', '.join(late)}" if late else "") + (f"; answered but not logged in amendments/log.md: {', '.join(unlogged)}" if unlogged else "") + " |")
     sub_rows = sg.submission(sol)
     if sub_rows:
         import datetime
@@ -235,6 +256,11 @@ def strategy_checks(sol, resp, order, pages, limit):
             if est > bud * 1.25 or est < bud * 0.5: flags.append(x["heading"])
         out.append(f"| Page budget by evaluation factor | {'Pass' if not flags else 'Open'} | pages written of budget (weights share the {limit} page limit; 500 words a page): " + "; ".join(parts) + (f". Far from budget: {', '.join(flags)}" if flags else "") + " |")
     elif fac: out.append("| Page budget by evaluation factor | Info | set page_limit in solution.toml to see the budget |")
+    if fac:
+        ex = sg.exhibits(sol); have = {sg.norm(x["section"]) for x in ex}
+        none = [x["heading"] for x in fac if sg.norm(x["heading"]) not in have and x["weight"] >= 15]
+        undone = [x["id"] for x in ex if x["status"].lower() not in ("done", "n/a")]
+        out.append(f"| Exhibits planned for the heavily weighted factors | {'Pass' if not none else 'Open'} | {len(ex)} exhibit(s) planned, {len(undone)} not done" + (f"; no exhibit planned for: {', '.join(none)}" if none else "") + " |")
     return out
 
 def refresh_evalsim(sol):
@@ -328,6 +354,8 @@ def main():
     sol = br.resolve_solution(a.solution or None)
     cfg = tomllib.loads((sol / "solution.toml").read_text())
     print(refresh_coverage(sol)); print(refresh_compliance(sol, cfg)); print(refresh_resources(sol, cfg)); print(refresh_evalsim(sol))
+    try: n, m = cr.write(sol, cfg); print(f"cross-reference.md: {n} requirement(s), {m} mandatory with no answering section found")
+    except Exception as e: print(f"cross-reference.md: not written ({e})")
     import open_items; n, _ = open_items.write(sol, cfg); print(f"open-items.md: {n} markers listed")
 
 if __name__ == "__main__":

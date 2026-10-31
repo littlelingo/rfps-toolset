@@ -23,6 +23,13 @@ Key phrase is a short wording the response uses every time it makes the theme's 
 | Factor | Feature (what we do) | Benefit (what it means to them) | Proof | Theme |
 |--------|----------------------|---------------------------------|-------|-------|
 
+## Exhibit plan
+
+One row per visual the response needs: a diagram, table, timeline or chart. Plan them with the section so the text and the picture say one thing. The caption is an action title that states what the exhibit proves ("Three phases put go-live at month 7"), not a label ("Project schedule"). Status is Planned, Drafted or Done. Weighted factors with no exhibit are listed by `/rfps:refresh-reports`.
+
+| # | Section (response heading) | Exhibit | What it proves | Caption (action title) | Status |
+|---|----------------------------|---------|----------------|------------------------|--------|
+
 ## Competitor assumptions
 
 Assumptions only. Never in response text.

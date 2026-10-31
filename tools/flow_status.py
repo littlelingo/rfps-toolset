@@ -159,6 +159,14 @@ def d_evalsim_run(c):
     pts = [(r, sg.rating_points(r["rating"], e["scale"])) for r in e["rows"]]
     low = [r["factor"] for r, p in pts if p is not None and p <= 0.25]
     return ("attention", f"{len(low)} factor(s) rated in the bottom of the scale: {', '.join(low[:4])}") if low else ("done", f"{len(e['rows'])} factor(s) rated, none in the bottom of the scale")
+def d_questions_logged(c):
+    qs = sg.questions(c.sol)
+    if not qs: return "todo", "no questions listed yet (run /rfps:questions, or skip this step if there is nothing to ask)"
+    draft = [q["id"] for q in qs if q["status"].lower() == "draft"]
+    unlogged = [q["id"] for q in qs if q["status"].lower() == "answered" and q["logged"].strip() in ("", "-")]
+    if unlogged: return "attention", f"{len(unlogged)} answer(s) not logged in amendments/log.md: {', '.join(unlogged)}"
+    if draft: return "attention", f"{len(draft)} question(s) still a draft, not sent: {', '.join(draft[:5])}"
+    return "done", f"{len(qs)} question(s): none waiting to be sent or logged"
 def d_pp_sources(c):
     f = c.sol / "past-performance" / "sources.toml"
     n = len(tomllib.loads(f.read_text()).get("source", [])) if f.is_file() else 0

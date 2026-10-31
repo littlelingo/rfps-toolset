@@ -57,6 +57,18 @@ def amendments(sol):
         if len(c) == 8 and re.match(r"^\d+$", c[0]): out.append(dict(id=c[0], type=c[1], date=c[2], file=c[3], change=c[4], affected=c[5], response_updated=c[6], analysis_rerun=c[7]))
     return out
 
+def questions(sol):
+    """-> [dict(id, question, why, due, status, answer, logged)] from questions.md; [] when the file is missing."""
+    f = pathlib.Path(sol) / "questions.md"
+    if not f.is_file(): return []
+    return [dict(id=k, question=c[1], why=c[2], due=c[3], status=c[4], answer=c[5], logged=c[6]) for k, c in rows(f.read_text(), r"Q-\d{2}", 7).items()]
+
+def exhibits(sol):
+    """-> [dict(id, section, exhibit, proves, caption, status)] from the exhibit plan in win-strategy.md."""
+    f = pathlib.Path(sol) / "win-strategy.md"
+    if not f.is_file(): return []
+    return [dict(id=k, section=c[1], exhibit=c[2], proves=c[3], caption=c[4], status=c[5]) for k, c in rows(f.read_text(), r"X-\d{2}", 6).items()]
+
 def strategy(sol):
     """-> dict(factors=[...], themes=[...]) from win-strategy.md. Factor: id, factor, weight, heading. Theme: id, theme, discriminator, proof, benefit, phrase."""
     f = pathlib.Path(sol) / "win-strategy.md"

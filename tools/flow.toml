@@ -71,6 +71,15 @@ help = "The collateral analyzer logs each amendment or Q&A answer it finds in am
 ask = "Have any amendments or Q&A answers been issued since the solicitation?"
 
 [[step]]
+id = "questions"
+group = "Understand"
+title = "Questions to the agency drafted, sent and answers logged (or confirmed none)"
+command = "/rfps:questions"
+check = "questions_logged"
+help = "List what the agency should clarify in questions.md (ambiguities, conflicts, quantities the work depends on), send the ones you choose before the deadline, and log each answer in amendments/log.md. Skip it ([-]) if the questions window has closed or there is nothing to ask."
+ask = "Is there anything in the solicitation we should ask the agency before pricing, and when is the questions deadline?"
+
+[[step]]
 id = "sources"
 group = "Evidence"
 title = "Past-performance sources listed"
@@ -220,3 +229,12 @@ command = "/rfps:final-gate"
 check = "final_gate_ok"
 help = "Export the final Google Doc to PDF into the final submission folder, then run /rfps:final-gate. It checks page count and size, text, internal markers, links to the working document, required wording, metadata, blocking items and open forms in submission.md."
 ask = "Is the PDF exported? Do you want it checked now?"
+
+[[step]]
+id = "debrief"
+group = "After"
+title = "Outcome, agency feedback and lessons captured"
+kind = "manual"
+command = "/rfps:debrief"
+help = "After the decision or the agency's debriefing, record the outcome and the agency's feedback in debrief.md, compare it with the second reader's ratings, and list what is reusable (evidence, themes, questions, process fixes) for approval. Check this off when done."
+ask = "Has the agency decided, and did they give a debriefing?"

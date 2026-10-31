@@ -180,6 +180,46 @@ rfps-consistency | grep -q "2 day" || { echo "FAIL: a figure below the solicitat
 cp "$T/r02.bak" active-solution/response/02-technical-approach.md; cp "$T/r03.bak" active-solution/response/03-management-plan.md
 rfps-refresh-reports --solution >/dev/null
 grep -q "Numbers match the solicitation | Pass" active-solution/compliance-report.md || { echo "FAIL: the seed response should agree with the solicitation" >&2; grep -n "Numbers match" active-solution/compliance-report.md >&2; exit 1; }
+# writing lint, the requirement cross-reference, the exhibit plan, questions to the agency and the new flow steps; restored afterwards
+cp active-solution/coverage-matrix.md "$T/cm5.bak"; cp active-solution/win-strategy.md "$T/ws5.bak"; cp active-solution/questions.md "$T/q5.bak"; cp active-solution/solution.toml "$T/sol5.bak"
+cp active-solution/response/02-technical-approach.md "$T/p502.bak"; cp active-solution/response/03-management-plan.md "$T/p503.bak"
+rfps-flow-status --table | grep -q "Questions to the agency drafted" && rfps-flow-status --table | grep -q "Outcome, agency feedback and lessons captured" || { echo "FAIL: the questions and debrief steps are missing from the flow" >&2; exit 1; }
+printf '\nOur robust, seamless platform from a world-class team will be deployed. The checks will be run. Reports will be written. Users will be trained. Training will be scheduled. We use the XYZ module and our team leverages synergies.\n\nThe portal gives each supervisor one calendar that refuses a double booking, so a preventive maintenance appointment either holds or is moved before the day it was due, and supervisors stop losing bay time to collisions.\n' >> active-solution/response/02-technical-approach.md
+printf '\nThe portal gives each supervisor one calendar that refuses a double booking, so a preventive maintenance appointment either holds or is moved before the day it was due, and supervisors stop losing bay time to collisions.\n' >> active-solution/response/03-management-plan.md
+rfps-refresh-reports --solution >/dev/null
+for want in "Writing: no empty superlatives or buzzwords | Open.*Technical Approach" "commitments name who does them | Open" "acronyms defined on first use | Open.*XYZ" "no near-duplicate paragraphs across sections | Open"; do
+  grep -q "$want" active-solution/compliance-report.md || { echo "FAIL: the lint missed: $want" >&2; grep -n "Writing:" active-solution/compliance-report.md >&2; exit 1; }
+done
+rfps-lint | grep -q "superlatives: 1" || { echo "FAIL: rfps-lint did not list the planted superlatives" >&2; exit 1; }
+printf '\n[lint]\nmute = ["superlatives"]\n' >> active-solution/solution.toml
+rfps-refresh-reports --solution >/dev/null
+grep -q "Writing: no empty superlatives or buzzwords | Info | muted in solution.toml" active-solution/compliance-report.md || { echo "FAIL: a muted lint rule should be reported as muted" >&2; exit 1; }
+cp "$T/sol5.bak" active-solution/solution.toml; cp "$T/p502.bak" active-solution/response/02-technical-approach.md; cp "$T/p503.bak" active-solution/response/03-management-plan.md
+cp "$HERE/seed/coverage-matrix.md" active-solution/coverage-matrix.md; cp "$HERE/seed/win-strategy.md" active-solution/win-strategy.md
+rfps-crossref | grep -q "0 mandatory with no answering section found" || { echo "FAIL: every seed requirement should be answered somewhere" >&2; rfps-crossref >&2; exit 1; }
+grep -q "R-001.*Technical Approach (p. 1)" active-solution/cross-reference.md || { echo "FAIL: cross-reference.md does not name the answering section" >&2; exit 1; }
+grep -q "R-008.*n/a: a submission step" active-solution/cross-reference.md || { echo "FAIL: a submission step should be marked, not reported missing" >&2; exit 1; }
+grep -v 'Accessibility (RFP 2.4)' "$T/p502.bak" > active-solution/response/02-technical-approach.md
+rfps-refresh-reports --solution >/dev/null
+grep -q "Every mandatory requirement is answered in a named section | Open.*R-004" active-solution/compliance-report.md || { echo "FAIL: an unanswered mandatory requirement was not caught" >&2; grep -n "answered in a named" active-solution/compliance-report.md >&2; exit 1; }
+cp "$T/p502.bak" active-solution/response/02-technical-approach.md
+rfps-refresh-reports --solution >/dev/null
+grep -q "Exhibits planned for the heavily weighted factors | Pass" active-solution/compliance-report.md || { echo "FAIL: the seed exhibit plan should cover the weighted factors" >&2; grep -n "Exhibits" active-solution/compliance-report.md >&2; exit 1; }
+grep -v '^| X-01 ' "$HERE/seed/win-strategy.md" > active-solution/win-strategy.md
+rfps-refresh-reports --solution >/dev/null
+grep -q "Exhibits planned for the heavily weighted factors | Open.*Technical Approach" active-solution/compliance-report.md || { echo "FAIL: a weighted factor with no exhibit was not listed" >&2; exit 1; }
+printf '| Q-01 | RFP 2.2: does the existing maintenance history include the archive from before 2019? | R-002 | 2020-01-01 | Draft | | |\n' >> active-solution/questions.md
+rfps-worklist --table | grep -q "Question deadline passed" || { echo "FAIL: an unsent question past its deadline should be on the worklist" >&2; exit 1; }
+rfps-flow-status --table | grep -q "1 question(s) still a draft" || { echo "FAIL: the flow did not show the unsent question" >&2; exit 1; }
+sed -i.bak 's/| Draft | | |$/| Answered | Yes, from 2015. | - |/' active-solution/questions.md && rm active-solution/questions.md.bak
+rfps-worklist --table | grep -q "Answer not logged" || { echo "FAIL: an answer not logged as Q&A should be on the worklist" >&2; exit 1; }
+rfps-flow-status --table | grep -q "answer(s) not logged in amendments/log.md: Q-01" || { echo "FAIL: the flow did not show the unlogged answer" >&2; exit 1; }
+rfps-refresh-reports --solution >/dev/null
+grep -q "Questions to the agency | Open.*answered but not logged in amendments/log.md: Q-01" active-solution/compliance-report.md || { echo "FAIL: unlogged answer not in the automated checks" >&2; exit 1; }
+sed -i.bak 's/| Answered | Yes, from 2015. | - |$/| Answered | Yes, from 2015. | 2 |/' active-solution/questions.md && rm active-solution/questions.md.bak
+if rfps-worklist --table | grep -q "Answer not logged"; then echo "FAIL: a logged answer should leave the worklist" >&2; exit 1; fi
+cp "$T/cm5.bak" active-solution/coverage-matrix.md; cp "$T/ws5.bak" active-solution/win-strategy.md; cp "$T/q5.bak" active-solution/questions.md; rm -f active-solution/cross-reference.md
+rfps-refresh-reports --solution >/dev/null
 uv run --quiet --with openpyxl python3 - "$HERE/../tools" "$T" <<'PY'
 import csv, pathlib, sys, openpyxl
 sys.path.insert(0, sys.argv[1]); import pricing

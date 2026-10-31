@@ -25,6 +25,14 @@ Seed for the sample solicitation. Fictional. Weights are the sample RFP's evalua
 |--------|----------------------|---------------------------------|-------|-------|
 | Technical Approach | One calendar that refuses a double booking | Supervisors stop losing bay time | ASSERTION | T-03 |
 
+## Exhibit plan
+
+| # | Section (response heading) | Exhibit | What it proves | Caption (action title) | Status |
+|---|----------------------------|---------|----------------|------------------------|--------|
+| X-01 | Technical Approach | Calendar mock-up | Supervisors see one calendar that refuses a double booking | One calendar ends double-booked bays | Planned |
+| X-02 | Management Plan | Phase timeline | Three phases reach go-live within 7 months | Three phases put go-live at month 7 | Planned |
+| X-03 | Past Performance | Reference table | Two directly relevant references | Two references match this work | Done |
+
 ## Competitor assumptions
 
 Assumptions only. Never in response text.

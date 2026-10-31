@@ -105,6 +105,17 @@ def collect(sol, cfg):
         if undone: items.append(dict(id=key("am", a["id"]), rank=1, kind="Amendment not applied", who="either",
                                      action="Re-run the sweep and the analysis, update the affected requirement rows and response text, then mark this row in amendments/log.md", where=f"amendments/log.md #{a['id']}",
                                      section=a["type"] or "Amendment", text=f"Amendment {a['id']} ({a['file']}): {a['change']} - not yet applied to the {' and '.join(undone)}; affects {a['affected'] or 'unknown requirements'}"))
+    import datetime as _dt
+    for q in sg.questions(sol):   # questions to the agency: a draft near the deadline, and an answer not yet logged as a Q&A amendment
+        s = q["status"].lower()
+        try: days = (_dt.date.fromisoformat(q["due"][:10]) - _dt.date.today()).days
+        except ValueError: days = None
+        if s == "draft" and days is not None and days <= 3:
+            items.append(dict(id=key("q", q["id"]), rank=1 if days < 0 else 3, kind="Question deadline passed" if days < 0 else "Question not sent", who="you",
+                              action="Send it (or drop it) before the questions deadline; mark it Sent in questions.md", where=f"questions.md {q['id']}", section="Questions", text=f"{q['id']} {q['question']} (due {q['due']})"))
+        if s == "answered" and q["logged"].strip() in ("", "-"):
+            items.append(dict(id=key("ql", q["id"]), rank=2, kind="Answer not logged", who="either", action="Log the answer in amendments/log.md, re-run the sweep and apply it to the requirements and response",
+                              where=f"questions.md {q['id']}", section="Questions", text=f"{q['id']} {q['question']} - answered: {q['answer']}"))
     for r in sg.submission(sol):   # mandatory forms and steps not yet done; overdue first
         if r["status"].lower() in ("done", "n/a", "na"): continue
         import datetime

@@ -53,6 +53,8 @@ For each heading, identify:
 
 Choose the appropriate template from `assets/section-templates/` for each section. The templates provide structure, not content — they show the skeleton the drafter fills with evidence and argument.
 
+Templates are provided for the executive summary, management plan, transition, risk management, quality assurance and schedule as well as the technical, organization, case study, security and team and pricing sections; pick by the heading's purpose, not its exact name. If `win-strategy.md` has an exhibit plan, draft the text so each planned exhibit is introduced and its caption states the point; do not invent an exhibit that is not planned without telling the user. After drafting, run `rfps-lint` and fix what it lists (empty superlatives, unowned commitments, undefined acronyms, duplicated paragraphs) before the tone review.
+
 If the RFP's section does not match any template cleanly, adapt the closest template or draft from scratch following the drafting patterns in `references/drafting-patterns.md`.
 
 ### Step 3: Draft Each Section

@@ -1,6 +1,6 @@
 # RFPS Toolset
 
-v0.5.0 | MIT License
+v0.6.0 | MIT License
 
 A Claude Code plugin that guides a solicitation (RFP, SOW, SOO and similar) to a proposal response. It is generic: nothing in it is specific to an agency, contract or bidder. Everything for one solicitation lives in that solicitation's own `active-solution/` folder.
 

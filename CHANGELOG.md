@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.6.0 (2026-10-31)
+
+Checks and content that make the proposal stronger and the compliance harder to miss, kept out of the way: the flow stays the same, and optional steps stay hidden until they need attention.
+
+- **Obligation sweep** (`rfps-sweep`, `/rfps:sweep`): every sentence in the solicitation that obliges the bidder (shall, must, may not, change verbs) is compared with the requirement rows, and sentences with no row are listed. Quoted text in rows is verified against the source. Extracted text is kept in `.state/text/` between runs and re-read when a source file changes.
+- **Living documents with stable IDs**: `capture.md` (bid decision, `/rfps:capture`), `win-strategy.md` (factors, themes, exhibits, `/rfps:win-strategy`), `evaluation-sim.md` (scores the response as an evaluator would, with per-file staleness, `/rfps:evaluator-simulator`), `submission.md` (`/rfps:submission`), `questions.md` (`/rfps:questions`), `/rfps:orals` and `/rfps:debrief`. `/rfps:start` proposes these as starting points, never records an answer the user did not give, and ends with a lean hand-over.
+- **Deterministic checks in `rfps-refresh-reports`**: writing lint (`rfps-lint`: superlatives, passive voice, we-ratio, acronyms, duplicates, hedges; tunable under `[lint]`), cross-reference of requirement to section (`rfps-crossref`), consistency of figures inside the response, against the solicitation and across sections (`rfps-consistency`; reads percents, direction of limits, amendment-replaced figures), price view and rate-sheet checks, exhibit plan and page budget, past-performance thresholds (`[past_performance]`), approval proof (`require_approval_ref`, off by default), and a check that living tables are well formed. Autochecks are listed worst first with a count line.
+- **Structured evidence**: the register has nine more columns (`rfps-register-add --update`); registers saved by Excel with a byte-order mark are read correctly.
+- **Final gate** (`rfps-final-gate`, `/rfps:final-gate`): checks the PDF exported from Google Docs (page count, internal markers, links to Docs, author metadata, required wording across line wraps, sparse and empty pages) and `--scrub` removes metadata. No LibreOffice is needed.
+- **Writing help**: six more section templates (executive summary, management plan, transition, risk register, quality assurance, schedule).
+- **Flow**: `flow.toml` has five optional steps (bid, questions, strategy, evaluation simulation, debrief) shown only when they need attention; `rfps-worklist` ranks amendment-not-applied, weak evaluator factors, overdue submission steps and open questions.
+- **Fixes**: settings written by `rfps-set-config` and `rfps-sync-gdoc` stay above the first table in `solution.toml`; second-reader staleness no longer clears itself on a refresh; free-text statuses such as "Yes - section 3.2" count as done; the sweep and cross-section comparison are fast on large solicitations; the price view no longer treats counts and page limits as ceilings; malformed table rows are reported, not dropped.
+- 13 new eval cases (obligation and validator checks, drafter markers, routing for each new skill).
+- Not yet built: an automated Google Docs route for the final copy (use File > Download > PDF from a clean copy).
+
 ## 0.5.0 (2026-10-30)
 
 - Teamwork: `/rfps:start` is the single entry point and begins with an entry check (`references/entry.md`): no solution means start, an existing solution means join (never overwritten); new `rfps-collab`. Joining records your name (local), checks `cache_dir`, and briefs you on who is writing, claimed worklist items (now `mine by <name>`), recent changes and duplicate IDs. Write commands take a short lease (`.state/lease.json`); `rfps-register-add` re-reads the register before writing so simultaneous adds do not share an ID.

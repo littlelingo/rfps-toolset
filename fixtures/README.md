@@ -10,6 +10,7 @@ A fictional solicitation so the whole rfps flow can be tried or tested with no r
 | `seed/` | A finished `response/*.md` and `evidence/register.csv` for the sample, to copy into `active-solution/` when you want to skip drafting |
 | `answer-key.toml` | What a correct requirements pass must find in the sample (11 obligation sentences, the page limit, the amendment override). `smoke.sh` checks `rfps-sweep` against it; the golden evals in `evals/` are graded against the same facts |
 | `seed/coverage-matrix.md` | One verbatim row per keyed obligation, so the sweep and the quote check can be tested with and without rows |
+| `seed/capture.md`, `seed/win-strategy.md`, `seed/evaluation-sim.md` | A recorded Go decision, the sample's evaluation factors and three win themes, and hand-written second-reader ratings, to test the bid step, theme and page-budget checks, weights on the worklist and the evaluation summary |
 | `build_sample.py` | Regenerates `sample-capture/` (`uv run fixtures/build_sample.py [folder]`) |
 | `smoke.sh` | Runs the tools end to end in a temp folder and checks the results (no model calls) |
 | `gdoc_sim.py`, `gdoc_test.py` | A simulated Google Docs API and an end-to-end test of the Google Docs route against it (create, suggestions, word-level edits, pull, collisions, bullets, tables); `smoke.sh` runs it. No Google involved |

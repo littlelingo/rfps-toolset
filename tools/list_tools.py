@@ -11,7 +11,7 @@ the "use it when" hint and the related slash command come from the HINTS table b
 import ast, json, pathlib, re, sys
 
 ROOT = pathlib.Path(__file__).resolve().parent
-SKIP = {"resources.py", "solicit_text.py"}   # helper module imported by other tools, not run on its own
+SKIP = {"resources.py", "solicit_text.py", "strategy.py"}   # helper module imported by other tools, not run on its own
 HINTS = {
     "new_engagement.py": ("Starting a new solicitation", "/rfps:new-engagement"),
     "worklist.py": ("One ranked list of markers, requirement gaps and compliance failures left after the first WIP, with the choice made on each", "/rfps:walk"),

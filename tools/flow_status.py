@@ -23,6 +23,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import build_response as br
 import refresh_reports as rr
 import solicit_text as sol_txt
+import strategy as sg
 import docx
 
 ICON = {"done": "🟢", "attention": "🟠", "blocking": "🔴", "todo": "⚪", "skipped": "🔵"}
@@ -131,6 +132,27 @@ def d_requirements_recorded(c):
     except Exception: un = []
     if un: return "attention", f"{n} requirements recorded, but {len(un)} mandatory obligation sentence(s) in the solicitation have no row (run rfps-sweep)"
     return "done", f"{n} requirements recorded"
+def d_bid_decision(c):
+    cp = sg.capture(c.sol)
+    if cp is None: return "todo", "no capture.md yet (run /rfps:capture)"
+    if cp["decision"] == "undecided": return "todo", "bid decision not recorded in capture.md"
+    if cp["decision"] == "no-go": return "attention", "recorded as No-go; confirm you mean to keep going or stop here"
+    return "done", "Go" + (f", pWin {cp['pwin']:.0f}%" if cp["pwin"] is not None else ", pWin not stated") + (f", decided by {cp['decided_by']}" if cp["decided_by"] else "")
+def d_strategy_recorded(c):
+    s = sg.strategy(c.sol); th, fac = s["themes"], s["factors"]
+    if not th and not fac: return "todo", "no win-strategy.md content yet"
+    if not fac: return "attention", "evaluation factors and weights not listed"
+    if not 3 <= len(th) <= 5: return "attention", f"{len(th)} win theme(s); aim for 3 to 5"
+    weak = [t["id"] for t in th if not (t["discriminator"] and t["proof"] and t["benefit"] and t["phrase"])]
+    if weak: return "attention", f"theme(s) missing a discriminator, proof, benefit or key phrase: {', '.join(weak)}"
+    return "done", f"{len(fac)} factor(s), {len(th)} theme(s)"
+def d_evalsim_run(c):
+    e = sg.evalsim(c.sol); f = c.sol / "evaluation-sim.md"
+    if not e["rows"]: return "todo", "no second-reader ratings yet"
+    if f.stat().st_mtime < c.newest: return "attention", "response changed since the last second-reader run"
+    pts = [(r, sg.rating_points(r["rating"], e["scale"])) for r in e["rows"]]
+    low = [r["factor"] for r, p in pts if p is not None and p <= 0.25]
+    return ("attention", f"{len(low)} factor(s) rated in the bottom of the scale: {', '.join(low[:4])}") if low else ("done", f"{len(e['rows'])} factor(s) rated, none in the bottom of the scale")
 def d_pp_sources(c):
     f = c.sol / "past-performance" / "sources.toml"
     n = len(tomllib.loads(f.read_text()).get("source", [])) if f.is_file() else 0

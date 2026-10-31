@@ -42,7 +42,7 @@ Then, in the solicitation's source folder (the one with `01 Solicitation Docs`, 
 0. `/rfps:start` runs steps 1 to 4 below in one go (asking only at the start and for what it cannot decide); `/rfps:walk` works through what is left.
 1. `/rfps:new-engagement` creates `active-solution/` beside the numbered capture folders: config, a `response/` skeleton mirroring the template docx headings, an evidence register, an amendments log and living report skeletons.
 2. Analysis skills read the solicitation: `collateral-analyzer`, `requirements-mapper`, `resource-planner`.
-3. `section-drafter` writes `response/*.md`; `empathy-reviewer` and `compliance-validator` review it.
+3. `capture` records the bid decision and `win-strategy` the evaluation factors and win themes; `section-drafter` writes `response/*.md` carrying those themes; `empathy-reviewer`, `compliance-validator` and `evaluator-simulator` review it. `/rfps:refresh-reports` checks that themes run through the response, compares pages written with each factor's page budget, and the worklist moves open work in heavily weighted factors up.
 4. `/rfps:build-wip` creates one shared WIP document (a Google Doc by default; `--word` for a Word file in `05 Draft Response`) and then updates it in place as suggestions (Word: tracked changes), so reviewers' comments and edits are kept. `/rfps:pull-wip` brings their edits and comments back into the response. `/rfps:build-final` writes the submission docx from the template.
 5. `/rfps:status` and `/rfps:next` show where you are and what to do; the status pane keeps that beside the chat.
 
@@ -77,12 +77,15 @@ The solution is found from the current directory (a folder at or above it holdin
 | `/rfps:make-gdoc-template` | Build a Google Doc version of the Word template to copy for each shared WIP document |
 | `/rfps:extract` | Turn PDF, Word, Excel and PowerPoint files into searchable text |
 | `/rfps:collateral-analyzer` | Brief and gap report from the provided collateral |
+| `/rfps:capture` | Record the bid decision: go or no-go, probability of winning and why, competitors, what must be true |
 | `/rfps:requirements-mapper` | Coverage matrix of requirements to evidence |
+| `/rfps:win-strategy` | Evaluation factors with weights and 3 to 5 win themes (discriminator, proof, benefit, key phrase) that every section carries |
 | `/rfps:resources`, `/rfps:resource-planner` | Roster of roles and people, resource plan, staffing workbook |
 | `/rfps:section-drafter` | Draft each response section from the coverage matrix |
 | `/rfps:integrate`, `/rfps:integrate-edits` | Weave your edits into their section for approval |
 | `/rfps:empathy-reviewer` | Tone and client-centricity pass |
 | `/rfps:compliance-validator` | Pass/fail check against the explicit requirements |
+| `/rfps:evaluator-simulator` | An independent second reader rates each evaluation factor and names the change that most raises it |
 | `/rfps:sweep` | List solicitation obligation sentences that no requirement row covers |
 | `/rfps:refresh-reports` | Recompute counts, pre-flight status, page estimates and the solicitation checks |
 | `/rfps:open-items` | List every decision, open question and evidence gap |

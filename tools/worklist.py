@@ -8,6 +8,8 @@ Collects, from the solution's own files:
   - markers in response/*.md: DECISION, OPEN, EVIDENCE NEEDED, ASSERTION
   - coverage-matrix.md rows classified Gap, and rows whose action is Assert with caveat, Seek evidence or Escalate
   - compliance-report.md rows whose status is Fail, Partial or Ambiguous
+  - evaluation-sim.md factors the second reader rated in the lower half of the scale
+Markers in a section whose evaluation factor has a weight in win-strategy.md move up the list (30 percent or more by two places, 15 percent or more by one).
 and ranks them (blockers first). Each item says who can act on it: the tools ("tool"), the user ("you"), or either.
 What was done about each item (addressed, mine, skipped) is kept in .state/worklist.json, keyed by a stable id, so
 re-running never loses a choice. It writes no report file: the list is computed from the files each time.
@@ -23,6 +25,7 @@ import argparse, hashlib, json, pathlib, re, sys, tomllib
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 import build_response as br
 import open_items
+import strategy as sg
 
 # (rank, label, who, suggested action) - lower rank is more urgent
 MARKER = {"DECISION": (2, "Decision", "you", "Ask the user to choose; replace the marker with the final text"),
@@ -59,10 +62,19 @@ def choice_of(sol, x):
 
 def collect(sol, cfg):
     items = []
-    for x in open_items.scan(sol / cfg.get("response_dir", "response")):
+    rdir = sol / cfg.get("response_dir", "response"); wmap = sg.weight_by_heading(sol); h1w = {}
+    def weight_of(fname):   # the evaluation weight of the factor whose response heading is this file's Heading 1 (win-strategy.md); None when unknown
+        if fname not in h1w:
+            m = re.search(r"^#\s+(.+)$", (rdir / fname).read_text(), re.M)
+            h1w[fname] = wmap.get(sg.norm(m.group(1))) if m else None
+        return h1w[fname]
+    for x in open_items.scan(rdir):
         rank, label, who, act = MARKER[x["kind"]]
+        w = weight_of(x["file"]); txt = x["text"]
+        if w and x["kind"] != "DECISION":   # open work in a heavily weighted factor costs more points, so it moves up the list
+            rank = max(2, rank - (2 if w >= 30 else 1 if w >= 15 else 0)); txt = f"[{w:g}% factor] " + txt
         items.append(dict(id=marker_id(x), rank=rank, kind=label, who=who, action=act,
-                          where=f"{x['file']}:{x['line']}", section=x["section"], text=x["text"]))
+                          where=f"{x['file']}:{x['line']}", section=x["section"], text=txt))
     cm = sol / "coverage-matrix.md"
     if cm.is_file():
         for head, cols, cells in tables(cm.read_text()):
@@ -87,6 +99,12 @@ def collect(sol, cfg):
             items.append(dict(id=key("c", rid), rank=1 if (mand and st.lower().startswith("fail")) else 5, kind=f"Compliance {st}", who="either",
                               action=col(cols, cells, "Remediation") or "Fix and re-run /rfps:compliance-validator", where=f"compliance-report.md {rid}",
                               section=head, text=f"{rid} {col(cols, cells, 'Requirement')}"))
+    for r in sg.evalsim(sol)["rows"]:   # factors the independent second reader rated in the lower half of the scale
+        p = sg.rating_points(r["rating"], sg.evalsim(sol)["scale"])
+        if p is None or p > 0.5: continue
+        items.append(dict(id=key("v", r["id"]), rank=3 if p <= 0.25 else 6, kind=f"Weak factor ({r['rating']})", who="either",
+                          action=r["change"] or "Make the change that most raises the rating; re-run /rfps:evaluator-simulator", where=f"evaluation-sim.md {r['id']}",
+                          section=r["factor"], text=f"{r['id']} {r['factor']}: {r['weaknesses']}"))
     return sorted(items, key=lambda i: (i["rank"], i["where"]))
 
 def load_state(sol):

@@ -87,6 +87,30 @@ rfps-refresh-reports --solution >/dev/null
 grep -q "Quoted RFP language found in the solicitation | Open.*not found verbatim: R-004" active-solution/compliance-report.md || { echo "FAIL: a misquoted requirement was not caught" >&2; exit 1; }
 cp "$T/cm-empty.md" active-solution/coverage-matrix.md
 rfps-refresh-reports --solution >/dev/null
+# bid decision, win strategy (themes, page budget, weights on the worklist) and the second reader's ratings; scaffolds are restored afterwards
+for f in capture.md win-strategy.md evaluation-sim.md solution.toml; do cp "active-solution/$f" "$T/$f.bak"; done
+rfps-flow-status --table | grep -q "bid decision not recorded" || { echo "FAIL: an Undecided capture.md should leave the bid step open" >&2; exit 1; }
+cp "$HERE/seed/capture.md" active-solution/capture.md
+rfps-flow-status --table | grep -q "Go, pWin 55%" || { echo "FAIL: a recorded Go decision was not read" >&2; exit 1; }
+cp "$HERE/seed/win-strategy.md" active-solution/win-strategy.md
+printf 'page_limit = 10\n' >> active-solution/solution.toml
+rfps-flow-status --table | grep -q "4 factor(s), 3 theme(s)" || { echo "FAIL: the win strategy was not read" >&2; exit 1; }
+rfps-refresh-reports --solution >/dev/null
+grep -q "Win themes carried through the response | Pass" active-solution/compliance-report.md || { echo "FAIL: seed themes should be carried through the seed response" >&2; grep -n "Win themes" active-solution/compliance-report.md >&2; exit 1; }
+grep -q "Page budget by evaluation factor | Open.*Technical Approach" active-solution/compliance-report.md || { echo "FAIL: the thin seed sections should be far under their page budget" >&2; exit 1; }
+grep -q "T-01 We have built this exact portal before | scheduling portal | Executive Summary, Past Performance" active-solution/win-strategy.md || { echo "FAIL: theme table not filled in" >&2; exit 1; }
+sed -i.bak 's/| scheduling portal |$/| zzz phrase |/' active-solution/win-strategy.md && rm active-solution/win-strategy.md.bak
+rfps-refresh-reports --solution >/dev/null
+grep -q "Win themes carried through the response | Open.*T-01 is not in the executive summary" active-solution/compliance-report.md || { echo "FAIL: a theme missing from the response was not caught" >&2; exit 1; }
+cp "$HERE/seed/win-strategy.md" active-solution/win-strategy.md
+rfps-worklist --json | grep -q '\[40% factor\]' || { echo "FAIL: markers in the 40 percent factor should be marked on the worklist" >&2; exit 1; }
+cp "$HERE/seed/evaluation-sim.md" active-solution/evaluation-sim.md
+rfps-refresh-reports --solution | grep -q "evaluation-sim.md: 4 factor" || { echo "FAIL: ratings not read" >&2; exit 1; }
+grep -q "Weighted score" active-solution/evaluation-sim.md && grep -q "Technical Approach (Marginal)" active-solution/evaluation-sim.md || { echo "FAIL: evaluation summary not filled in" >&2; exit 1; }
+rfps-worklist --table | grep -q "Weak factor (Marginal)" || { echo "FAIL: a Marginal factor should be on the worklist" >&2; exit 1; }
+rfps-flow-status --table | grep -q "1 factor(s) rated in the bottom of the scale: Technical Approach" || { echo "FAIL: the second reader's weakest factor not shown in the flow" >&2; exit 1; }
+for f in capture.md win-strategy.md evaluation-sim.md solution.toml; do cp "$T/$f.bak" "active-solution/$f"; done
+rfps-refresh-reports --solution >/dev/null
 rfps-sync-docx >/dev/null
 WIP="05 Draft Response/Response Template_WIP.docx"
 uv run --quiet --with python-docx python3 - "$WIP" <<'PY'

@@ -35,6 +35,15 @@ help = "The response/ headings must match the template docx exactly. Fix the tem
 ask = "Is the response template docx the right one? If there is none, should I generate one from the solicitation's response instructions?"
 
 [[step]]
+id = "bid"
+group = "Set up"
+title = "Bid decision recorded (go or no-go, with the reasons)"
+command = "/rfps:capture"
+check = "bid_decision"
+help = "Record whether to bid, the probability of winning and why, who the incumbent and likely competitors are, and what must be true to win, in capture.md. The decision and its sign-off are yours; the tools only write it down. Skip it ([-]) if capture is handled elsewhere."
+ask = "Are we bidding? What is our chance of winning, and what makes you say so?"
+
+[[step]]
 id = "analyze"
 group = "Understand"
 title = "Collateral analyzed (brief and gap report)"
@@ -85,6 +94,15 @@ title = "Evidence cited in the response is cleared for use"
 check = "evidence_cleared"
 help = "Every [GROUNDED: E-nnn] fact the response cites must be marked cleared in the register before the final build."
 ask = "Which clients or owners still need to approve use of their material?"
+
+[[step]]
+id = "strategy"
+group = "Draft"
+title = "Evaluation factors and win themes recorded"
+command = "/rfps:win-strategy"
+check = "strategy_recorded"
+help = "Run the win-strategy skill so win-strategy.md lists the evaluation factors with their weights and 3 to 5 win themes, each with a discriminator, proof (a register ID or ASSERTION), a benefit in the agency's words and a key phrase. The drafter carries the themes through every section."
+ask = "What are the two or three reasons the agency should pick us, and what proves each one?"
 
 [[step]]
 id = "resources"
@@ -148,6 +166,15 @@ command = "/rfps:compliance-validator"
 check = "compliance_ok"
 help = "Run the compliance validator so compliance-report.md has check rows, then /rfps:refresh-reports. Resolve every blocking item."
 ask = "Do you want me to run the compliance checks and refresh the report?"
+
+[[step]]
+id = "evalsim"
+group = "Review"
+title = "Scored by an independent second reader, weakest factors addressed"
+command = "/rfps:evaluator-simulator"
+check = "evalsim_run"
+help = "Run the evaluator simulator: a fresh reader that sees only the evaluation criteria and the response rates each factor and names the one change that most raises it. Re-run after the weakest factors are fixed. It is a second opinion, not the agency's score."
+ask = "Do you want an independent read of the response scored against the evaluation criteria?"
 
 [[step]]
 id = "attachments"

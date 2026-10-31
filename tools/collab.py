@@ -89,7 +89,7 @@ def briefing(sol):
         by = collections.Counter(v.get("by", "someone") for v in json.loads(wl.read_text()).values() if v.get("status") == "mine")
         out.append("Worklist items claimed: " + (", ".join(f"{n} by {w}" for w, n in by.items()) or "none"))
     acts = []
-    for rel in ("response", "evidence", "coverage-matrix.md", "compliance-report.md", "progress.md", "review-notes.md"):
+    for rel in ("response", "evidence", "coverage-matrix.md", "compliance-report.md", "capture.md", "win-strategy.md", "evaluation-sim.md", "progress.md", "review-notes.md"):
         p = sol / rel
         files = [p] if p.is_file() else list(p.glob("*")) if p.is_dir() else []
         for q in files:

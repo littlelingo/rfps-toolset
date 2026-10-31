@@ -19,6 +19,7 @@ import build_response as br
 import resources as rs
 import staffing as sf
 import solicit_text as st
+import strategy as sg
 
 TAGS = ["ASSERTION", "EVIDENCE NEEDED", "DECISION", "OPEN", "SOLUTIONING", "GROUNDED"]
 
@@ -143,6 +144,8 @@ def refresh_compliance(sol, cfg):
     else: auto.append("| Evidence register | Info | no register configured |")
     try: auto += solicitation_checks(sol, cfg, rows, nrows)
     except Exception as e: auto.append(f"| Solicitation sweep and quote check | Info | not run: {e} |")
+    try: auto += strategy_checks(sol, resp, order, pages, cfg.get("page_limit"))
+    except Exception as e: auto.append(f"| Win themes and page budget | Info | not run: {e} |")
     t = replace_block(t, "autochecks", "\n".join(auto), f.name)
     f.write_text(t)
     return f"compliance-report.md: {N} checks ({st['Pass']} pass, {st['Fail']} fail, {st['Partial']} partial, {st['Ambiguous']} ambiguous, {st['N/A']} n/a); {status}; {len(blocking)} blocking" + (("; WARN " + "; ".join(warn)) if warn else "")
@@ -162,6 +165,66 @@ def solicitation_checks(sol, cfg, comp_rows, narr_rows):
     badc = st.unverified_quotes(cov, docs); badk = st.unverified_quotes(chk, docs, quoted_only=True)
     out.append(f"| Quoted RFP language found in the solicitation | {'Pass' if not (badc or badk) else 'Open'} | {len(cov)} matrix row(s), {len(chk)} check row(s); not found verbatim: {', '.join(badc + badk) or 'none'}. Source: {note}. |")
     return out
+
+def group_texts(resp, order):
+    """{top-level heading (level 1 or 2): its text including sub-headings, omitted sections left out}."""
+    groups, cur = collections.OrderedDict(), None
+    for h in order:
+        lvl, body, omit = resp[h]
+        if lvl <= 2: cur = h; groups.setdefault(cur, "")
+        if cur is not None and not omit: groups[cur] += "\n" + body
+    return groups
+
+def strategy_checks(sol, resp, order, pages, limit):
+    """Automated checks from win-strategy.md: each win theme's key phrase is in the executive summary and at least one other section,
+    and each weighted evaluation factor's section is near its share of the page limit. Also fills the theme table in win-strategy.md."""
+    s = sg.strategy(sol); th = s["themes"]; groups = group_texts(resp, order); out = []
+    if not th:
+        out.append("| Win themes carried through the response | Info | no themes recorded in win-strategy.md |")
+    else:
+        bad, table = [], ["| Theme | Key phrase | Found in |", "|-------|------------|----------|"]
+        for t in th:
+            ph = sg.norm(t["phrase"]); hits = [h for h, txt in groups.items() if ph and ph in sg.norm(txt)]
+            table.append(f"| {t['id']} {t['theme'].replace('|', '/')} | {t['phrase'].replace('|', '/') or '(none)'} | {', '.join(hits) or 'nowhere yet'} |")
+            if not ph: bad.append(f"{t['id']} has no key phrase")
+            elif not any("summary" in h.lower() for h in hits): bad.append(f"{t['id']} is not in the executive summary")
+            elif len(hits) < 2: bad.append(f"{t['id']} appears only in the executive summary")
+        out.append(f"| Win themes carried through the response | {'Pass' if not bad else 'Open'} | {len(th)} theme(s); {'; '.join(bad) or 'each is in the executive summary and at least one other section'} |")
+        f = sol / "win-strategy.md"
+        if f.is_file() and "<!-- derived:themecheck -->" in f.read_text():
+            f.write_text(replace_block(f.read_text(), "themecheck", "\n".join(table), f.name))
+    fac = [x for x in s["factors"] if x["weight"] is not None and x["heading"]]
+    if fac and limit:
+        tot = sum(x["weight"] for x in fac); words = dict(pages); parts, flags = [], []
+        for x in fac:
+            key = next((n for n in words if sg.norm(n) == sg.norm(x["heading"])), None)
+            bud = limit * x["weight"] / tot
+            if key is None: parts.append(f"{x['heading']}: no text (budget {bud:.1f})"); flags.append(x["heading"]); continue
+            est = words[key] / 500; parts.append(f"{x['heading']}: {est:.1f} of {bud:.1f}")
+            if est > bud * 1.25 or est < bud * 0.5: flags.append(x["heading"])
+        out.append(f"| Page budget by evaluation factor | {'Pass' if not flags else 'Open'} | pages written of budget (weights share the {limit} page limit; 500 words a page): " + "; ".join(parts) + (f". Far from budget: {', '.join(flags)}" if flags else "") + " |")
+    elif fac: out.append("| Page budget by evaluation factor | Info | set page_limit in solution.toml to see the budget |")
+    return out
+
+def refresh_evalsim(sol):
+    """Fill the derived summary of evaluation-sim.md: weighted score on the scale, the weakest factors, and whether the response changed since the run."""
+    f = sol / "evaluation-sim.md"
+    if not f.is_file(): return "evaluation-sim.md: not present"
+    t = f.read_text()
+    if "<!-- derived:evalsummary -->" not in t: return "evaluation-sim.md: no derived block (add the markers or re-scaffold)"
+    e = sg.evalsim(sol); rated = [(r, sg.rating_points(r["rating"], e["scale"])) for r in e["rows"]]
+    ok = [(r, p) for r, p in rated if p is not None]; off = [r["id"] for r, p in rated if p is None]
+    if not rated: summ = ["No factors rated yet. Run /rfps:evaluator-simulator."]
+    else:
+        wt = sum((r["weight"] or 1) for r, _ in ok); score = sum((r["weight"] or 1) * p for r, p in ok) / wt if wt else 0
+        worst = sorted(ok, key=lambda x: x[1])[:3]
+        newest = max([p.stat().st_mtime for p in (sol / "response").glob("*.md")] or [0])
+        summ = [f"**Weighted score:** {score * 100:.0f} of 100 across {len(ok)} rated factor(s) (best rating = 100, worst = 0 on the scale above). A second reader's view, not the agency's.",
+                "**Weakest factors:** " + (", ".join(f"{r['factor']} ({r['rating']})" for r, _ in worst) or "none"),
+                f"**Ratings not on the scale:** {', '.join(off) or 'none'}",
+                "**Response changed since this run:** " + ("yes, re-run the simulator" if newest > f.stat().st_mtime else "no")]
+    f.write_text(replace_block(t, "evalsummary", "\n".join(summ), f.name))
+    return f"evaluation-sim.md: {len(rated)} factor(s) rated"
 
 def refresh_resources(sol, cfg):
     f = sol / "resource-plan.md"
@@ -227,7 +290,7 @@ def main():
     a = ap.parse_args()
     sol = br.resolve_solution(a.solution or None)
     cfg = tomllib.loads((sol / "solution.toml").read_text())
-    print(refresh_coverage(sol)); print(refresh_compliance(sol, cfg)); print(refresh_resources(sol, cfg))
+    print(refresh_coverage(sol)); print(refresh_compliance(sol, cfg)); print(refresh_resources(sol, cfg)); print(refresh_evalsim(sol))
     import open_items; n, _ = open_items.write(sol, cfg); print(f"open-items.md: {n} markers listed")
 
 if __name__ == "__main__":

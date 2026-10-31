@@ -16,6 +16,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/solution-guide/references/conventions.md` fir
 - **`brief.md`** — collateral brief with client vocabulary, tone signals, and evidence map
 - **`coverage-matrix.md`** — per-requirement coverage classification and recommended actions
 - **`gap-report.md`** — gap details for areas where evidence is missing
+- **`win-strategy.md`** - the evaluation factors with weights and the 3 to 5 win themes (discriminator, proof, benefit in the agency's words, key phrase). If it is missing, tell the user and offer `/rfps:win-strategy` before drafting; draft without it only if they decline
 - **RFP document(s)** — the original RFP for section structure, page limits, and evaluation criteria
 - **Section templates** from `assets/section-templates/` — structural starting points for each section type
 
@@ -42,6 +43,8 @@ The structure comes from the response template docx, whose headings are mirrored
 If the template and the solicitation disagree (a required section with no heading, a different order), tell the user; do not rename or reorder headings yourself.
 
 For each heading, identify:
+- The evaluation factor it answers and that factor's weight (from `win-strategy.md`), so effort follows points
+- The win themes it must carry
 - The page limit that applies (if any)
 - Which requirements from the coverage matrix map to it
 - The evaluation weight or priority signal for it
@@ -57,6 +60,10 @@ If the RFP's section does not match any template cleanly, adapt the closest temp
 For each section, write prose following these rules:
 
 **Open with the client's problem, not your solution.** The first paragraph of every section should demonstrate that you understood what the client asked for. Use their vocabulary from the brief. Name their specific pain point. Then — and only then — describe how you address it.
+
+**Serve a theme and a factor.** Before writing a section, name (to yourself and in your reply to the user) which evaluation factor it answers and which win theme(s) it carries. Each time the section makes a theme's point, use that theme's key phrase and the benefit in the agency's own words from `win-strategy.md`. A section that carries no theme is a list of answers; say so and ask. Never copy anything from the strategy's competitor assumptions into the text.
+
+**Feature, benefit, proof.** Shape each substantive paragraph as: what we do (the feature), what that means for the agency in their terms (the benefit: their risk, cost, schedule, staff load), and the proof (a `[GROUNDED: E-nnn]` register row, or an honest marker). A feature with no benefit is jargon; a benefit with no proof is a claim.
 
 **Specific before general.** Lead with concrete evidence: named projects, quantified results, specific technologies, named team members. Follow with the general capability claim. Never lead with the general claim and follow with "for example..." — the example should be the lead.
 
@@ -79,6 +86,8 @@ These markers are for internal review. The empathy reviewer and compliance valid
 **Do not mark obvious statements.** Factual statements about methodology, process descriptions, and common knowledge do not need markers. Only substantive claims about capability, experience, and outcomes need marking.
 
 **Match length to weight.** If the RFP allocates 40% of technical points to the approach section and 10% to the team section, the approach section should be proportionally more detailed. Do not pad thin sections to fill pages — evaluators punish filler. A concise, evidence-rich page beats three pages of padding.
+
+**Draft the Executive Summary last.** Write it after the other sections exist, from the win themes and from what the other sections actually say: open with the agency's problem, state each theme with its proof and key phrase, map the response to the evaluation factors in the agency's order, and end with why the approach is low-risk for them. The executive summary and the themes must agree; if a section contradicts a theme, fix the section or tell the user.
 
 ### Step 4: Handle Gaps
 

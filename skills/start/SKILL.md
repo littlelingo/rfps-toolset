@@ -39,6 +39,9 @@ Rules that differ from running the skills one by one:
 - `register`: follow `add-past-performance` to propose rows and add them with `rfps-register-add` as `hold`; never mark a row `cleared` (that is the user's call and the client's permission). Unusable material goes to the user as a note, not into the register.
 - `resources`: leave names the documents do not give as placeholders.
 - `draft`: every claim is `[GROUNDED: E-nnn]`, `[ASSERTION]`, or a `[DECISION]`, `[OPEN]` or `[EVIDENCE NEEDED]` marker; invent nothing about the bidder. Run `rfps-open-items --mark` afterwards.
+- `bid`: follow `capture` in proposal mode. Write a proposed bid view from the brief and the gaps and leave Decision as Undecided; the decision is the user's and is asked in the hand-over.
+- `strategy`: follow `win-strategy` in proposal mode. Candidate themes come from the cleared register rows and the strongest requirements; they are written marked "(proposed)" and wait for the user's approval.
+- `evalsim`: follow `evaluator-simulator` (one fresh-agent run) once `compliance` is done, then `rfps-refresh-reports`. Report the ratings; do not fix anything it finds.
 - `compliance`: finish with `rfps-refresh-reports`.
 - `wip`: follow `build-wip` (Google Doc by default, Word for `--word`). Never run `build-final`.
 
@@ -48,4 +51,4 @@ If a step fails, stop there, say what failed and how to resume, and do not hide 
 
 1. Run `rfps-worklist`; report the counts by kind and how many are blockers.
 2. Give a short honest summary: what exists now (WIP link, brief, matrix, register rows by clearance), what is thin or unsupported, and what the tools could not decide.
-3. Ask one question: walk the worklist now with `/rfps:walk`, or stop here.
+3. Put the three starting points in front of the user, each as a short proposal with its link: the proposed bid view (Go or No-go, and what they would change), the candidate win themes (confirm, edit or drop each), and the second reader's weakest factors. Then ask one question: walk the worklist now with `/rfps:walk`, or stop here.

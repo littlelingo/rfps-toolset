@@ -1,8 +1,12 @@
 ---
 name: evaluator-simulator
-description: Score the drafted response the way an agency evaluator would - a fresh independent reader sees only the evaluation criteria and response/*.md, rates each factor on the scale, lists strengths and weaknesses, and names the one change that most raises each rating
+description: >
+  Score the drafted response the way an agency evaluator would - a fresh independent reader sees only the
+  evaluation criteria and response/*.md, rates each factor on the scale, lists strengths and weaknesses, and
+  names the one change that most raises each rating. Costs one model run. Trigger when the user asks to
+  "score this like an evaluator", "how would this be rated", "red team the response", "mock evaluation", or
+  "where would we lose points".
 argument-hint: [factor to score, default all]
-disable-model-invocation: true
 allowed-tools: Bash(rfps-collab:*), Bash(rfps-refresh-reports:*), Bash(rfps-flow-status:*), Bash(rfps-worklist:*), Read, Edit, Write, Agent
 ---
 

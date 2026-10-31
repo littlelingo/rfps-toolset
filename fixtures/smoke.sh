@@ -95,6 +95,9 @@ rfps-flow-status --table | grep -q "Go, pWin 55%" || { echo "FAIL: a recorded Go
 cp "$HERE/seed/win-strategy.md" active-solution/win-strategy.md
 printf 'page_limit = 10\n' >> active-solution/solution.toml
 rfps-flow-status --table | grep -q "4 factor(s), 3 theme(s)" || { echo "FAIL: the win strategy was not read" >&2; exit 1; }
+sed 's/| Your maintenance history/| (proposed) Your maintenance history/' active-solution/win-strategy.md > "$T/ws-prop.md" && cp active-solution/win-strategy.md "$T/ws-keep.md" && cp "$T/ws-prop.md" active-solution/win-strategy.md
+rfps-flow-status --table | grep -q "1 proposed theme(s) waiting for your approval: T-02" || { echo "FAIL: a proposed theme should wait for approval in the flow" >&2; exit 1; }
+cp "$T/ws-keep.md" active-solution/win-strategy.md
 rfps-refresh-reports --solution >/dev/null
 grep -q "Win themes carried through the response | Pass" active-solution/compliance-report.md || { echo "FAIL: seed themes should be carried through the seed response" >&2; grep -n "Win themes" active-solution/compliance-report.md >&2; exit 1; }
 grep -q "Page budget by evaluation factor | Open.*Technical Approach" active-solution/compliance-report.md || { echo "FAIL: the thin seed sections should be far under their page budget" >&2; exit 1; }

@@ -143,6 +143,8 @@ def d_strategy_recorded(c):
     if not th and not fac: return "todo", "no win-strategy.md content yet"
     if not fac: return "attention", "evaluation factors and weights not listed"
     if not 3 <= len(th) <= 5: return "attention", f"{len(th)} win theme(s); aim for 3 to 5"
+    prop = [t["id"] for t in th if "(proposed)" in t["theme"].lower()]
+    if prop: return "attention", f"{len(prop)} proposed theme(s) waiting for your approval: {', '.join(prop)}"
     weak = [t["id"] for t in th if not (t["discriminator"] and t["proof"] and t["benefit"] and t["phrase"])]
     if weak: return "attention", f"theme(s) missing a discriminator, proof, benefit or key phrase: {', '.join(weak)}"
     return "done", f"{len(fac)} factor(s), {len(th)} theme(s)"

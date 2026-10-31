@@ -148,6 +148,60 @@ test -f "$T/defects_scrubbed.pdf" || { echo "FAIL: --scrub wrote no cleaned copy
 rfps-final-gate --pdf "$T/defects_scrubbed.pdf" | grep -q "Metadata free of names and emails | Pass" || { echo "FAIL: the cleaned copy still has personal metadata" >&2; exit 1; }
 cp "$T/sol3.bak" active-solution/solution.toml; cp "$T/sub3.bak" active-solution/submission.md; rm -f active-solution/final-gate.md
 rfps-refresh-reports --solution >/dev/null
+# structured evidence fields, recency and value rules, approval proof, figures that disagree, the price view and the rate sheet; restored afterwards
+cp active-solution/solution.toml "$T/sol4.bak"; cp active-solution/evidence/register.csv "$T/reg4.bak"; cp active-solution/response/02-technical-approach.md "$T/r02.bak"; cp active-solution/response/03-management-plan.md "$T/r03.bak"
+rfps-register-add --update E-002 --value-usd 450K >/dev/null && grep -q ",450K," active-solution/evidence/register.csv || { echo "FAIL: --update did not set a structured field" >&2; exit 1; }
+if rfps-register-add --update E-002 --clearance cleared >/dev/null 2>&1; then echo "FAIL: --update accepted clearance without --confirm-cleared" >&2; exit 1; fi
+printf '[past_performance]\nmax_age_years = 1\nmin_value_usd = 1000000\nmin_references = 2\nreference_max_age_days = 1\n' >> active-solution/solution.toml
+rfps-refresh-reports --solution >/dev/null
+for want in "ended within 1 years) | Open" "minimum value (\$1,000,000) | Open.*E-002" "Enough qualifying references (2 distinct clients) | Open.*none" "confirmed within 1 days | Open"; do
+  grep -q "$want" active-solution/compliance-report.md || { echo "FAIL: past-performance rule not reported: $want" >&2; grep -n "Cited work\|qualifying\|Reference contacts" active-solution/compliance-report.md >&2; exit 1; }
+done
+cp "$T/sol4.bak" active-solution/solution.toml
+printf '[past_performance]\nmax_age_years = 100\nmin_value_usd = 100000\nmin_references = 2\nreference_max_age_days = 100000\n' >> active-solution/solution.toml
+rfps-refresh-reports --solution >/dev/null
+for want in "recent enough (ended within 100 years) | Pass" "minimum value (\$100,000) | Pass" "Enough qualifying references (2 distinct clients) | Pass" "confirmed within 100000 days | Pass"; do
+  grep -q "$want" active-solution/compliance-report.md || { echo "FAIL: past-performance rule should pass: $want" >&2; exit 1; }
+done
+cp "$T/sol4.bak" active-solution/solution.toml
+printf 'require_approval_ref = true\n' > "$T/strict.toml"; cat "$T/sol4.bak" "$T/strict.toml" > active-solution/solution.toml
+rfps-refresh-reports --solution >/dev/null
+grep -q "Cleared evidence records its approval proof | Fail.*E-002" active-solution/compliance-report.md || { echo "FAIL: a cleared row with no approval_ref should fail when proof is required" >&2; exit 1; }
+if rfps-build-response --solution --mode final >/dev/null 2>&1; then echo "FAIL: FINAL accepted a cleared row with no approval proof" >&2; exit 1; fi
+rfps-register-add --update E-002 --approved-by "Lakeshore IT manager (fictional)" --approved-date 2026-10-20 --approval-ref "email of 2026-10-20 (fictional)" >/dev/null
+rfps-build-response --solution --mode final >/dev/null || { echo "FAIL: FINAL should build once the approval proof is recorded" >&2; exit 1; }
+rm -f "11 Final Submission"/*_FINAL.docx active-solution/build/*_FINAL.docx
+cp "$T/sol4.bak" active-solution/solution.toml; cp "$T/reg4.bak" active-solution/evidence/register.csv
+sed -i.bak 's/within 7 months of the Notice to Proceed (Amendment 1)/within 6 months of the Notice to Proceed (Amendment 1)/' active-solution/response/03-management-plan.md && rm active-solution/response/03-management-plan.md.bak
+sed -i.bak 's/at least 3 days before each appointment/at least 2 days before each appointment/' active-solution/response/02-technical-approach.md && rm active-solution/response/02-technical-approach.md.bak
+rfps-refresh-reports --solution >/dev/null
+grep -q "Numbers match the solicitation | Open.*superseded\|Numbers match the solicitation | Open.*replaced" active-solution/compliance-report.md || { echo "FAIL: a figure an amendment replaced was not caught" >&2; grep -n "Numbers match" active-solution/compliance-report.md >&2; exit 1; }
+rfps-consistency | grep -q "2 day" || { echo "FAIL: a figure below the solicitation minimum was not listed" >&2; exit 1; }
+cp "$T/r02.bak" active-solution/response/02-technical-approach.md; cp "$T/r03.bak" active-solution/response/03-management-plan.md
+rfps-refresh-reports --solution >/dev/null
+grep -q "Numbers match the solicitation | Pass" active-solution/compliance-report.md || { echo "FAIL: the seed response should agree with the solicitation" >&2; grep -n "Numbers match" active-solution/compliance-report.md >&2; exit 1; }
+uv run --quiet --with openpyxl python3 - "$HERE/../tools" "$T" <<'PY'
+import csv, pathlib, sys, openpyxl
+sys.path.insert(0, sys.argv[1]); import pricing
+t = pathlib.Path(sys.argv[2]) / "price"; t.mkdir(); (t / "09").mkdir()
+wb = openpyxl.Workbook(); ws = wb.active; ws.title = "Staffing"
+rows = [("P-01", "Project Manager", "A", "", "", "Senior PM", "100", 100, 100, 100, 100), ("P-02", "Developer", "B", "", "", "Developer III", "100", 200, 50, 50, 50)]
+for i, r in enumerate(rows, 5):
+    for j, v in enumerate(r, 1): ws.cell(row=i, column=j, value=v)
+wb.save(t / "09" / "Staffing.xlsx")
+with open(t / "09" / "Rates.csv", "w", newline="") as fh:
+    w = csv.writer(fh); w.writerow(["labor_category", "rate"]); w.writerow(["Senior PM", 100]); w.writerow(["Developer III", 150])
+cfg = {"staffing_xlsx": "09/Staffing.xlsx", "rate_sheet": "09/Rates.csv"}
+plan = "## Figures stated by the solicitation\n\n| Item | Value | Source | Notes |\n|---|---|---|---|\n| Not-to-exceed ceiling | $100,000 | RFP 4 | |\n\n## Role requirements\n"
+view = "\n".join(pricing.price_view(t, cfg, plan))
+assert "Total labor cost:** $60,000" in view or "$60,000" in view, view   # (300 x 100) + (150 x 200)
+assert "-40%" in view, view                                             # 60,000 against a 100,000 ceiling
+assert "$54,000 to $66,000" in view, view
+bad = pricing.rate_checks(t, cfg)[0]
+assert "Fail" in bad and "P-02" in bad and "$200 > $150" in bad, bad
+cfg["rate_sheet"] = "09/Missing.csv"
+assert "Open" in pricing.rate_checks(t, cfg)[0]
+PY
 rfps-sync-docx >/dev/null
 WIP="05 Draft Response/Response Template_WIP.docx"
 uv run --quiet --with python-docx python3 - "$WIP" <<'PY'

@@ -21,7 +21,15 @@ def norm(s):
 def cache_root(sol, cfg):
     return (pathlib.Path(cfg["cache_dir"]) / cfg.get("slug", sol.parent.name)) if cfg.get("cache_dir") else sol / ".state"
 
+_MEMO = {}
+
 def load_text(sol, cfg, text_dir=None, live=True):
+    """Same as _load_text, remembered for the life of the process so several checks in one run extract the solicitation once."""
+    k = (str(sol), str(text_dir), live)
+    if k not in _MEMO: _MEMO[k] = _load_text(sol, cfg, text_dir, live)
+    return _MEMO[k]
+
+def _load_text(sol, cfg, text_dir=None, live=True):
     """-> ([(file name, text)], note). Prefers text already extracted by /rfps:extract; else extracts the solicitation folder in place (read-only).
     live=False never extracts (for status views that run often): it returns no text when there is no extracted copy."""
     if text_dir:

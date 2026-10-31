@@ -56,3 +56,17 @@ Each deliverable the Work Order requires. The checks report any deliverable that
 
 | # | Deliverable | Due | Source |
 |---|-------------|-----|--------|
+
+---
+
+## Price view
+
+What the staffing workbook adds up to, how far it moves if the hours move, and how it sits against any ceiling or budget the solicitation states (put those in "Figures stated by the solicitation" above, with the words ceiling, budget, not-to-exceed or total amount in the Item). Computed from the workbook; it recommends nothing. The price is the pricer's decision, and anything in "Value arguments" is an argument to be tested, not a fact.
+
+<!-- derived:priceview -->
+<!-- /derived:priceview -->
+
+### Value arguments
+
+| # | Argument, in the agency's terms | Evidence (register ID or source) | Where it is made in the response |
+|---|---------------------------------|----------------------------------|----------------------------------|

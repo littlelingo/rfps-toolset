@@ -28,6 +28,7 @@ TAGS = r"GROUNDED|ASSERTION|EVIDENCE NEEDED|DECISION|OPEN|SOLUTIONING"
 ICONS = "\U0001F7E1\U0001F534\U0001F7E0\U0001F7E3\U0001F7E2"   # optional scan icon before a marker; see rfps-open-items
 TAG_RE = re.compile(r"(?:[%s]\uFE0F?[ \t]*)?\[(?:%s)[^\]]*\]" % (ICONS, TAGS), re.S)
 STRIP_TAGS = ("GROUNDED", "ASSERTION")
+STRICT = {"ref": False}   # set by load_engagement from solution.toml require_approval_ref: a cleared row must also record where the approval is
 COLORS = {"GROUNDED": WD_COLOR_INDEX.BRIGHT_GREEN, "ASSERTION": WD_COLOR_INDEX.YELLOW}
 INLINE = re.compile(r"(\*\*[^*]+\*\*|\*[^*\s][^*]*\*|`[^`]+`)")
 
@@ -71,6 +72,7 @@ def check_evidence(resp, register, deny):
             c = (r.get("clearance") or "").strip()
             if r.get("superseded_by", "").strip(): res["issues"].append(f"{i}: superseded by {r['superseded_by'].strip()} ({where})")
             if c != "cleared": res["issues"].append(f"{i}: clearance is '{c}' ({where}); {r.get('notes','').strip()[:100]}")
+            elif STRICT["ref"] and not (r.get("approval_ref") or "").strip(): res["issues"].append(f"{i}: cleared, but approval_ref records no proof of the client's or owner's approval ({where})")
         res["unused"] = [i for i, r in register.items() if i not in res["cited"] and not (r.get("ban_phrases") or "").strip() and (r.get("clearance") or "").strip() in ("cleared", "needs-permission")]
     return res
 
@@ -329,6 +331,7 @@ def resolve_solution(arg):
 def load_engagement(path):
     d = resolve_solution(path)
     cfg = tomllib.loads((d / "solution.toml").read_text())
+    STRICT["ref"] = bool(cfg.get("require_approval_ref"))
     def rel(v): return str(pathlib.Path(v) if pathlib.Path(v).is_absolute() else (d / v).resolve())
     return dict(template=rel(cfg["template"]), response=rel(cfg.get("response_dir", "response")),
                 out=rel(cfg.get("build_dir", "build")), name=cfg.get("output_name", d.name),

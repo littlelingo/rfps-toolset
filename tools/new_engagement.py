@@ -25,7 +25,8 @@ Usage: rfps-new-engagement --source "<source folder>" [--template "<docx>"] [--t
 import argparse, csv, os, pathlib, re, subprocess, sys, tomllib
 import docx
 
-COLUMNS = ["id", "claim", "client", "engagement", "date", "numbers", "source", "clearance", "verified", "basis", "superseded_by", "notes", "ban_phrases"]
+COLUMNS = ["id", "claim", "client", "engagement", "date", "numbers", "source", "clearance", "verified", "basis", "superseded_by", "notes", "ban_phrases",
+           "start", "end", "value_usd", "scope_tags", "reference_contact", "reference_confirmed", "approved_by", "approved_date", "approval_ref"]
 DRIVE = re.compile(r"Google ?Drive|GoogleDrive|My Drive|CloudStorage/GoogleDrive", re.I)
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parent.parent
 DEFAULTS = tomllib.loads((pathlib.Path(__file__).resolve().parent / "defaults.toml").read_text())
@@ -88,6 +89,11 @@ def main():
               "# wip_format = \"gdoc\"",
               "# Staffing and pricing workbook built from tools/templates/staffing-template.xlsx; create or refresh it with rfps-staffing."]
     lines.append(f'staffing_xlsx = "{rel(pricing / "Staffing.xlsx", sol)}"' if pricing else '# staffing_xlsx = "../09 Pricing/Staffing.xlsx"')
+    lines += ["# FINAL refuses a cleared evidence row that records no proof of the client's approval (approval_ref).", "# require_approval_ref = true",
+              "# Price list (csv with labor_category,rate): the price view checks the staffing workbook against it.", '# rate_sheet = "../09 Pricing/Rate Sheet.csv"',
+              "# Rules from the solicitation, read by the automated checks. These are tables, so keep them last.",
+              "# [past_performance]", "# max_age_years = 5", "# min_value_usd = 1000000", "# min_references = 3", "# reference_max_age_days = 180",
+              "# [final_gate]", "# exclude_pages = 1", "# max_mb = 10", '# required_text = ["Attachment B"]', "# margin_inches = 1.0", '# page_size = "letter"']
     (sol / "solution.toml").write_text("\n".join(lines) + "\n")
     files, cur = [], None
     for lvl, h in heads:

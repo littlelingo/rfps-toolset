@@ -21,6 +21,9 @@ import staffing as sf
 import solicit_text as st
 import strategy as sg
 import validated as vd
+import evidence_checks as ec
+import consistency as cn
+import pricing as pr
 
 TAGS = ["ASSERTION", "EVIDENCE NEEDED", "DECISION", "OPEN", "SOLUTIONING", "GROUNDED"]
 
@@ -142,9 +145,15 @@ def refresh_compliance(sol, cfg):
         auto.append(f"| Grounded notes cite a register ID | {'Pass' if not ev['uncited'] else 'Fail'} | uncited: {len(ev['uncited'])} |")
         auto.append(f"| Banned phrases absent | {'Pass' if not ev['deny'] else 'Fail'} | hits: {', '.join(sorted({ph for _, ph, _ in ev['deny']})) or 'none'} |")
         auto.append(f"| Register rows not cited anywhere | Info | {', '.join(ev['unused']) or 'none'} |")
+        auto += ec.pp_checks(cfg, reg, set(ev["cited"]))
+        if br.STRICT["ref"]:
+            noref = sorted(i for i in ev["cited"] if (reg.get(i, {}).get("clearance") or "").strip() == "cleared" and not (reg.get(i, {}).get("approval_ref") or "").strip())
+            auto.append(f"| Cleared evidence records its approval proof | {'Pass' if not noref else 'Fail'} | require_approval_ref is on; cited rows with no approval_ref: {', '.join(noref) or 'none'} |")
     else: auto.append("| Evidence register | Info | no register configured |")
     try: auto += solicitation_checks(sol, cfg, rows, nrows)
     except Exception as e: auto.append(f"| Solicitation sweep and quote check | Info | not run: {e} |")
+    try: auto += cn.checks(sol, cfg)
+    except Exception as e: auto.append(f"| Numbers agree | Info | not run: {e} |")
     try: auto += currency_checks(sol, cfg)
     except Exception as e: auto.append(f"| Reviews current and submission steps | Info | not run: {e} |")
     try: auto += strategy_checks(sol, resp, order, pages, cfg.get("page_limit"))
@@ -297,7 +306,13 @@ def refresh_resources(sol, cfg):
            f"| Other roles are named in the response | {'Pass' if not others else 'Open'} | not found: {ls(others)} |",
            f"| Every deliverable has an owner role | {'Pass' if dels and not nodel else ('Open' if dels else 'Info')} | " + (f"no owner: {ls(nodel)}" if dels else "no deliverables listed in the plan") + " |",
            f"| Staffing workbook | {'Pass' if wb_ok else 'Open'} | {wb} |"]
-    t = replace_block(t, "summary", "\n".join(out), f.name); f.write_text(t)
+    try: out += pr.rate_checks(sol, cfg)
+    except Exception as e: out.append(f"| Rate sheet | Info | not checked: {e} |")
+    t = replace_block(t, "summary", "\n".join(out), f.name)
+    if "<!-- derived:priceview -->" in t:
+        try: t = replace_block(t, "priceview", "\n".join(pr.price_view(sol, cfg, t)), f.name)
+        except Exception as e: t = replace_block(t, "priceview", f"Price view not built: {e}", f.name)
+    f.write_text(t)
     # keep the team-size sentence in the response in step with the roster
     note = ""
     for mdf in sorted((sol / cfg.get("response_dir", "response")).glob("*.md")):

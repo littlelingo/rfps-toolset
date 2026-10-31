@@ -11,7 +11,7 @@ the "use it when" hint and the related slash command come from the HINTS table b
 import ast, json, pathlib, re, sys
 
 ROOT = pathlib.Path(__file__).resolve().parent
-SKIP = {"resources.py", "solicit_text.py", "strategy.py"}   # helper module imported by other tools, not run on its own
+SKIP = {"resources.py", "solicit_text.py", "strategy.py", "validated.py", "evidence_checks.py", "pricing.py"}   # helper module imported by other tools, not run on its own
 HINTS = {
     "new_engagement.py": ("Starting a new solicitation", "/rfps:new-engagement"),
     "worklist.py": ("One ranked list of markers, requirement gaps and compliance failures left after the first WIP, with the choice made on each", "/rfps:walk"),
@@ -23,6 +23,7 @@ HINTS = {
     "extract_docs.py": ("Turning PDFs, Word, Excel and PowerPoint files into searchable text for the analysis skills", "/rfps:extract"),
     "refresh_reports.py": ("After editing the coverage matrix, compliance report, roster or response, to recompute counts, status and page estimates", "/rfps:refresh-reports"),
     "final_gate.py": ("Checking the PDF that will be submitted: page count and size, text, internal markers, required wording, links, metadata, blocking items and open forms; --scrub writes a cleaned copy", "/rfps:final-gate"),
+    "consistency.py": ("Finding figures that disagree: the response against the solicitation (including figures an amendment replaced), one section against another, and roster people missing from the text", "/rfps:refresh-reports"),
     "sweep.py": ("Finding obligation sentences in the solicitation (shall, must, no later than ...) that no requirement row covers, so none is missed", "/rfps:sweep"),
     "open_items.py": ("Finding every decision, open question, evidence gap and assertion in the response; add --mark to put the colored icons in the files", "/rfps:open-items"),
     "build_response.py": ("Pouring the response text into the Word template: a work-in-progress copy, or the final submission copy", "/rfps:build-wip, /rfps:build-final"),

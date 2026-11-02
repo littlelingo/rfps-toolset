@@ -13,6 +13,7 @@ A fictional solicitation so the whole rfps flow can be tried or tested with no r
 | `seed/capture.md`, `seed/win-strategy.md`, `seed/evaluation-sim.md` | A recorded Go decision, the sample's evaluation factors and three win themes, and hand-written second-reader ratings, to test the bid step, theme and page-budget checks, weights on the worklist and the evaluation summary |
 | `build_sample.py` | Regenerates `sample-capture/` (`uv run fixtures/build_sample.py [folder]`) |
 | `smoke.sh` | Runs the tools end to end in a temp folder and checks the results (no model calls) |
+| `gdoc_master_test.py`, `fearless-formal-master.json` | The master Google Doc: checks a master (styles, page setup, header, footer, blank body) against a style profile, empties a copy of a finished response, writes the response template's skeleton into the blank copy, and refuses a WIP with no master registered. It also generates the master .docx from the profile alone. The JSON is a read_doc result with only the styles, header and footer of a doc that meets the formal profile (no response text), used to test the check |
 | `gdoc_sim.py`, `gdoc_test.py` | A simulated Google Docs API and an end-to-end test of the Google Docs route against it (create, suggestions, word-level edits, pull, collisions, bullets, tables); `smoke.sh` runs it. No Google involved |
 | `trial.sh` | Runs the extract, collateral, past-performance, requirements and drafting skills with Claude on a throwaway copy (model calls; a few minutes) |
 

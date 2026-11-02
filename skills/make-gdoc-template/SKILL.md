@@ -1,14 +1,29 @@
 ---
 name: make-gdoc-template
-description: Build a Google Doc version of the Word response template (its headings, boilerplate, tables, page setup, fonts, header and footer) to copy for each solution's shared work-in-progress document
-argument-hint: [--update]
+description: Make and register the master Google Doc (a blank doc that meets the Fearless style profile) that every solution's shared work-in-progress document is copied from, or build one from the Word response template when there is no master
+argument-hint: [--profile formal] [--master <Google Doc link>] [--update]
 disable-model-invocation: true
 allowed-tools: Bash(rfps-sync-gdoc:*), Bash(rfps-flow-status:*), Read, Write
 ---
 
 Read `${CLAUDE_PLUGIN_ROOT}/skills/solution-guide/references/conventions.md` first; its rules apply here.
 
-The Word template stays the source for the FINAL submission. This makes a Google Doc that looks like it, so the shared work-in-progress document has the same page setup, fonts, headings, boilerplate and header and footer, and the page count reviewers see is close to the final. It is made once and copied (Drive `copy_file`) for each WIP; copying keeps everything, including headers and page setup, without sending a file through the call.
+**A shared master is optional.** `/rfps:build-wip` makes a fresh doc from the profile for every solution when there is no master, so there is no shared document to drift. Make a master only to save the extra steps per solution, and then treat it as a disposable copy of the profile: it records the profile's fingerprint when registered, `--template-id` refuses it (exit 3) once the profile changes, a failed `--template-check` stops `/rfps:build-wip` from copying it, and the fix is always to rebuild it from the profile, never to edit it by hand. Keep it view-only for everyone but one owner.
+
+**Master route.** The standard is a style profile (`tools/templates/styles/<name>.toml`, default `formal`): page setup, named styles (Heading 1 to 3, Title, Subtitle for the scaffold lines), a different first page, a running header, and a footer with a page-number field. No finished response is the reference; any Google Doc that passes the check below can be the master. Two ways to get one:
+
+- **A. Make a native Google Doc from the standard (default).** No Word file. Create a blank Doc with Drive `create_file` (title "Fearless <profile> master", `contentMimeType` `text/html`, `textContent` `<html><body><p></p></body></html>`, in `wip_folder` when set), read it with `read_doc`, run `rfps-sync-gdoc --master-plan <file> --profile <name>` and send `build/gdoc-master-1.json` with `update_doc` as a direct edit (page size, margins, different first page, header and footer created). Read the doc again, run `rfps-sync-gdoc --master-plan <file> --stage 2` and send `build/gdoc-master-2.json` the same way (header lines, footer notice). The Docs API cannot add a page-number field or change Google's named styles, so: the user adds the page number after "Page" in the footer (Insert, Page numbers), and the profile's fonts and colors are applied as direct formatting when `/rfps:build-wip` writes the skeleton.
+- **B. Use a conforming doc the user already has** (for example a finished response). Copy it with Drive `copy_file` (title "Fearless <profile> master", in `wip_folder` when set; never edit the original), read the copy with `read_doc`, run `rfps-sync-gdoc --clean-plan <file>` and send `build/gdoc-clean.json` with `update_doc` as a direct edit. The body goes; styles, header and footer stay. A table of contents and tables are lost. Its named styles are real, so check with `--named-styles`.
+- **C. A Word file.** `rfps-sync-gdoc --master-docx --profile <name>` writes `build/<name>-master.docx` from the profile; the user opens it as a Google Doc and Google converts its Word styles to named styles. Use this when real named styles are wanted and the user can upload a file.
+
+Then, for either:
+1. Read the doc with `read_doc` and run `rfps-sync-gdoc --template-check <file> --profile <name>` (add `--named-styles` for routes B and C). It lists the page setup, the first-page rule, the header, the footer page-number field (and the named styles) as ok or DEVIATES, and the body as blank or not. Fix deviations in the doc before going on; do not register a doc that fails. The page-number field is added in the doc by hand (Insert, Page numbers).
+2. Run `rfps-sync-gdoc --set-template <master link or id> --profile <name>` for this solution, or `rfps-sync-gdoc --set-default-master <link or id> --profile <name>` to record it once in `tools/templates/styles/<name>.toml` for every solution that sets none (the doc stays in the Drive of whoever made it, so make it in the Fearless account). `/rfps:build-wip` now copies it and writes the response template's skeleton into the copy. The header words (company, solicitation title, date, document type) are placeholders to fill in each WIP.
+The solicitation's own format rules win over the profile: when an RFP sets a font, size or margin, change it in the WIP for that solution and say so in the first message.
+
+The remaining steps are the older route, for when there is no master: build one from the Word template.
+
+The Word template stays the source for the FINAL submission when there is no master. This makes a Google Doc that looks like it, so the shared work-in-progress document has the same page setup, fonts, headings, boilerplate and header and footer, and the page count reviewers see is close to the final. It is made once and copied (Drive `copy_file`) for each WIP; copying keeps everything, including headers and page setup, without sending a file through the call.
 
 Before the first Google call read the `google-workspace` skill if it is listed, check that the Docs editor tools (`read_doc`, `update_doc`) and Drive tools are available, and confirm with the user which Google account the connector uses (the template is created there).
 

@@ -18,7 +18,15 @@ Usage (DOC.json is a saved read_doc result):
   rfps-sync-gdoc --commit                        after Claude sent the push successfully: record it as synced
   rfps-sync-gdoc --style-plan DOC.json           build/gdoc-style.json: page setup, fonts and line spacing from the Word template, plus its header and footer text (direct formatting)
   rfps-sync-gdoc --set-folder ID_OR_LINK         record the Drive folder where the shared WIP is created and kept (wip_folder in solution.toml)
-  rfps-sync-gdoc --set-template ID               record a Google Doc template (copied to start each shared WIP) as gdoc_template in solution.toml
+  rfps-sync-gdoc --set-template ID_OR_LINK [--profile NAME]   record the master Google Doc (copied to start each shared WIP) as gdoc_template, and its style profile
+  rfps-sync-gdoc --template-id                   print the registered master; exit 2 when there is none (make a fresh doc from the profile), exit 3 when the profile changed since the master was made
+  rfps-sync-gdoc --template-check DOC.json [--profile NAME] [--style-only] [--named-styles]   compare a master doc's page setup, header and footer (and with --named-styles its Heading/Title styles) with the style profile; it must also be blank unless --style-only
+  rfps-sync-gdoc --wip-check DOC.json [--profile NAME]   compare the doc's real formatting (direct over named styles) with the profile; exit 1 on any deviation
+  rfps-sync-gdoc --master-plan DOC.json [--stage 1|2] [--profile NAME]   make a blank Google Doc meet the profile: stage 1 page setup and header/footer, stage 2 their text (direct edits)
+  rfps-sync-gdoc --set-default-master ID_OR_LINK --profile NAME   record the shared master in tools/templates/styles/NAME.toml (used when a solution sets no gdoc_template)
+  rfps-sync-gdoc --master-docx [--profile NAME]  build/<profile>-master.docx: a blank Word file generated from the style profile alone (styles, page setup, first-page rule, header, footer with a page-number field); open it in Google Docs to make the master
+  rfps-sync-gdoc --clean-plan DOC.json           build/gdoc-clean.json: empty the body of a copy of a finished response so only its styles, header and footer remain (direct edit)
+  rfps-sync-gdoc --skeleton-plan DOC.json        build/gdoc-skeleton.json: write the response template's headings, instruction lines and placeholders into a blank copy of the master, in the master's own styles (direct edit)
   rfps-sync-gdoc --highlight-plan DOC.json       build/gdoc-highlight.json: color the markers and tags (suggested formatting); safe to repeat
   rfps-sync-gdoc --pull DOC.json [--apply] [--sections "A;B"]   edits others made, for approval; --apply writes response/*.md
   rfps-sync-gdoc --comments-plan DOC.json        build/gdoc-comments.json: update_doc insertComment requests for open items that have no comment yet
@@ -32,7 +40,7 @@ All text this tool adds arrives as suggestions (tracked changes) that people acc
 doc has placeholders only, so the first draft is reviewable too. Comments are tracked in .state/gdoc-comments.json and
 review/doc-comments.md, so each pull reconciles them with the response.
 """
-import argparse, datetime, html, json, pathlib, re, sys
+import argparse, datetime, html, json, pathlib, re, sys, tomllib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import docx
 import build_response as br
@@ -928,6 +936,222 @@ def op_style_plan(sol, e, doc_path, st):
     print(f"{len(reqs)} formatting request(s) (page setup, fonts, line spacing) in {f}." + (f" Also add {n} (createHeader/createFooter, then insertText with the returned id; page-number fields cannot be added through the connector)." if n else "") +
           " Formatting only, so send it as a direct edit.")
 
+# ---------- the master Google Doc: a styled, blank copy of a finished response ----------
+STYLES_DIR = pathlib.Path(__file__).resolve().parent / "templates" / "styles"
+
+def load_profile(name):
+    import tomllib
+    f = STYLES_DIR / f"{name}.toml"
+    if not f.exists(): sys.exit(f"No style profile '{name}'. Available: {', '.join(sorted(x.stem for x in STYLES_DIR.glob('*.toml'))) or '(none)'}.")
+    return tomllib.loads(f.read_text())
+
+def profile_fingerprint(profile):
+    """A short hash of the standard itself (not of where the master lives), so a master built from an older profile is recognised as stale."""
+    import hashlib
+    body = {k: v for k, v in profile.items() if k not in ("master_doc", "master_fingerprint")}
+    return hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()[:12]
+
+def _hex(rgb):
+    c = ((rgb or {}).get("color") or {}).get("rgbColor") or {}
+    return "{:02X}{:02X}{:02X}".format(*(round(c.get(k, 0) * 255) for k in ("red", "green", "blue")))
+
+def _named(tab):
+    out = {}
+    for s_ in (tab.get("namedStyles") or {}).get("styles", []):
+        ts = s_.get("textStyle") or {}
+        out[s_["namedStyleType"]] = dict(font=(ts.get("weightedFontFamily") or {}).get("fontFamily"), size=(ts.get("fontSize") or {}).get("magnitude"),
+                                         bold=ts.get("bold"), color=_hex(ts["foregroundColor"]) if ts.get("foregroundColor") else None)
+    return out
+
+def _seg_text(seg):
+    """Text and special elements of a header or footer: (text, has page-number field)."""
+    txt, page = [], False
+    for el in (seg or {}).get("content", []):
+        for r in (el.get("paragraph") or {}).get("elements", []):
+            if "textRun" in r: txt.append(r["textRun"].get("content", ""))
+            if (r.get("autoText") or {}).get("type") == "PAGE_NUMBER": page = True
+    return "".join(txt).strip(), page
+
+def check_master(doc, profile, style_only=False, named_styles=False):
+    """-> (lines, ok): how a master doc compares with a style profile."""
+    tab = _tab(doc); lines, ok = [], True
+    def rec(good, label, detail=""):
+        nonlocal ok; ok &= bool(good); lines.append(f"{'ok      ' if good else 'DEVIATES'} {label}" + (f": {detail}" if detail else ""))
+    ds = tab.get("documentStyle", {}); pg = profile.get("page", {})
+    if pg:
+        pt = lambda k: (ds.get(k) or {}).get("magnitude")
+        size = ((ds.get("pageSize") or {}).get("width", {}).get("magnitude"), (ds.get("pageSize") or {}).get("height", {}).get("magnitude"))
+        rec(size == (pg.get("width"), pg.get("height")), "page size", f"{size[0]} x {size[1]} pt, profile {pg.get('width')} x {pg.get('height')}")
+        m = [pt(k) for k in ("marginTop", "marginBottom", "marginLeft", "marginRight")]
+        rec(all(v == pg.get("margin") for v in m), "margins", f"{m}, profile {pg.get('margin')} on every side")
+    named = _named(tab); base = (named.get("NORMAL_TEXT") or {}).get("font")
+    for style, want in (profile.get("named", {}) if named_styles else {}).items():
+        have = dict(named.get(style) or {})
+        if want.get("font") == "inherit": want = {**want, "font": base}
+        for k in ("font", "size", "bold", "color"):
+            if k in want:
+                h = have.get(k) if k != "font" or have.get(k) else base
+                if k == "bold": h = bool(h)
+                rec(h == want[k], f"{style} {k}", f"{h!r}, profile {want[k]!r}")
+    lay = profile.get("layout", {})
+    if lay.get("first_page_header_footer"):
+        rec(ds.get("useFirstPageHeaderFooter"), "different first page", "the cover page has its own header and footer" if ds.get("useFirstPageHeaderFooter") else "turn on Format > Headers & footers > Different first page")
+    dh, dfoot = _seg_text((tab.get("headers") or {}).get(ds.get("defaultHeaderId"))), _seg_text((tab.get("footers") or {}).get(ds.get("defaultFooterId")))
+    if lay.get("header_text_required"): rec(bool(dh[0]), "running header", dh[0].replace("\n", " | ")[:70] or "empty")
+    if lay.get("footer_page_number"): rec(dfoot[1], "footer page-number field", dfoot[0].replace("\n", " | ")[:70] or "empty")
+    if not style_only:
+        body = [b for b in tab["body"]["content"] if b.get("table") or b.get("tableOfContents") or any(r.get("textRun", {}).get("content", "").strip() for r in (b.get("paragraph") or {}).get("elements", []))]
+        rec(not body, "blank body", "no response or solicitation text" if not body else f"{len(body)} element(s) of text, tables or a table of contents remain; run --clean-plan")
+    return lines, ok
+
+def op_template_check(path, profile_name, style_only, named_styles=False):
+    profile = load_profile(profile_name); lines, ok = check_master(read_doc_file(path), profile, style_only, named_styles)
+    print(f"Master doc against the '{profile_name}' style profile" + (" (including its named styles)" if named_styles else " (page setup, header, footer; the profile's fonts and colors are applied as direct formatting when the skeleton is written)") + ":"); print("\n".join("  " + l for l in lines))
+    print("The master matches the profile." if ok else "The master does not match the profile (see DEVIATES above). Fix it in the doc, or choose a different master.")
+    sys.exit(0 if ok else 1)
+
+def op_master_docx(e, profile_name):
+    """A blank .docx generated from the style profile alone. Google Docs converts its Word styles (Heading 1-3, Title, Subtitle) to its named styles when
+    the file is opened as a Google Doc, so the result is a master without any finished response as the source. The Docs API cannot change named styles, which is why this goes through a file."""
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.oxml import OxmlElement
+    from docx.shared import Pt, RGBColor
+    prof = load_profile(profile_name); d = docx.Document(); pg = prof.get("page", {})
+    for p_ in list(d.paragraphs): p_._element.getparent().remove(p_._element)
+    base = (prof.get("named", {}).get("NORMAL_TEXT") or {}).get("font")
+    def style(name, spec):
+        st = d.styles[name]; f = st.font; font = base if spec.get("font") in (None, "inherit") else spec["font"]
+        rf = st.element.get_or_add_rPr().get_or_add_rFonts()
+        for k in [k for k in rf.attrib if "Theme" in k]: del rf.attrib[k]
+        if font: f.name = font
+        if spec.get("size"): f.size = Pt(spec["size"])
+        if spec.get("bold") is not None: f.bold = spec["bold"]
+        if spec.get("color"): f.color.rgb = RGBColor.from_string(spec["color"])
+    for key, name in (("NORMAL_TEXT", "Normal"), ("HEADING_1", "Heading 1"), ("HEADING_2", "Heading 2"), ("HEADING_3", "Heading 3"), ("TITLE", "Title"), ("SUBTITLE", "Subtitle")):
+        if key in prof.get("named", {}): style(name, prof["named"][key])
+    sec = d.sections[0]
+    if pg:
+        sec.page_width, sec.page_height = Pt(pg["width"]), Pt(pg["height"])
+        for k in ("top_margin", "bottom_margin", "left_margin", "right_margin"): setattr(sec, k, Pt(pg["margin"]))
+    sec.header_distance = sec.footer_distance = Pt(36)
+    lay = prof.get("layout", {}); sec.different_first_page_header_footer = bool(lay.get("first_page_header_footer"))
+    align = {"left": WD_ALIGN_PARAGRAPH.LEFT, "center": WD_ALIGN_PARAGRAPH.CENTER, "right": WD_ALIGN_PARAGRAPH.RIGHT}
+    def fill(par, text, spec):
+        run = par.add_run(text); run.font.size = Pt(spec.get("size", 8))
+        if spec.get("color"): run.font.color.rgb = RGBColor.from_string(spec["color"])
+        par.alignment = align.get(spec.get("align", "left"))
+        return par
+    hd = prof.get("header", {})
+    for i, line in enumerate(hd.get("lines", [])): fill(sec.header.paragraphs[0] if i == 0 else sec.header.add_paragraph(), line, hd)
+    ft = prof.get("footer", {})
+    if ft:
+        par = sec.footer.paragraphs[0]
+        if ft.get("text"): fill(par, ft["text"], ft); par = sec.footer.add_paragraph()
+        fill(par, (ft.get("page_label") or "Page") + " ", ft)
+        if lay.get("footer_page_number"):
+            run = par.add_run(); run.font.size = Pt(ft.get("size", 8))
+            if ft.get("color"): run.font.color.rgb = RGBColor.from_string(ft["color"])
+            for kind, text in (("begin", None), (None, " PAGE "), ("end", None)):
+                if kind: el = OxmlElement("w:fldChar"); el.set(qn_w("fldCharType"), kind)
+                else: el = OxmlElement("w:instrText"); el.set("{http://www.w3.org/XML/1998/namespace}space", "preserve"); el.text = text
+                run._r.append(el)
+    d.add_paragraph("")
+    out = pathlib.Path(e["out"]); out.mkdir(parents=True, exist_ok=True); f = out / f"{profile_name}-master.docx"; d.save(f)
+    print(f"Wrote {f}, generated from the '{profile_name}' style profile (no finished response used). Upload it to the Drive folder and open it as a Google Doc "
+          "(Drive: right-click > Open with > Google Docs, or File > Save as Google Docs), then read it and run --template-check to confirm the conversion kept the styles. "
+          "The header words are placeholders to fill per solution.")
+
+_ALIGN = {"left": "START", "center": "CENTER", "right": "END"}
+
+def op_master_plan(sol, e, doc_path, profile_name, stage):
+    """A Google Doc made from the style profile alone, in two sends. Stage 1 sets the page, margins and different-first-page rule and creates the header and footer;
+    stage 2 (after reading the doc for the new header and footer ids) fills them. The Docs API cannot set a page-number field or change named styles; those are handled by hand and by direct formatting."""
+    prof = load_profile(profile_name); doc = read_doc_file(doc_path); tab = _tab(doc); ds = tab.get("documentStyle", {}); pg = prof.get("page", {}); lay = prof.get("layout", {})
+    out = pathlib.Path(e["out"]); out.mkdir(parents=True, exist_ok=True); revision = doc.get("revisionId")
+    if stage == 1:
+        sty = {}
+        if pg:
+            sty["pageSize"] = {"width": {"magnitude": pg["width"], "unit": "PT"}, "height": {"magnitude": pg["height"], "unit": "PT"}}
+            for k in ("marginTop", "marginBottom", "marginLeft", "marginRight"): sty[k] = {"magnitude": pg["margin"], "unit": "PT"}
+            sty["marginHeader"] = sty["marginFooter"] = {"magnitude": 36, "unit": "PT"}
+        if lay.get("first_page_header_footer"): sty["useFirstPageHeaderFooter"] = True
+        reqs = [{"updateDocumentStyle": {"documentStyle": sty, "fields": ",".join(sty)}}]
+        if prof.get("header") and not ds.get("defaultHeaderId"): reqs.append({"createHeader": {"type": "DEFAULT", "sectionBreakLocation": {"index": 0}}})
+        if prof.get("footer") and not ds.get("defaultFooterId"): reqs.append({"createFooter": {"type": "DEFAULT", "sectionBreakLocation": {"index": 0}}})
+        f = out / "gdoc-master-1.json"
+        f.write_text(json.dumps({"documentId": doc.get("documentId"), "requests": reqs, "writeControl": {"writeMode": "EDIT", "requiredRevisionId": revision}}, indent=1))
+        print(f"Wrote {f}: page setup, margins, the different-first-page rule" + (", header and footer" if len(reqs) > 1 else "") + ". Send it with update_doc as a direct edit, read the doc again, then run --master-plan DOC.json --stage 2.")
+        return
+    reqs = []
+    def segment(seg_id, lines, spec):
+        text = "\n".join(lines); n = u16(text)
+        reqs.append({"insertText": {"location": {"segmentId": seg_id, "index": 0}, "text": text}})
+        ts, fields = _text_style({"size": spec.get("size", 8), "color": spec.get("color")})
+        reqs.append({"updateTextStyle": {"range": {"segmentId": seg_id, "startIndex": 0, "endIndex": n}, "textStyle": ts, "fields": fields}})
+        reqs.append({"updateParagraphStyle": {"range": {"segmentId": seg_id, "startIndex": 0, "endIndex": n}, "paragraphStyle": {"alignment": _ALIGN.get(spec.get("align", "left"), "START")}, "fields": "alignment"}})
+    hd, ft = prof.get("header", {}), prof.get("footer", {})
+    if hd.get("lines"):
+        if not ds.get("defaultHeaderId"): sys.exit("The doc has no header yet; send stage 1 first, then read the doc again.")
+        segment(ds["defaultHeaderId"], hd["lines"], hd)
+    if ft:
+        if not ds.get("defaultFooterId"): sys.exit("The doc has no footer yet; send stage 1 first, then read the doc again.")
+        segment(ds["defaultFooterId"], ([ft["text"]] if ft.get("text") else []) + [(ft.get("page_label") or "Page") + " "], ft)
+    f = out / "gdoc-master-2.json"
+    f.write_text(json.dumps({"documentId": doc.get("documentId"), "requests": reqs, "writeControl": {"writeMode": "EDIT", "requiredRevisionId": revision}}, indent=1))
+    print(f"Wrote {f}: header and footer text and formatting. Send it with update_doc as a direct edit. NOT CARRIED OVER (the connector cannot add it): the page-number field after '{(ft.get('page_label') or 'Page')}' in the footer "
+          "(Insert > Page numbers, or Insert > Special characters), and Google's named styles (Heading 1 and so on stay at Google's defaults; the profile's fonts and colors are applied as direct formatting when the skeleton is written).")
+
+def op_clean_plan(sol, e, doc_path, st):
+    """build/gdoc-clean.json: delete everything in the body except the final paragraph mark, then reset that paragraph to Normal text.
+    Named styles, document style, headers and footers are not part of the body, so they stay."""
+    doc = read_doc_file(doc_path); tab = _tab(doc); content = tab["body"]["content"]; end = content[-1]["endIndex"]
+    out = pathlib.Path(e["out"]); out.mkdir(parents=True, exist_ok=True); f = out / "gdoc-clean.json"
+    if end <= 2: print("The body is already empty."); return
+    lost = [x for x in ("a table of contents" if any(b.get("tableOfContents") for b in content) else "", "tables" if any(b.get("table") for b in content) else "", "page-number or other fields in the body" if any("autoText" in r for b in content for r in (b.get("paragraph") or {}).get("elements", [])) else "") if x]
+    reqs = [{"deleteContentRange": {"range": {"startIndex": 1, "endIndex": end - 1}}},
+            {"updateParagraphStyle": {"range": {"startIndex": 1, "endIndex": 2}, "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"}, "fields": "namedStyleType"}}]
+    f.write_text(json.dumps({"documentId": doc.get("documentId") or st.get("doc_id", ""), "requests": reqs, "writeControl": {"writeMode": "EDIT", "requiredRevisionId": doc.get("revisionId")}}, indent=1))
+    print(f"Wrote {f}: deletes the body text from index 1 to {end - 1}. Send it with update_doc as a direct edit, on a COPY of the finished response (never the original)."
+          + (f" This also removes {', '.join(lost)}; add them back in the master by hand if wanted." if lost else ""))
+
+def _direct(profile, style):
+    """updateTextStyle fields for a paragraph style from the profile, as direct formatting (the Docs API cannot change named styles)."""
+    spec = (profile or {}).get("named", {}).get(style)
+    if not spec: return None, ""
+    base = ((profile or {}).get("named", {}).get("NORMAL_TEXT") or {}).get("font")
+    base_size = ((profile or {}).get("named", {}).get("NORMAL_TEXT") or {}).get("size")
+    f = {**spec, "font": base if spec.get("font") in (None, "inherit") else spec["font"], "size": spec.get("size") or base_size}   # a heading without its own size takes the body size, not Google's 20 pt
+    f = {{"font": "name"}.get(k, k): v for k, v in f.items()}
+    return _text_style(f)
+
+def op_skeleton_plan(sol, e, doc_path, st, profile=None):
+    """build/gdoc-skeleton.json: the response template's headings, instruction lines, boilerplate and placeholders, inserted into a blank copy of the
+    master and given the master's named styles (Heading 1-3, Subtitle for instruction lines, Title, Normal). Tables arrive as rows of text."""
+    doc = read_doc_file(doc_path); tab = _tab(doc); content = tab["body"]["content"]
+    if any(b.get("table") or any(r.get("textRun", {}).get("content", "").strip() for r in (b.get("paragraph") or {}).get("elements", [])) for b in content):
+        sys.exit("The doc is not blank. Make a copy of the master and run this on the copy.")
+    rows = []
+    for b in template_content(e):
+        k = b["kind"]
+        if k == "tbl":
+            for r in b["rows"]: rows.append(("NORMAL_TEXT", " | ".join(c for c in r if c) or " ")); 
+        else:
+            style = {"h": f"HEADING_{min(b.get('level', 1), 3)}", "scaffold": "SUBTITLE", "title": "TITLE"}.get(k, "NORMAL_TEXT"); rows.append((style, b["text"]))
+    pos, reqs = 1, []
+    blob = "".join(t + "\n" for _, t in rows)
+    for style, t in rows:
+        n = u16(t) + 1
+        reqs.append({"updateParagraphStyle": {"range": {"startIndex": pos, "endIndex": pos + n}, "paragraphStyle": {"namedStyleType": style}, "fields": "namedStyleType"}})
+        ts, fields = _direct(profile, style)
+        if fields: reqs.append({"updateTextStyle": {"range": {"startIndex": pos, "endIndex": pos + n - 1}, "textStyle": ts, "fields": fields}})
+        pos += n
+    reqs = [{"insertText": {"location": {"index": 1}, "text": blob}}] + reqs
+    out = pathlib.Path(e["out"]); out.mkdir(parents=True, exist_ok=True); f = out / "gdoc-skeleton.json"
+    f.write_text(json.dumps({"documentId": doc.get("documentId") or st.get("doc_id", ""), "requests": reqs, "writeControl": {"writeMode": "EDIT", "requiredRevisionId": doc.get("revisionId")}}, indent=1))
+    ntbl = sum(1 for b in template_content(e) if b["kind"] == "tbl")
+    print(f"Wrote {f}: {len(rows)} paragraph(s) in the master's styles" + (f", with the '{profile.get('name')}' profile's fonts and colors as direct formatting" if profile else "") + ". Send it with update_doc as a direct edit, then read the doc and run --init."
+          + (f" {ntbl} table(s) in the response template arrive as rows of text; rebuild them as tables in the doc by hand." if ntbl else ""))
+
 def drive_id(text):
     """A Drive file or folder id from an id, a /folders/ID or /d/ID link, or an ?id= link."""
     m = re.search(r"/(?:folders|d)/([\w-]{10,})|[?&]id=([\w-]{10,})", text)
@@ -938,9 +1162,67 @@ def op_set_folder(sol, text):
     tomlio.set_key(sol / "solution.toml", "wip_folder", fid, "Drive folder where the shared WIP document (and the template copy) is created and kept.")
     print(f'solution.toml now has wip_folder = "{fid}"')
 
-def op_set_template(sol, doc_id):
-    tomlio.set_key(sol / "solution.toml", "gdoc_template", doc_id, "Google Doc copied to make the shared WIP document (look of the Word template).")
+def op_set_template(sol, text, profile=None):
+    doc_id = drive_id(text)
+    tomlio.set_key(sol / "solution.toml", "gdoc_template", doc_id, "Master Google Doc copied to make the shared WIP document (its styles, header and footer are the response's look).")
     print(f'solution.toml now has gdoc_template = "{doc_id}"')
+    if profile:
+        fp = profile_fingerprint(load_profile(profile))
+        tomlio.set_key(sol / "solution.toml", "style_profile", profile, "Style profile (tools/templates/styles) the master, the WIP and the exported PDF are checked against.")
+        tomlio.set_key(sol / "solution.toml", "master_fingerprint", fp, "Fingerprint of the profile when the master was registered; a changed profile makes the master stale.")
+        print(f'solution.toml now has style_profile = "{profile}" (profile fingerprint {fp})')
+
+def op_set_default_master(text, profile_name):
+    """The shared default master for a profile: recorded in the profile file, so every solution without its own gdoc_template starts from it."""
+    load_profile(profile_name); doc_id = drive_id(text)
+    tomlio.set_key(STYLES_DIR / f"{profile_name}.toml", "master_doc", doc_id, "The master Google Doc (a blank doc that meets this profile) every solution is copied from when it sets no gdoc_template. Kept in the Drive of whoever made it.")
+    fp = profile_fingerprint(load_profile(profile_name))
+    tomlio.set_key(STYLES_DIR / f"{profile_name}.toml", "master_fingerprint", fp, "Fingerprint of this profile when the master was made; if the profile changes, the master is stale and must be rebuilt, not patched.")
+    print(f'tools/templates/styles/{profile_name}.toml now has master_doc = "{doc_id}" (profile fingerprint {fp})')
+
+def op_template_id(sol):
+    """Exit 0 and print the master's id; 2 when there is none (start a fresh doc from the profile); 3 when the profile changed since the master was made."""
+    cfg = tomllib.loads((sol / "solution.toml").read_text()); name = cfg.get("style_profile"); tid, rec, prof = cfg.get("gdoc_template"), cfg.get("master_fingerprint"), None
+    if name: prof = load_profile(name)
+    if not tid:
+        prof = prof or load_profile("formal"); tid, rec = prof.get("master_doc"), prof.get("master_fingerprint")
+    if not tid:
+        print("No master Google Doc is registered. Make a fresh doc from the style profile for this solution (rfps-sync-gdoc --master-plan; see /rfps:make-gdoc-template, route A); nothing shared is needed, "
+              "so there is nothing to drift. A shared master is optional: register one with --set-template or --set-default-master. Pass --plain to /rfps:build-wip for Google's default look.", file=sys.stderr)
+        sys.exit(2)
+    if prof is not None and rec != profile_fingerprint(prof):
+        print(f"The master {tid} is stale: the style profile changed since it was made ({rec or 'no fingerprint recorded'} vs {profile_fingerprint(prof)}). Rebuild it from the profile "
+              "(do not patch it by hand), or start a fresh doc for this solution.", file=sys.stderr)
+        sys.exit(3)
+    print(tid)
+
+def op_wip_check(doc_path, profile_name):
+    """Compare what the doc's paragraphs actually look like (direct formatting over named style over Google's defaults) with the profile."""
+    prof = load_profile(profile_name); tab = _tab(read_doc_file(doc_path)); named = _named(tab); want = prof.get("named", {}); base = want.get("NORMAL_TEXT", {})
+    bad, seen = {}, {}
+    for el in tab["body"]["content"]:
+        par = el.get("paragraph")
+        if not par: continue
+        style = (par.get("paragraphStyle") or {}).get("namedStyleType", "NORMAL_TEXT"); spec = want.get(style)
+        if not spec: continue
+        exp = {"font": base.get("font") if spec.get("font") in (None, "inherit") else spec["font"], "size": spec.get("size") or base.get("size"), "bold": bool(spec.get("bold")), "color": spec.get("color")}
+        for r in par.get("elements", []):
+            tr = r.get("textRun") or {}
+            if not tr.get("content", "").strip(): continue
+            ts = tr.get("textStyle") or {}; nm = named.get(style) or {}
+            have = {"font": (ts.get("weightedFontFamily") or {}).get("fontFamily") or nm.get("font") or (named.get("NORMAL_TEXT") or {}).get("font"),
+                    "size": (ts.get("fontSize") or {}).get("magnitude") or nm.get("size") or (named.get("NORMAL_TEXT") or {}).get("size"),
+                    "bold": bool(ts["bold"] if "bold" in ts else nm.get("bold")),
+                    "color": _hex(ts["foregroundColor"]) if ts.get("foregroundColor") else (nm.get("color") if style != "NORMAL_TEXT" or nm.get("color") else None)}
+            seen[style] = seen.get(style, 0) + 1
+            for k in ("font", "size", "bold", "color"):
+                if exp[k] is None or (k == "color" and have[k] is None and style == "NORMAL_TEXT"): continue
+                if have[k] != exp[k]: bad.setdefault((style, k), []).append((have[k], exp[k], tr["content"].strip()[:40]))
+    print(f"WIP formatting against the '{profile_name}' profile: " + ", ".join(f"{n} {k}" for k, n in sorted(seen.items())) + " run(s) checked.")
+    for (style, k), rows in sorted(bad.items()): print(f"  DEVIATES {style} {k}: {len(rows)} run(s), e.g. {rows[0][0]!r} for {rows[0][2]!r}, profile {rows[0][1]!r}")
+    if not bad: print("  every checked run follows the profile.")
+    print("An RFP format rule that overrides the profile is expected to show here; note it in the WIP." if bad else "")
+    sys.exit(1 if bad else 0)
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -950,6 +1232,7 @@ if __name__ == "__main__":
     ap.add_argument("--pull"); ap.add_argument("--apply", action="store_true"); ap.add_argument("--sections")
     ap.add_argument("--comments"); ap.add_argument("--url", action="store_true")
     ap.add_argument("--comments-plan"); ap.add_argument("--comments-commit"); ap.add_argument("--kinds"); ap.add_argument("--highlight-plan"); ap.add_argument("--style-plan"); ap.add_argument("--set-template"); ap.add_argument("--set-folder", metavar="ID_OR_LINK")
+    ap.add_argument("--profile"); ap.add_argument("--style-only", action="store_true"); ap.add_argument("--template-check"); ap.add_argument("--template-id", action="store_true"); ap.add_argument("--clean-plan"); ap.add_argument("--master-docx", action="store_true"); ap.add_argument("--master-plan"); ap.add_argument("--wip-check"); ap.add_argument("--stage", type=int, choices=[1, 2], default=1); ap.add_argument("--set-default-master"); ap.add_argument("--named-styles", action="store_true"); ap.add_argument("--skeleton-plan")
     ap.add_argument("--promote", nargs="?", const="", help="comment ids (comma separated, or all) to turn into [OPEN] markers; list the candidates without --apply"); ap.add_argument("--comment-note", nargs=2, metavar=("ID", "TEXT")); ap.add_argument("--handled", choices=["addressed", "ignored", "open"])
     ap.add_argument("--solution", nargs="?", const="", default=None)
     a = ap.parse_args()
@@ -961,7 +1244,15 @@ if __name__ == "__main__":
         out = pathlib.Path(e["out"]); out.mkdir(parents=True, exist_ok=True); (out / "gdoc-create.html").write_text(h)
         print(f"Wrote {out / 'gdoc-create.html'} ({len(h):,} characters). Send it to Drive create_file with contentMimeType text/html, then read the new doc with read_doc and run --init.")
         sys.exit(0)
-    if a.set_template: op_set_template(sol, a.set_template); sys.exit(0)
+    if a.template_check: op_template_check(a.template_check, a.profile or tomllib.loads((sol / 'solution.toml').read_text()).get('style_profile') or 'formal', a.style_only, a.named_styles)
+    if a.template_id: op_template_id(sol); sys.exit(0)
+    if a.wip_check: op_wip_check(a.wip_check, a.profile or tomllib.loads((sol / 'solution.toml').read_text()).get('style_profile') or 'formal')
+    if a.master_plan: op_master_plan(sol, e, a.master_plan, a.profile or tomllib.loads((sol / 'solution.toml').read_text()).get('style_profile') or 'formal', a.stage); sys.exit(0)
+    if a.set_default_master: op_set_default_master(a.set_default_master, a.profile or 'formal'); sys.exit(0)
+    if a.master_docx: op_master_docx(e, a.profile or tomllib.loads((sol / 'solution.toml').read_text()).get('style_profile') or 'formal'); sys.exit(0)
+    if a.set_template: op_set_template(sol, a.set_template, a.profile); sys.exit(0)
+    if a.clean_plan: op_clean_plan(sol, e, a.clean_plan, st); sys.exit(0)
+    if a.skeleton_plan: op_skeleton_plan(sol, e, a.skeleton_plan, st, load_profile(a.profile or tomllib.loads((sol / 'solution.toml').read_text()).get('style_profile') or 'formal')); sys.exit(0)
     if a.set_folder: op_set_folder(sol, a.set_folder); sys.exit(0)
     if a.style_plan: op_style_plan(sol, e, a.style_plan, st); sys.exit(0)
     if a.init: op_init(sol, e, a.init, a.doc_id, a.allow_mismatch); sys.exit(0)

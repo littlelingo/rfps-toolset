@@ -139,6 +139,15 @@ if rfps-final-gate --pdf "$T/clean.pdf" >/dev/null 2>&1; then echo "FAIL: the ga
 grep -q "Mandatory forms and steps in submission.md are done | Fail.*M-01" active-solution/final-gate.md || { echo "FAIL: open form not reported by the gate" >&2; exit 1; }
 sed -i.bak 's/| 2020-01-01 | Open |/| 2020-01-01 | Done |/' active-solution/submission.md && rm active-solution/submission.md.bak
 rfps-final-gate --pdf "$T/clean.pdf" >/dev/null || { echo "FAIL: a clean PDF with every form done should pass" >&2; cat active-solution/final-gate.md >&2; exit 1; }
+# a solution on a style profile: the gate also checks the PDF's fonts against it (the clean PDF is Helvetica, the formal profile is Times New Roman)
+cp active-solution/solution.toml "$T/sol.bak"
+python3 -c "import sys; sys.path.insert(0, '$HERE/../tools'); import tomlio; tomlio.set_key('active-solution/solution.toml', 'style_profile', 'formal')"
+if rfps-final-gate --pdf "$T/clean.pdf" >/dev/null 2>&1; then echo "FAIL: the gate passed fonts that are not in the style profile" >&2; exit 1; fi
+grep -qF "Fonts follow the 'formal' style profile | Fail" active-solution/final-gate.md || { echo "FAIL: the gate did not report the font mismatch" >&2; cat active-solution/final-gate.md >&2; exit 1; }
+python3 -c "import pathlib; f = pathlib.Path('active-solution/solution.toml'); f.write_text(f.read_text().replace('\\nrequired_text = ', '\\nfonts = [\"Helvetica\"]\\nrequired_text = ', 1))"
+rfps-final-gate --pdf "$T/clean.pdf" >/dev/null || { echo "FAIL: a font the RFP requires, listed under [final_gate] fonts, should pass" >&2; cat active-solution/final-gate.md >&2; exit 1; }
+cp "$T/sol.bak" active-solution/solution.toml
+rfps-final-gate --pdf "$T/clean.pdf" >/dev/null
 rfps-flow-status --table --all | grep -q "clean.pdf passed" || { echo "FAIL: the flow did not show the gate result" >&2; exit 1; }
 if rfps-final-gate --pdf "$T/defects.pdf" --scrub >/dev/null 2>&1; then echo "FAIL: the gate passed a PDF with planted defects" >&2; exit 1; fi
 for want in "Page count within page_limit | Fail" "No internal markers, register IDs or placeholders | Fail" "Required wording present: Attachment B | Fail" "No links to Google Docs, Drive or local addresses | Fail" "Metadata free of names and emails | Fail"; do
@@ -420,6 +429,7 @@ printf '\nAlso: accessibility work for Northgate Water [GROUNDED: E-003].\n' >> 
 if rfps-build-response --solution --mode final >/dev/null 2>&1; then echo "FAIL: FINAL accepted uncleared evidence" >&2; exit 1; fi
 uv run --quiet "$HERE/gdoc_test.py"
 uv run --quiet "$HERE/gdoc_template_test.py"
+uv run --quiet "$HERE/gdoc_master_test.py"
 # template generation and update: an outline becomes a template; a changed template is compared with response/
 cat > "$T/outline.json" <<'JSON'
 {"title": "Response to RFP X", "sections": [

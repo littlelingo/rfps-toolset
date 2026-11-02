@@ -116,6 +116,12 @@ def run(sol, cfg, eng, pdf_arg):
         else: add("Margins", "Info", note)
     fl = fonts_of(reader)
     add("Fonts used", "Info", ", ".join(fl) or "none found")
+    if cfg.get("style_profile"):
+        prof = tomllib.loads((pathlib.Path(__file__).resolve().parent / "templates" / "styles" / f"{cfg['style_profile']}.toml").read_text())
+        norm = lambda n: re.sub(r"[^a-z0-9]", "", n.lower())
+        okfonts = [norm((prof.get("named", {}).get("NORMAL_TEXT") or {}).get("font", ""))] + [norm(x) for x in g.get("fonts", [])]
+        odd = [f for f in fl if not any(o and norm(f).startswith(o) for o in okfonts)]
+        add(f"Fonts follow the '{cfg['style_profile']}' style profile", "Pass" if not odd else "Fail", "all fonts match" if not odd else f"not in the profile: {', '.join(odd)}. If the RFP requires another font, list it under [final_gate] fonts in solution.toml")
     md = reader.metadata or {}
     meta = {k.lstrip("/"): str(v) for k, v in md.items() if v}
     risky = [k for k, v in meta.items() if (k in ("Author", "Subject", "Keywords") and v.strip()) or "@" in v]

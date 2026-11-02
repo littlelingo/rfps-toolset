@@ -1,0 +1,62 @@
+# Fearless "formal" response style: the standard for capability statements and technical approaches sent to government buyers.
+# This file IS the standard. It is checked against any Google Doc (rfps-sync-gdoc --template-check) and used to generate the master
+# (rfps-sync-gdoc --master-docx); no particular finished response is the reference.
+# Where each value comes from:
+#   brand guide  - fearless.lingoapp.com: colors, "Montserrat" for body unless the customer's format rules say otherwise, sentence-case bold headings
+#   observed     - what Fearless's real formal responses to government solicitations use (Times New Roman 11, Letter, 1 inch margins, a different cover page,
+#                  a running header, a footer notice with the page number); these set the values below
+#   assumed      - chosen here because neither source says (marked "assumed")
+# The solicitation's own format rules always win; when the RFP sets a font, size or margin, change it for that solution only.
+# Colors are RRGGBB. A style left out of this file is not checked. "inherit" means the style takes the Normal text font.
+
+name = "formal"
+description = "Times New Roman 11, purple and orange headings, a different first page, restriction notice in the footer"
+
+[page]
+width = 612            # Letter, in points
+height = 792
+margin = 72            # 1 inch on every side
+
+[named.NORMAL_TEXT]
+font = "Times New Roman"   # observed; the brand font is Montserrat, used when the RFP does not set a format
+size = 11
+
+[named.HEADING_1]
+font = "inherit"
+bold = true
+color = "5C3977"       # Purple 100
+
+[named.HEADING_2]
+font = "inherit"
+bold = true
+color = "EE5340"       # Orange 100
+
+[named.HEADING_3]
+font = "inherit"
+bold = true
+color = "5C3977"
+
+[named.SUBTITLE]       # the scaffold style: requirement and instruction lines; removed from the FINAL
+size = 9
+color = "FF0000"
+
+[named.TITLE]
+size = 26              # assumed
+
+[layout]
+first_page_header_footer = true     # the cover page has its own (blank) header and footer
+header_text_required = true         # the running header is not empty
+footer_page_number = true           # the footer carries a page-number field
+
+[header]               # running header (not the cover page); the words are placeholders each solution fills in
+lines = ["Company name", "Solicitation title", "Date", "Document type"]   # observed: four lines
+size = 8               # assumed
+color = "5C3977"
+align = "right"
+
+[footer]
+text = "Use or disclosure of data contained on this sheet is subject to the restriction on the title page."   # observed on government responses; drop for commercial ones
+page_label = "Page"
+size = 8               # assumed
+color = "5C3977"
+align = "center"

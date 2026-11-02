@@ -19,3 +19,5 @@ The submission file is a PDF exported from the final Google Doc. This is the las
 4. Margins other than the left one are approximate (a page number counts as text), so a margin warning is for the user to look at, not a verdict. Say that the gate cannot judge layout, graphics, fonts the agency requires or whether tables broke badly; the user still opens the PDF and looks at it.
 
 Do not submit, email or upload anything. The result is a report; the decision to submit is the user's.
+
+When `solution.toml` has `style_profile`, the gate also checks that every font in the PDF is the profile's body font. If the RFP requires another font, list it under `[final_gate]` `fonts` in `solution.toml` (for example `fonts = ["Arial"]`) and say why in the response.

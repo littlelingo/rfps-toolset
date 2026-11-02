@@ -128,11 +128,17 @@ class Doc:
         self.els[pos:pos + 1] = made
     def delete_range(self, a, b, suggest):
         # tables: exact element range
-        for e, s, z in self._spans():
-            if not isinstance(e, Para) and a <= s and z <= b:
-                if suggest: raise ValueError("suggested table deletion not simulated")
-                self.els.remove(e); return
-        spans = self._spans()
+        gone = [e for e, s, z in self._spans() if not isinstance(e, Para) and a <= s and z <= b]
+        if gone and suggest: raise ValueError("suggested table deletion not simulated")
+        pos = {id(e): (s, z) for e, s, z in self._spans()}
+        for e in gone: self.els.remove(e)
+        spans = []; at = 1                      # a range that spans tables and paragraphs: the tables are gone, the paragraphs shift up
+        for e in self.els:
+            n = e.length(); spans.append((e, at, at + n)); at += n
+        if gone:
+            cut = sum(pos[id(e)][1] - pos[id(e)][0] for e in gone); b -= cut
+            if all(not isinstance(x, Para) for x, _, _ in spans) or (a == b): return
+        spans = spans
         for idx, (e, s, z) in enumerate(spans):
             if not isinstance(e, Para): continue
             lo, hi = max(a, s), min(b, z)

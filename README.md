@@ -2,7 +2,7 @@
 
 v0.7.0 | MIT License
 
-A Claude Code plugin that guides a solicitation (RFP, SOW, SOO and similar) to a proposal response. It is generic: nothing in it is specific to an agency, contract or bidder. Everything for one solicitation lives in that solicitation's own `active-solution/` folder.
+A Claude Code plugin that guides a solicitation (RFP, RFI, SOW, SOO and similar) to a proposal response. It is generic: nothing in it is specific to an agency, contract or bidder. Everything for one solicitation lives in that solicitation's own `active-solution/` folder.
 
 ## Quick Start
 
@@ -40,7 +40,7 @@ Then, in the solicitation's source folder (the one with `01 Solicitation Docs`, 
 ## How It Works
 
 0. `/rfps:start` runs steps 1 to 4 below in one go (asking only at the start and for what it cannot decide); `/rfps:walk` works through what is left.
-1. `/rfps:new-engagement` creates `active-solution/` beside the numbered capture folders: config, a `response/` skeleton mirroring the template docx headings, an evidence register, an amendments log and living report skeletons.
+1. `/rfps:new-engagement` (`--type rfi` for a request for information, which makes staffing and attachments optional) creates `active-solution/` beside the numbered capture folders: config, a `response/` skeleton mirroring the template docx headings, an evidence register, an amendments log and living report skeletons.
 2. Analysis skills read the solicitation: `collateral-analyzer`, `requirements-mapper`, `resource-planner`.
 3. `capture` records the bid decision and `win-strategy` the evaluation factors and win themes; `section-drafter` writes `response/*.md` carrying those themes; `empathy-reviewer`, `compliance-validator` and `evaluator-simulator` review it. `/rfps:refresh-reports` checks that themes run through the response, compares pages written with each factor's page budget, and the worklist moves open work in heavily weighted factors up.
 4. `/rfps:build-wip` creates one shared WIP document (a Google Doc by default; `--word` for a Word file in `05 Draft Response`) and then updates it in place as suggestions (Word: tracked changes), so reviewers' comments and edits are kept. `/rfps:pull-wip` brings their edits and comments back into the response. `/rfps:build-final` writes the submission docx from the template.

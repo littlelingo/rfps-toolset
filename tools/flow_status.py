@@ -283,7 +283,12 @@ def d_final_gate_ok(c):
     return ("done", f"{m.group(3) or 'the PDF'} passed") if f.stat().st_mtime >= c.newest else ("attention", "response changed since the final gate ran; export and check again")
 DETECT = {n[2:]: fn for n, fn in globals().items() if n.startswith("d_")}
 
-def load_flow(): return tomllib.loads((pathlib.Path(__file__).resolve().parent / "flow.toml").read_text())["step"]
+def load_flow(cfg=None):
+    """The ordered steps. An RFI (solicitation_type = "rfi") treats the steps marked rfi_optional as optional."""
+    steps = tomllib.loads((pathlib.Path(__file__).resolve().parent / "flow.toml").read_text())["step"]
+    if (cfg or {}).get("solicitation_type", "rfp") == "rfi":
+        steps = [{**s, "optional": True} if s.get("rfi_optional") else s for s in steps]
+    return steps
 
 def read_overrides(sol):
     f = sol / "progress.md"; ov = {}
@@ -295,7 +300,7 @@ def read_overrides(sol):
 
 def compute(c):
     ov = read_overrides(c.sol); out = []
-    for s in load_flow():
+    for s in load_flow(c.cfg):
         det = s.get("check"); mark = ov.get(s["id"], " ")
         if mark == "x": state, detail = "done", "marked done by you"
         elif mark == "-": state, detail = "skipped", "skipped / not applicable (your choice)"

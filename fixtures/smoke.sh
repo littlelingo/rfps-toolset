@@ -471,4 +471,12 @@ rfps-worklist --set "$NID" mine >/dev/null; rfps-worklist --table | grep -q "min
 rfps-collab --briefing | grep -q "1 by Clint" || { echo "FAIL: briefing lacks claims" >&2; exit 1; }
 printf 'E-001,dup,c,,,,,hold,,,,,\n' >> active-solution/evidence/register.csv
 rfps-collab --briefing | grep -q "DUPLICATE IDS" || { echo "FAIL: duplicate ids not reported" >&2; exit 1; }
+# RFI profile: staffing and attachments are optional (hidden) for a request for information, core for an RFP
+cd "$T/capture"
+rfps-flow-status --json | python3 -c "import json,sys; h={s['id'] for s in json.load(sys.stdin)['optional_hidden']}; sys.exit(0 if 'resources' not in h else 1)" || { echo "FAIL: an RFP should show the resources step" >&2; exit 1; }
+uv run --quiet "$HERE/build_sample.py" "$T/rficap" >/dev/null
+rfps-new-engagement --source "$T/rficap" --title "Sample RFI" --type rfi --no-pointer >/dev/null
+grep -q '^solicitation_type = "rfi"' "$T/rficap/active-solution/solution.toml" || { echo "FAIL: type not recorded" >&2; exit 1; }
+rfps-flow-status --solution "$T/rficap/active-solution" --json | python3 -c "import json,sys; h={s['id'] for s in json.load(sys.stdin)['optional_hidden']}; sys.exit(0 if {'resources','attachments'} <= h else 1)" || { echo "FAIL: an RFI should hide resources and attachments" >&2; exit 1; }
+if rfps-set-config solicitation_type bogus --solution "$T/rficap/active-solution" >/dev/null 2>&1; then echo "FAIL: bad solicitation_type accepted" >&2; exit 1; fi
 echo "smoke test passed"

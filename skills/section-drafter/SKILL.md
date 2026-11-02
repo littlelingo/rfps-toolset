@@ -1,7 +1,7 @@
 ---
 name: section-drafter
 description: >
-  Writes one markdown file per RFP response section, grounded in the coverage matrix
+  Writes one markdown file per RFP or RFI response section, grounded in the coverage matrix
   and collateral brief. Every claim is either traced to a source or flagged as an
   assertion. Trigger when the user says "draft the sections," "write the response,"
   "start drafting," or after the requirements mapper has produced coverage-matrix.md.
@@ -27,6 +27,8 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/solution-guide/references/conventions.md` fir
 ---
 
 ## Purpose
+
+**For an RFI** (`solicitation_type = "rfi"`): the response is non-binding market input. Answer each question under its own heading in the agency's order, use "can" and "typically" where an RFP would say "will" (price, schedule and staffing are not commitments), and where the agency invites it add what you would change in the draft requirements and why. Do not invent staffing or pricing that the RFI does not ask for.
 
 This skill produces the actual proposal prose. Every sentence must earn its place: it either answers a requirement, provides evidence, or builds the evaluator's confidence. The drafter does not invent — it composes from evidence. Where evidence is absent, it says so. The coverage matrix is the drafter's permission slip: Grounded means cite, Assertable means claim with a flag, Gap means acknowledge honestly.
 

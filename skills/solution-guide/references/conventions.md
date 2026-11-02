@@ -6,6 +6,10 @@ Rules every rfps skill follows. Read this before working on a solution. (Shared 
 
 This is not a code project. The rfps plugin is a generic, reusable flow for working through solicitation documents (SOW, RFP, SOO and similar) to put together a proposal response. Nothing in the plugin is specific to any one agency, contract, or bidder: skills, commands, `tools/`, and templates are generic and configurable, and everything specific to one solicitation lives in that solicitation's `active-solution/` folder (see "Where things live").
 
+## Solicitation types
+
+`solicitation_type` in `solution.toml` is `rfp` (default) or `rfi`, set by `rfps-new-engagement --type` or `rfps-set-config solicitation_type`. An RFI is non-binding market input with no award, so the flow marks the steps in `flow.toml` carrying `rfi_optional` (resources, attachments) as optional: hidden until they need attention, not counted in progress. Everything else is unchanged, including the evidence rules and the clearance gate before FINAL. The mapper, drafter and validator skills each say what differs for an RFI.
+
 ## Input model
 
 - The user provides a source file or a folder of files. Everything in it is read as "the request": the solicitation, amendments, Q&A, attachments, templates and so on.

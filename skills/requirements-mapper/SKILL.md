@@ -1,7 +1,7 @@
 ---
 name: requirements-mapper
 description: >
-  Maps every explicit and implicit RFP requirement to available evidence from the
+  Maps every explicit and implicit RFP or RFI requirement to available evidence from the
   collateral brief. Produces a coverage matrix so downstream skills know where to
   ground claims, where to assert, and where to acknowledge gaps. Trigger when the
   user says "map the requirements," "build the coverage matrix," "what can we
@@ -66,6 +66,8 @@ Implicit requirements are not stated as obligations but are embedded in:
 **Scope of work detail.** Detailed SOW descriptions imply capability requirements. If the SOW describes a complex data migration, the evaluation will look for evidence of data migration experience even if no requirement explicitly demands it.
 
 **Questions in the RFP.** "Describe your approach to..." is a requirement to describe your approach. "How does your solution handle..." requires an answer. These are requirements disguised as questions.
+
+**RFI questions.** When `solicitation_type = "rfi"`, most requirements are questions or requests for information, not obligations. Give each question its own row, quote it verbatim, class it as a question, and note any stated limit on its answer (words, characters, pages). The submission instructions (who, when, how, format, marking) are the only "shall" items; the sweep still applies to them.
 
 **Repeated themes.** If the RFP mentions "scalability" in five different contexts, there is an implicit requirement to address scalability comprehensively — not just where it is explicitly asked.
 

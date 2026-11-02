@@ -1,9 +1,9 @@
 ---
 name: collateral-analyzer
 description: >
-  Reads all client-provided collateral (RFP documents, PRDs, org materials, prior proposals,
+  Reads all client-provided collateral (RFP or RFI documents, PRDs, org materials, prior proposals,
   case study notes) and produces a structured brief and gap report. Trigger when the user
-  provides RFP materials, says "analyze the collateral," "start the RFP response," "what do
+  provides RFP or RFI materials, says "analyze the collateral," "start the RFP response," "respond to this RFI," "what do
   we have to work with," or drops files for an RFP engagement. This skill runs first, always.
   Nothing downstream is trustworthy without it.
 ---

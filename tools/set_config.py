@@ -9,6 +9,7 @@
   final_copy_dir  folder the FINAL docx is copied to (default: 11 Final Submission)
   cache_dir       a folder on THIS machine for text caches and scratch builds, so they are never synced to Drive;
                   also sets build_dir to <cache_dir>/<slug>/build
+  solicitation_type  rfp (default) or rfi; an RFI makes the staffing and attachment steps optional
 
 The skills ask for these locations and use the defaults only when none is given. Run with no VALUE to show the current setting.
 
@@ -20,7 +21,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import build_response as br
 import tomlio
 
-KEYS = {"wip_folder", "wip_docx", "final_copy_dir", "cache_dir"}
+KEYS = {"wip_folder", "wip_docx", "final_copy_dir", "cache_dir", "solicitation_type"}
 
 def drive_id(text):
     m = re.search(r"/(?:folders|d)/([\w-]{10,})|[?&]id=([\w-]{10,})", text)
@@ -41,6 +42,7 @@ def main():
     if a.value is None: print(f"{a.key} = {cfg.get(a.key, '(default)')}"); return
     v = a.value.strip()
     if a.key == "wip_folder": v = drive_id(v)
+    if a.key == "solicitation_type" and v not in ("rfp", "rfi"): sys.exit("solicitation_type must be rfp or rfi")
     if a.key == "cache_dir":
         p = pathlib.Path(v).expanduser().resolve()
         if "CloudStorage/GoogleDrive" in str(p) or "/Google Drive/" in str(p): sys.exit(f"{p} is inside Google Drive; the cache must be a folder on this machine outside Drive")

@@ -47,6 +47,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--source", required=True); ap.add_argument("--template")
     ap.add_argument("--title", default=""); ap.add_argument("--slug", default=""); ap.add_argument("--name", default="")
+    ap.add_argument("--type", choices=["rfp", "rfi"], default="rfp", help="rfi: a request for information (non-binding); staffing and attachments become optional steps")
     ap.add_argument("--no-git", action="store_true"); ap.add_argument("--no-pointer", action="store_true")
     F = DEFAULTS["folders"]
     ap.add_argument("--draft-pattern", default=F["draft_response"], help="regex for the folder holding the response template")
@@ -78,6 +79,7 @@ def main():
     lines = ["# Solution configuration. Paths are relative to this folder (active-solution/) unless absolute,",
              "# so the folder works the same on a local disk or a synced Google Drive mount.",
              f'slug = "{slug}"', f'title = "{a.title or src.name}"',
+             '# "rfp" (a bid) or "rfi" (a request for information: non-binding, no award; staffing and attachments become optional steps).', f'solicitation_type = "{a.type}"',
              "# The response .docx the text is poured into. It is never modified.",
              f'template = "{rel(tpl, sol)}"', f'output_name = "{name}"']
     if solicitation: lines.append(f'solicitation_dir = "{rel(solicitation, sol)}"')

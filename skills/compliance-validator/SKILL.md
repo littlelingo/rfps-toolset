@@ -1,7 +1,7 @@
 ---
 name: compliance-validator
 description: >
-  Validates every reviewed section against the RFP's explicit requirements. Produces
+  Validates every reviewed section against the RFP's (or RFI's) explicit requirements. Produces
   a pass/fail compliance report with remediation notes. Runs after the empathy
   reviewer because tone fixes can inadvertently remove compliance-critical language.
   Trigger when the user says "check compliance," "validate the sections," "are we
@@ -29,6 +29,8 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/solution-guide/references/conventions.md` fir
 `compliance-report.md` is a living document. If it exists, update its check rows in place by stable ID (F-, C-, S-, P-, N- prefixes): change a row's Status, Evidence / Location, or Remediation when the response changes, add new rows with the next free ID, and never renumber, reuse an ID, or regenerate the file from scratch. Do not put a `|` character inside a cell. The blocks between `<!-- derived:... -->` markers (pre-flight status, blocking list, summary counts, page estimates, automated checks) belong to `rfps-refresh-reports`: do not edit them, and run `/rfps:refresh-reports` after changing rows. Page-limit and marker counts come from that tool, so do not estimate them by hand.
 
 ## Purpose
+
+**For an RFI** (`solicitation_type = "rfi"`) nothing is awarded, so this is a responsiveness check, not an elimination check: every question is answered, the response meets the stated format, length, due date and marking rules, and nothing reads as a binding commitment. Report unanswered questions and format failures as blocking; treat the rest as advice.
 
 Compliance is binary in procurement. A non-compliant proposal may be eliminated from evaluation regardless of technical quality. This skill catches compliance gaps after all drafting and review passes are complete — because every upstream edit is an opportunity to introduce a gap. The compliance report is the final quality gate before assembly.
 

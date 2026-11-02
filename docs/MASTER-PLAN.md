@@ -1,6 +1,6 @@
 # Master Plan: Making Responses Win and Compliance Verifiable
 
-Status: proposal, not started. Drafted 2026-10-30 from four reviews of the toolset: a gap review, a sanity check of that review against the repo, a high-win-rate proposal writer's view, and an evaluator's view. Items marked (verified) were confirmed in the repo; items marked (inferred) come from reading skill text and should be confirmed against a real bid.
+Status (2026-11-02): released as 0.6.0 (tag `rfps--v0.6.0`). Phases 0 to 5 are built and on main, except item 3.0 (the automated Google FINAL route), which is not built; `build-final` documents the manual route (open the checked `_FINAL.docx` in Google Docs, download as PDF, run `rfps-final-gate`). The lean-flow pass (optional steps hidden until they need attention) and an independent review with nine fixes are in 0.6.0 too. Open: a live test of the Google FINAL route, an interactive `/rfps:start` run on a real bid, and the status pane (hooks) in Desktop. Drafted 2026-10-30 from four reviews of the toolset: a gap review, a sanity check of that review against the repo, a high-win-rate proposal writer's view, and an evaluator's view. Items marked (verified) were confirmed in the repo; items marked (inferred) come from reading skill text and should be confirmed against a real bid.
 
 ## 1. Where the toolset stands
 

@@ -479,4 +479,15 @@ rfps-new-engagement --source "$T/rficap" --title "Sample RFI" --type rfi --no-po
 grep -q '^solicitation_type = "rfi"' "$T/rficap/active-solution/solution.toml" || { echo "FAIL: type not recorded" >&2; exit 1; }
 rfps-flow-status --solution "$T/rficap/active-solution" --json | python3 -c "import json,sys; h={s['id'] for s in json.load(sys.stdin)['optional_hidden']}; sys.exit(0 if {'resources','attachments'} <= h else 1)" || { echo "FAIL: an RFI should hide resources and attachments" >&2; exit 1; }
 if rfps-set-config solicitation_type bogus --solution "$T/rficap/active-solution" >/dev/null 2>&1; then echo "FAIL: bad solicitation_type accepted" >&2; exit 1; fi
+# RFI sweep scope: the draft PWS binds a future contractor, so only what the synopsis asks of the respondent counts
+mkdir -p "$T/rfitext"
+printf '=== PAGE 1 ===\nSOURCES SOUGHT SYNOPSIS\n\n1. DISCLAIMER\nNO CONTRACT SHALL BE AWARDED FROM THIS SYNOPSIS.\n\n4. SUBMISSION REQUIREMENTS / REQUESTED INFORMATION\nInterested vendors should submit a capability statement (not to exceed 5 pages) addressing\nthe following:\n- Company Name, Address, and Website\n=== PAGE 2 ===\nSOURCES SOUGHT SYNOPSIS\n- Details of 3 similar past projects completed within the last\n5 years.\n\n5. SUBMISSION INSTRUCTIONS Submit all responses by email to the Contracting Officer by\nNovember 3, 2026. Include the Notice ID in the subject line.\n' > "$T/rfitext/synopsis.txt"
+printf 'C.5 The contractor shall provide monthly status reports.\nThe contractor shall submit a quarterly POC list to the Government.\nThe vendor shall lead requirements elicitation.\n' > "$T/rfitext/pws.txt"
+rfps-sweep --solution "$T/rficap/active-solution" --json --text-dir "$T/rfitext" | python3 -c "
+import json,sys
+u=json.load(sys.stdin)['unmapped']; t=' | '.join(r['text'] for r in u)
+bad=[w for w in ('contractor','AWARDED','vendor shall') if w in t]
+need=[w for w in ('capability statement (not to exceed 5 pages) addressing the following','Company Name','3 similar past projects completed within the last 5 years','Submit all responses by email','subject line') if w not in t]
+sys.exit(f'RFI sweep wrong: contractor/disclaimer sentences {bad}; missing asks {need}; found {t}' if bad or need else 0)" || { echo "FAIL: RFI sweep scope" >&2; exit 1; }
+rfps-sweep --json --text-dir "$T/rfitext" | python3 -c "import json,sys; t=' '.join(r['text'] for r in json.load(sys.stdin)['unmapped']); sys.exit(0 if 'contractor shall provide monthly' in t else 1)" || { echo "FAIL: an RFP should still sweep the contractor obligations" >&2; exit 1; }
 echo "smoke test passed"

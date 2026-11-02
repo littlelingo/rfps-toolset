@@ -184,10 +184,11 @@ def solicitation_checks(sol, cfg, comp_rows, narr_rows):
     f = sol / "coverage-matrix.md"
     cov = {k: c[1] for k, c in rows_of(f.read_text(), r"R-\d{3}", 9, []).items()} if f.is_file() else {}
     chk = {k: c[1] for k, c in list(comp_rows.items()) + list(narr_rows.items())}
-    res = st.sweep(docs, {**cov, **chk})
+    docs_s = st.scope_docs(docs, cfg)
+    res = st.sweep(docs_s, {**cov, **chk}, st.scope(cfg))
     un = [r for r in res if not r["mapped"]]; um = [r for r in un if r["cls"] == "mandatory"]
     show = "; ".join(f"{r['where'] or r['file']}: {r['text'][:70].replace('|', '/')}" for r in um[:5]) + (" ..." if len(um) > 5 else "")
-    out = [f"| Solicitation obligations all mapped | {'Pass' if not un else ('Open' if um else 'Info')} | {len(res)} obligation sentence(s) in {len(docs)} file(s); {len(un)} with no requirement row ({len(um)} mandatory){': ' + show if um else ''}. Run rfps-sweep for the list. |"]
+    out = [f"| Solicitation obligations all mapped | {'Pass' if not un else ('Open' if um else 'Info')} | {len(res)} obligation sentence(s) in {len(docs_s)} file(s){' (respondent asks only)' if st.scope(cfg) == 'respondent' else ''}; {len(un)} with no requirement row ({len(um)} mandatory){': ' + show if um else ''}. Run rfps-sweep for the list. |"]
     badc = st.unverified_quotes(cov, docs); badk = st.unverified_quotes(chk, docs, quoted_only=True)
     out.append(f"| Quoted RFP language found in the solicitation | {'Pass' if not (badc or badk) else 'Open'} | {len(cov)} matrix row(s), {len(chk)} check row(s); not found verbatim: {', '.join(badc + badk) or 'none'}. Source: {note}. |")
     return out

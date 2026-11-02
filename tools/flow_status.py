@@ -130,7 +130,7 @@ def d_requirements_recorded(c):
     if not n: return "todo", "coverage matrix has no rows"
     try:   # cheap deterministic backstop: obligation sentences in the extracted solicitation text that no row covers (see rfps-sweep)
         docs, _ = sol_txt.load_text(c.sol, c.cfg, live=False)
-        un = [r for r in sol_txt.sweep(docs, {k: v[1] for k, v in rows.items()}) if not r["mapped"] and r["cls"] == "mandatory"] if docs else []
+        un = [r for r in sol_txt.sweep(sol_txt.scope_docs(docs, c.cfg), {k: v[1] for k, v in rows.items()}, sol_txt.scope(c.cfg)) if not r["mapped"] and r["cls"] == "mandatory"] if docs else []
     except Exception: un = []
     if un: return "attention", f"{n} requirements recorded, but {len(un)} mandatory obligation sentence(s) in the solicitation have no row (run rfps-sweep)"
     return "done", f"{n} requirements recorded"

@@ -30,7 +30,8 @@ def row_texts(sol):
 
 def run(sol, cfg, text_dir=None):
     docs, note = st.load_text(sol, cfg, text_dir)
-    return note, docs, st.sweep(docs, row_texts(sol))
+    docs = st.scope_docs(docs, cfg)
+    return note, docs, st.sweep(docs, row_texts(sol), st.scope(cfg))
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)

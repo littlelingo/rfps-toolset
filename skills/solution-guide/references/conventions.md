@@ -8,7 +8,7 @@ This is not a code project. The rfps plugin is a generic, reusable flow for work
 
 ## Solicitation types
 
-`solicitation_type` in `solution.toml` is `rfp` (default) or `rfi`, set by `rfps-new-engagement --type` or `rfps-set-config solicitation_type`. An RFI is non-binding market input with no award, so the flow marks the steps in `flow.toml` carrying `rfi_optional` (resources, attachments) as optional: hidden until they need attention, not counted in progress. Everything else is unchanged, including the evidence rules and the clearance gate before FINAL. The mapper, drafter and validator skills each say what differs for an RFI.
+`solicitation_type` in `solution.toml` is `rfp` (default) or `rfi`, set by `rfps-new-engagement --type` or `rfps-set-config solicitation_type`. An RFI is non-binding market input with no award, so the flow marks the steps in `flow.toml` carrying `rfi_optional` (resources, attachments) as optional: hidden until they need attention, not counted in progress. `rfps-sweep` and the automated checks then count only what is asked of the respondent: sentences addressed to vendors or respondents, and every line under a submission or requested-information heading. The draft PWS or SOW of an RFI binds a future contractor and is background (set `sweep_scope = "all"` in `solution.toml` to count it, or `sweep_files = ["synopsis"]` to sweep only files whose names contain those words). Everything else is unchanged, including the evidence rules and the clearance gate before FINAL. The mapper, drafter and validator skills each say what differs for an RFI.
 
 ## Input model
 

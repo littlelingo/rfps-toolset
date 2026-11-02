@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- **RFI profile (first pass)**: `solicitation_type = "rfp" | "rfi"` in `solution.toml` (`rfps-new-engagement --type`, `rfps-set-config solicitation_type`). For an RFI the steps marked `rfi_optional` in `flow.toml` (resources, attachments) are optional and hidden until they need attention. The mapper, drafter, validator and start skills say what differs for an RFI (questions as rows, non-binding wording, responsiveness check). New smoke checks and an `rfi-start-fires` eval. Not yet built: RFI section templates, a commitment-language lint, a proprietary legend, a response-deadline countdown, an RFI fixture.
+- **RFI profile (first pass)**: `solicitation_type = "rfp" | "rfi"` in `solution.toml` (`rfps-new-engagement --type`, `rfps-set-config solicitation_type`). For an RFI the steps marked `rfi_optional` in `flow.toml` (resources, attachments) are optional and hidden until they need attention. The mapper, drafter, validator and start skills say what differs for an RFI (questions as rows, non-binding wording, responsiveness check). New smoke checks and an `rfi-start-fires` eval. `rfps-sweep` scopes to the respondent's asks for an RFI (`sweep_scope`, `sweep_files`): on the IRS MIDS RFI that is 12 asks instead of 325 obligation sentences, most of them the draft PWS. Not yet built: RFI section templates, a commitment-language lint, a proprietary legend, a response-deadline countdown, an RFI fixture.
 
 ## 0.7.0 (2026-11-02)
 

@@ -67,7 +67,7 @@ Implicit requirements are not stated as obligations but are embedded in:
 
 **Questions in the RFP.** "Describe your approach to..." is a requirement to describe your approach. "How does your solution handle..." requires an answer. These are requirements disguised as questions.
 
-**RFI questions.** When `solicitation_type = "rfi"`, most requirements are questions or requests for information, not obligations. Give each question its own row, quote it verbatim, class it as a question, and note any stated limit on its answer (words, characters, pages). The submission instructions (who, when, how, format, marking) are the only "shall" items; the sweep still applies to them.
+**RFI questions.** When `solicitation_type = "rfi"`, most requirements are questions or requests for information, not obligations. Give each question its own row, quote it verbatim, class it as a question, and note any stated limit on its answer (words, characters, pages). The submission instructions (who, when, how, format, marking) and each requested item are the only obligations; `rfps-sweep` counts exactly those. A draft PWS or SOW attached to the RFI is background: use it to shape the answers, do not give each of its "shall" sentences a row, and record any blank or bracketed limit in the instructions (for example "[e.g., 5] pages") as an open question for the agency.
 
 **Repeated themes.** If the RFP mentions "scalability" in five different contexts, there is an implicit requirement to address scalability comprehensively — not just where it is explicitly asked.
 

@@ -1,7 +1,7 @@
 ---
 name: start
 description: The one entry point - joins the solution if one already exists in the folder, otherwise starts a new solicitation: ask once for the solicitation folder, template and past-performance locations, then run set-up, analysis, evidence, staffing, drafting, review and the first WIP build, and hand over a ranked worklist of gaps
-argument-hint: [source folder] [--word]
+argument-hint: [source folder] [--type rfp|rfi] [--word]
 disable-model-invocation: true
 allowed-tools: Bash(rfps-new-engagement:*), Bash(rfps-collab:*), Bash(rfps-set-config:*), Bash(rfps-decode-b64:*), Bash(rfps-add-source:*), Bash(rfps-scan-sources:*), Bash(rfps-extract-docs:*), Bash(rfps-register-add:*), Bash(rfps-refresh-reports:*), Bash(rfps-open-items:*), Bash(rfps-flow-status:*), Bash(rfps-worklist:*), Bash(rfps-staffing:*), Bash(rfps-sync-gdoc:*), Bash(rfps-sync-docx:*), Bash(rfps-build-response:*), Bash(rfps-sweep:*), Bash(rfps-lint:*), Bash(rfps-crossref:*), Bash(rfps-consistency:*), Bash(ls:*), Read, Write, Edit, Skill, AskUserQuestion
 ---
@@ -21,7 +21,11 @@ Collect these in one round (use the question tool; skip what `$ARGUMENTS` or the
 1. **Source (capture) folder** holding the solicitation: the SOW or Work Order, RFP, amendments, Q&A, attachments. The entry check above has already confirmed no solution exists there.
 2. **Response template** .docx (it must be a file on disk; if it is in Drive, follow the Drive paragraph of `new-engagement` - decode a saved download with `rfps-decode-b64`, never retype it, or ask the user to download it): use the one in the draft-response folder, or, if there is none, plan to run `generate-template` in stage 1 (its section outline still needs the user's approval).
 3. **Past-performance locations**: local folders and/or a Google Drive folder, one or several, or "none yet". Material is read in place; nothing is copied or downloaded without the confirmation `add-past-performance` asks for.
-4. **Type of solicitation**: RFP (a bid, the default) or RFI (a request for information: non-binding, no award). Read it from the documents when they say so and confirm in one line. For an RFI pass `--type rfi` to `rfps-new-engagement`; the staffing and attachment steps then become optional and hidden, and `resources` is not run in stage 2 unless the RFI asks for staffing or pricing.
+4. **Type of solicitation**: RFP (a bid) or RFI (a request for information: non-binding, no award). Decide it in this order, and ask only at step c:
+   a. **Named.** `--type` in `$ARGUMENTS`, or the user typed `/rfps:start-rfi` or `/rfps:start-rfp`: use it, no detection, no question.
+   b. **Read from the notice.** Run `rfps-detect-type "<source folder>"`. `rfi` or `rfp` means the title and disclaimer of the solicitation say so (a draft PWS full of "shall" does not make an RFI a bid). Tell the user in one line, with the phrase that decided it, for example "This reads as an RFI (sources sought; no proposals are being requested). Proceeding as RFI - say so if that is wrong."
+   c. **Unclear** (or no documents yet): ask once with the question tool, RFP first as the default.
+   For an RFI pass `--type rfi` to `rfps-new-engagement`; the staffing and attachment steps then become optional and hidden, and `resources` is not run in stage 2 unless the RFI asks for staffing or pricing. An existing solution keeps its recorded type; the join path never asks.
 5. **Where the team works on the WIP**: Google Docs (default) or Word (`--word`).
 6. **Where the outputs go**: the folder for the shared WIP (a Drive folder link, or a local folder for Word) and the folder for the FINAL copy. Ask; if the user gives none, the defaults are the capture's `05 Draft Response` (never the Drive root) and `11 Final Submission`. Record only an answer the user actually gave, with `rfps-set-config wip_folder|wip_docx|final_copy_dir <value>` (`wip_docx` is a full file path for the Word file, `wip_folder` a Drive folder). When the user takes the defaults, run nothing: the tools already use them, and a wrong value written here puts files in the wrong place.
 7. **Machine-local working files**: if the capture folder is on a Google Drive mount, ask for a folder on this machine for text caches and scratch builds (suggest `~/rfps-cache`) and record it with `rfps-set-config cache_dir <path>` so they are never synced to Drive.

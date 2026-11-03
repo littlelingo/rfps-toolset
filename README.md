@@ -67,6 +67,7 @@ The solution is found from the current directory (a folder at or above it holdin
 | Skill | Purpose |
 |---|---|
 | `/rfps:start` | The one entry point. With an existing solution in the folder it joins it (your machine, who is doing what, claim work); otherwise front-loaded run: intake, then set-up, analysis, evidence, staffing, drafting, review and the first WIP, ending in a worklist |
+| `/rfps:start-rfi`, `/rfps:start-rfp` | The same entry point with the type named. `/rfps:start` on its own reads the type from the notice (sources sought, request for information, or request for proposals) and asks only when it cannot tell |
 | `/rfps:walk` | Walk the ranked worklist one item at a time: tools address it, you address it, or skip |
 | `/rfps:new-engagement` | Start a solicitation: create `active-solution/` |
 | `/rfps:use-solution` | Show or set the active solution |
@@ -104,7 +105,7 @@ The solution is found from the current directory (a folder at or above it holdin
 
 ## Terminal Tools
 
-The `rfps-*` commands in `bin/` are on the PATH while the plugin is enabled: `rfps-flow-status`, `rfps-build-response`, `rfps-new-engagement`, `rfps-refresh-reports`, `rfps-sweep`, `rfps-consistency`, `rfps-lint`, `rfps-crossref`, `rfps-final-gate`, `rfps-open-items`, `rfps-worklist`, `rfps-collab`, `rfps-set-config`, `rfps-decode-b64`, `rfps-staffing`, `rfps-sync-gdoc`, `rfps-sync-docx`, `rfps-open-doc`, `rfps-extract-docs`, `rfps-add-source`, `rfps-file-audit`, `rfps-status-page`, `rfps-use-solution` and `rfps-list-tools`. Run `/rfps:help` for what each is for.
+The `rfps-*` commands in `bin/` are on the PATH while the plugin is enabled: `rfps-flow-status`, `rfps-build-response`, `rfps-new-engagement`, `rfps-refresh-reports`, `rfps-sweep`, `rfps-consistency`, `rfps-lint`, `rfps-crossref`, `rfps-final-gate`, `rfps-open-items`, `rfps-worklist`, `rfps-collab`, `rfps-set-config`, `rfps-detect-type`, `rfps-decode-b64`, `rfps-staffing`, `rfps-sync-gdoc`, `rfps-sync-docx`, `rfps-open-doc`, `rfps-extract-docs`, `rfps-add-source`, `rfps-file-audit`, `rfps-status-page`, `rfps-use-solution` and `rfps-list-tools`. Run `/rfps:help` for what each is for.
 
 ## Status Pane
 

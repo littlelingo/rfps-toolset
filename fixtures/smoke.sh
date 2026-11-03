@@ -490,4 +490,15 @@ bad=[w for w in ('contractor','AWARDED','vendor shall') if w in t]
 need=[w for w in ('capability statement (not to exceed 5 pages) addressing the following','Company Name','3 similar past projects completed within the last 5 years','Submit all responses by email','subject line') if w not in t]
 sys.exit(f'RFI sweep wrong: contractor/disclaimer sentences {bad}; missing asks {need}; found {t}' if bad or need else 0)" || { echo "FAIL: RFI sweep scope" >&2; exit 1; }
 rfps-sweep --json --text-dir "$T/rfitext" | python3 -c "import json,sys; t=' '.join(r['text'] for r in json.load(sys.stdin)['unmapped']); sys.exit(0 if 'contractor shall provide monthly' in t else 1)" || { echo "FAIL: an RFP should still sweep the contractor obligations" >&2; exit 1; }
+# type detection: the notice decides, not the "shall" language of an attached draft PWS
+mkdir -p "$T/ty/rfi/01 Solicitation Docs" "$T/ty/rfp/01 Solicitation Docs" "$T/ty/none"
+printf 'SOURCES SOUGHT SYNOPSIS\nThis is not a solicitation. No proposals are being requested.\n' > "$T/ty/rfi/01 Solicitation Docs/synopsis.txt"
+printf 'DRAFT PWS\nThe contractor shall provide monthly reports. Offerors shall comply.\n' > "$T/ty/rfi/01 Solicitation Docs/pws.txt"
+printf 'REQUEST FOR PROPOSALS 2026-017\nProposals are due May 1. Basis for award: best value. This is not a request for information.\n' > "$T/ty/rfp/01 Solicitation Docs/rfp.txt"
+printf 'Notes about the weather.\n' > "$T/ty/none/notes.txt"
+for pair in rfi:rfi rfp:rfp none:unclear; do
+  d=${pair%%:*}; want=${pair##*:}
+  got=$(rfps-detect-type "$T/ty/$d" 2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin)['type'])")
+  [ "$got" = "$want" ] || { echo "FAIL: detect-type on $d gave $got, wanted $want" >&2; exit 1; }
+done
 echo "smoke test passed"

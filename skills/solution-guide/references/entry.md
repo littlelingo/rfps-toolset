@@ -1,6 +1,6 @@
 # Entry check: start a new solution or join the one that exists
 
-Used by `/rfps:start`, the single entry point. It runs this check first, so a person never has to know whether a solution exists. Never create a solution where one exists, never offer "start over" (a fresh solution is a deliberate rename or archive done by hand), and never overwrite.
+Used by `/rfps:start`, the single entry point (`/rfps:start-rfi` and `/rfps:start-rfp` are the same entry with the type named). It runs this check first, so a person never has to know whether a solution exists. Never create a solution where one exists, never offer "start over" (a fresh solution is a deliberate rename or archive done by hand), and never overwrite.
 
 1. **Resolve.** Run `rfps-collab --resolve [<folder the user named>]`. It looks at the folder, in `active-solution/` inside it, and above it. If the user named no folder and the result is `none`, ask for the source (capture) folder and resolve that one.
 2. **`state: none`** - there is no solution. Say so. If `looks_empty` is true, or the folder has no solicitation documents, confirm it is the right folder before creating anything. Then follow the start path (`/rfps:start`, intake onward). 

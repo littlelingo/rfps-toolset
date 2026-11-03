@@ -22,8 +22,10 @@ The template docx is only read. An existing active-solution/ is never overwritte
 Usage: rfps-new-engagement --source "<source folder>" [--template "<docx>"] [--title "..."] [--slug x]
                                       [--name "Output name"] [--no-git] [--no-pointer]
 """
-import argparse, csv, os, pathlib, re, subprocess, sys, tomllib
+import argparse, csv, os, pathlib, re, shutil, subprocess, sys, tomllib
 import docx
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import standard_template as st_tpl
 
 COLUMNS = ["id", "claim", "client", "engagement", "date", "numbers", "source", "clearance", "verified", "basis", "superseded_by", "notes", "ban_phrases",
            "start", "end", "value_usd", "scope_tags", "reference_contact", "reference_confirmed", "approved_by", "approved_date", "approval_ref"]
@@ -64,7 +66,13 @@ def main():
     else:
         c = find_template(src, a.draft_pattern, a.template_exclude)
         if len(c) == 1: tpl = c[0].resolve()
-        elif not c: sys.exit("no response template .docx found in a folder matching --draft-pattern; pass --template, or generate one from the solicitation with /rfps:generate-template")
+        elif not c:
+            std = st_tpl.path(a.type)
+            if not std.is_file(): sys.exit(f"no response template .docx found in a folder matching --draft-pattern, and no standard {a.type} template of yours (rfps-standard-template); pass --template, or make one with /rfps:generate-template")
+            folder = find_folder(src, a.draft_pattern) or (src / "05 Draft Response"); folder.mkdir(exist_ok=True)
+            tpl = folder / f"{slug_of(src.name)}-{a.type}-response-template.docx"
+            if tpl.exists(): sys.exit(f"{tpl} already exists; pass it with --template")
+            shutil.copyfile(std, tpl); print(f"No template in {folder.name}: using your standard {a.type} template (copied to {tpl}).")
         else: sys.exit("several candidate templates; pass --template:\n  " + "\n  ".join(str(p) for p in c))
     if not tpl.is_file(): sys.exit(f"template not found: {tpl}")
     d = docx.Document(str(tpl))

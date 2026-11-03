@@ -27,6 +27,7 @@ HINTS = {
     "lint.py": ("Counting the writing patterns that make a response read like it was written for anyone: empty superlatives, commitments with no owner, undefined acronyms, duplicated paragraphs, the client's key terms never used", "/rfps:refresh-reports"),
     "crossref.py": ("Writing cross-reference.md: for every requirement, the response sections that answer it with an estimated page, mandatory ones with no answer first", "/rfps:refresh-reports"),
     "detect_type.py": ("Telling an RFI (sources sought, request for information) from an RFP by what the notice itself says", "/rfps:start"),
+    "standard_template.py": ("Keeping your standard RFI or RFP response template on this machine so every new solicitation of that type starts from it", "/rfps:start, /rfps:generate-template"),
     "sweep.py": ("Finding obligation sentences in the solicitation (shall, must, no later than ...) that no requirement row covers, so none is missed", "/rfps:sweep"),
     "open_items.py": ("Finding every decision, open question, evidence gap and assertion in the response; add --mark to put the colored icons in the files", "/rfps:open-items"),
     "build_response.py": ("Pouring the response text into the Word template: a work-in-progress copy, or the final submission copy", "/rfps:build-wip, /rfps:build-final"),

@@ -48,6 +48,10 @@ Then, in the solicitation's source folder (the one with `01 Solicitation Docs`, 
 
 The solution is found from the current directory (a folder at or above it holding `solution.toml`), else from the `.claude/active-solution` pointer in the current project. `/rfps:use-solution <folder>` sets the pointer.
 
+## Response Templates
+
+Which template a solicitation uses, in order: the form the agency issued (a docx in `05 Draft Response`), else your standard for the type, else one generated from the notice. Your standard RFI (or RFP) template is your branded docx (cover, proprietary legend, header and footer, styles) kept on your machine: `rfps-standard-template --type rfi --set my-template.docx` stores it in `~/.config/rfps/templates/` (never shared), and `rfps-new-engagement` copies it into each new capture folder. Without one, `rfps-standard-template --type rfi --make-plain` writes a plain one from the plugin's RFI outline (`tools/templates/outlines/rfi.json`). The RFP standard is not defined yet.
+
 ## Working With Google Drive
 
 - **Files that are already in Drive** (the solicitation, past performance, the capture folder): install Google Drive for Desktop and keep it in **Stream files** mode (not Mirror). The capture folder then appears in Finder and files download only when the tools read them; nothing is copied by hand. Leave "Back up folders" (Desktop, Documents) off so nothing else on your machine goes to Drive.

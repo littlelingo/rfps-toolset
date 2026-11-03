@@ -1,0 +1,22 @@
+{
+  "title": "Response to the Request for Information",
+  "sections": [
+    {"level": 1, "title": "Company Profile and Capability Overview", "instruction": "Answer the notice's company profile and capabilities request.", "source": "notice, submission requirements"},
+    {"level": 2, "title": "Company Information", "instruction": "Company name, address and website; point of contact name, phone and email; SAM UEI and CAGE code; business size and socio-economic designations. State only what the notice asks for."},
+    {"level": 2, "title": "Corporate Capabilities", "instruction": "Core competencies and why they are relevant to the project scope, in the agency's own terms. Brief."},
+    {"level": 1, "title": "Relevant Technical Capabilities", "instruction": "One subsection (level 2) per major scope area in the draft requirements, in the agency's order. For each: the requirement area it answers, the team's experience, the technologies and responsibilities, and a measurable result. Replace this line with the areas for this solicitation."},
+    {"level": 1, "title": "Relevant Past Performance", "instruction": "The number of similar projects, within the look-back period, that the notice asks for. For each: customer, contract number, total value, period of performance, client reference contact, the team's role, what was done and the result."},
+    {"level": 2, "title": "Project 1", "instruction": "Customer, contract number, total contract value, period of performance, client reference, the team's role, work performed, technologies, measurable results."},
+    {"level": 2, "title": "Project 2", "instruction": "As Project 1."},
+    {"level": 2, "title": "Project 3", "instruction": "As Project 1. Remove if the notice asks for fewer."},
+    {"level": 1, "title": "Recommended Approach and Resource Considerations", "instruction": "Preliminary recommendations the notice asks for (for example equipment, reclamation, level of effort). Non-binding: say 'can' and 'typically', state assumptions, and make no price or schedule commitment."},
+    {"level": 2, "title": "Recommended Solution", "instruction": "Recommended technologies or equipment for the agency's environment, and why."},
+    {"level": 2, "title": "Preliminary Level of Effort", "instruction": "Rough order of magnitude only: projected labor hours or roles with the assumptions behind them. Not a quote."},
+    {"level": 1, "title": "Teaming and Delivery Structure", "instruction": "Any joint venture, mentor-protege arrangement or major subcontracting the team anticipates."},
+    {"level": 2, "title": "Proposed Team Structure", "instruction": "Who is on the team and in what relationship."},
+    {"level": 2, "title": "Division of Responsibilities", "instruction": "Which party covers which part of the scope."},
+    {"level": 2, "title": "Summary", "instruction": "A short summary of the team's qualifications for the agency's objectives."},
+    {"level": 1, "title": "Feedback on the Draft Requirements", "instruction": "Only if the notice invites comments: what to clarify, change or add in the draft requirements, and why.", "optional": true},
+    {"level": 1, "title": "Questions for the Agency", "instruction": "Only if the notice invites questions. Also log them in questions.md.", "optional": true}
+  ]
+}

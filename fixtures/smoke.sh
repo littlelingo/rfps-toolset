@@ -501,4 +501,16 @@ for pair in rfi:rfi rfp:rfp none:unclear; do
   got=$(rfps-detect-type "$T/ty/$d" 2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin)['type'])")
   [ "$got" = "$want" ] || { echo "FAIL: detect-type on $d gave $got, wanted $want" >&2; exit 1; }
 done
+# standard RFI template: the agency's form wins; with none, your standard for the type; with neither, a clear stop
+export RFPS_TEMPLATE_DIR="$T/tpl"
+uv run --quiet "$HERE/build_sample.py" "$T/nostd" >/dev/null; rm "$T/nostd/05 Draft Response/Response Template.docx"
+if rfps-new-engagement --source "$T/nostd" --type rfi --no-pointer >/dev/null 2>&1; then echo "FAIL: no template and no standard should stop" >&2; exit 1; fi
+rfps-standard-template --type rfi --make-plain >/dev/null
+rfps-standard-template --type rfi --show | grep -q "$T/tpl/rfi.docx" || { echo "FAIL: standard template not shown" >&2; exit 1; }
+if rfps-standard-template --type rfi --make-plain >/dev/null 2>&1; then echo "FAIL: standard overwritten without --force" >&2; exit 1; fi
+rfps-new-engagement --source "$T/nostd" --type rfi --no-pointer | grep -q "using your standard rfi template" || { echo "FAIL: standard template not used" >&2; exit 1; }
+ls "$T/nostd/active-solution/response" | grep -q "^01-company-profile-and-capability-overview.md$" || { echo "FAIL: standard headings not mirrored" >&2; exit 1; }
+if ls "$T/nostd/active-solution/response" | grep -q "feedback-on-the-draft"; then echo "FAIL: optional section included by default" >&2; exit 1; fi
+cmp -s "$T/tpl/rfi.docx" "$T/nostd/05 Draft Response/"*-rfi-response-template.docx || { echo "FAIL: the solution's template should be a copy of the standard" >&2; exit 1; }
+unset RFPS_TEMPLATE_DIR
 echo "smoke test passed"

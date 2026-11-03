@@ -10,7 +10,7 @@ line holding what the solicitation says that section must show, and a [text] pla
 It never overwrites an existing file.
 
 Outline (JSON): {"title": "Response to ...", "sections": [{"level": 1, "title": "Technical Approach",
-                 "instruction": "Describe the approach to scope items 2.1 to 2.5", "source": "RFP 4.2"}, ...]}
+                 "instruction": "Describe the approach to scope items 2.1 to 2.5", "source": "RFP 4.2", "optional": false}, ...]}
 
 Usage: rfps-make-template --outline FILE.json [--source <capture folder>] [--out <docx>] [--force]
 """
@@ -22,13 +22,14 @@ import new_engagement as ne
 
 DEFAULTS = tomllib.loads((pathlib.Path(__file__).resolve().parent / "defaults.toml").read_text())
 
-def make(outline, out):
+def make(outline, out, include_optional=False):
     d = docx.Document()
     t = outline.get("title") or "Response"
     d.add_paragraph(t, style="Title")
     d.add_paragraph("Generated from the solicitation's response instructions. Replace it with the issuing office's form if one is provided.").runs[0].italic = True
     cfg = DEFAULTS["docx"]; scaffold = cfg["scaffold_styles"][0]; hp = cfg["heading_prefix"]; ph = next(x for x in cfg["placeholders"] if x.startswith("["))
     for s in outline["sections"]:
+        if s.get("optional") and not include_optional: continue   # sections the notice may or may not invite
         lvl = int(s.get("level", 1))
         if lvl not in (1, 2, 3): raise SystemExit(f"section level must be 1, 2 or 3: {s.get('title')}")
         if not (s.get("title") or "").strip(): raise SystemExit("every section needs a title")

@@ -1,7 +1,7 @@
 ---
 name: sweep
 description: List every obligation sentence in the solicitation (shall, must, is required, no later than, should) that no requirement row covers, so nothing is silently missed
-argument-hint: [active-solution folder or its source folder]
+argument-hint: [03 Solution/active-solution folder or its source folder]
 allowed-tools: Bash(rfps-sweep:*), Bash(rfps-refresh-reports:*), Read
 ---
 

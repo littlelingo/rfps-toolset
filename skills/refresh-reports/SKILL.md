@@ -1,7 +1,7 @@
 ---
 name: refresh-reports
 description: Recompute the derived blocks in coverage-matrix.md, compliance-report.md and resource-plan.md (counts, pre-flight status, blocking list, page estimates, automated checks)
-argument-hint: [active-solution folder or its source folder]
+argument-hint: [03 Solution/active-solution folder or its source folder]
 allowed-tools: Bash(rfps-collab:*), Bash(rfps-refresh-reports:*), Read
 ---
 

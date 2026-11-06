@@ -10,7 +10,7 @@ export PATH="$HERE/../bin:$PATH"
 mkdir -p "$W"; rm -rf "$W/capture"; cp -R "$HERE/sample-capture" "$W/capture"
 cd "$W/capture"
 rfps-new-engagement --source "$PWD" --title "Sample" >/dev/null
-git -C active-solution add -A && git -C active-solution -c user.name=trial -c user.email=trial@example.com commit -qm baseline
+git -C "03 Solution/active-solution" add -A && git -C "03 Solution/active-solution" -c user.name=trial -c user.email=trial@example.com commit -qm baseline
 run() {
   n=$1; shift; echo "== $n"
   # The Skill tool must be allowed, or a skill call errors and Claude follows SKILL.md by hand instead.
@@ -21,5 +21,5 @@ run 2-collateral "Use the rfps:collateral-analyzer skill on this solicitation fo
 run 3-past-performance "Use the rfps:add-past-performance skill on the folder 'past-performance'. Do not ask me questions: show the proposed evidence rows, then write them, with clearance cleared only where the notes say the client approved use."
 run 4-requirements "Use the rfps:requirements-mapper skill to build the coverage matrix for the active solution. Do not ask me questions. Then run rfps-refresh-reports --solution."
 run 5-drafter "Use the rfps:section-drafter skill to draft all response sections for the active solution into response/*.md, grounded in the coverage matrix and the evidence register. Do not ask me questions. Then run rfps-build-response --solution --mode wip."
-echo "Trial finished. Logs and results: $W (solution: $W/capture/active-solution)"
+echo "Trial finished. Logs and results: $W (solution: $W/capture/03 Solution/active-solution)"
 rfps-flow-status --table | head -12

@@ -13,6 +13,7 @@ Usage: rfps-status-page [--solution [folder]] [--json]
 """
 import argparse, csv, datetime, html, json, pathlib, re, subprocess, sys, tomllib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import solution_dir as sd
 import build_response as br
 import open_items as oi
 
@@ -58,7 +59,7 @@ def build(sol):
     files = [(n, (sol / n).as_uri()) for n in ("progress.md", "open-items.md", "brief.md", "gap-report.md", "coverage-matrix.md", "compliance-report.md", "resource-plan.md", "review-notes.md", "amendments/questions-to-state.md") if (sol / n).is_file()]
     builds = sorted((sol / cfg.get("build_dir", "build")).glob("*.docx"), key=lambda p: p.stat().st_mtime)
     if builds: files.append((builds[-1].name, builds[-1].as_uri()))
-    return dict(title=cfg.get("title", sol.parent.name), generated=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+    return dict(title=cfg.get("title", sd.source_of(sol).name), generated=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
                 steps=fj["steps"], sections=fj["sections"], items=items, blockers=blockers(sol), register=reg, roster=ros, files=files)
 
 TEMPLATE = open(pathlib.Path(__file__).with_name("templates") / "status_page.html").read()

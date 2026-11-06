@@ -277,7 +277,7 @@ def main():
     sol = br.resolve_solution(a.solution or None)
     cfg = tomllib.loads((sol / "solution.toml").read_text())
     sx = cfg.get("staffing_xlsx")
-    if not sx: sys.exit("solution.toml has no staffing_xlsx (path to the workbook, relative to active-solution/, for example ../09 Pricing/Staffing.xlsx)")
+    if not sx: sys.exit("solution.toml has no staffing_xlsx (path to the workbook, relative to `active-solution/`, for example ../../09 Pricing/Staffing.xlsx)")
     roster = rs.load(rs.roster_path(sol, cfg))
     if roster is None: sys.exit("roster not found; create response/resources.csv first (/rfps:resources)")
     if a.check:

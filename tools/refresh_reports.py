@@ -10,7 +10,7 @@ This tool recomputes only the blocks wrapped in <!-- derived:NAME --> ... <!-- /
 (counts, pre-flight status, blocking list, page estimates, automated checks). Everything outside the
 markers is left exactly as written. It is idempotent.
 
-Usage: rfps-refresh-reports [--solution <active-solution folder>]
+Usage: rfps-refresh-reports [--solution <03 Solution/active-solution folder>]
 Optional in solution.toml: page_limit = 30 (pages allowed for the narrative response).
 """
 import argparse, collections, pathlib, re, sys, tomllib

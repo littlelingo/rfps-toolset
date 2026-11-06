@@ -1,0 +1,76 @@
+# Fearless "formal" response style: the standard for capability statements and technical approaches sent to government buyers.
+# This file IS the standard. It is checked against any Google Doc (rfps-sync-gdoc --template-check) and used to generate the master
+# (rfps-sync-gdoc --master-docx); no particular finished response is the reference.
+# Where each value comes from:
+#   brand guide  - fearless.lingoapp.com: colors, "Montserrat" for body unless the customer's format rules say otherwise, sentence-case bold headings
+#   observed     - what Fearless's real formal responses to government solicitations use (Times New Roman 11, Letter, 1 inch margins, a different cover page,
+#                  a running header, a footer notice with the page number); these set the values below
+#   assumed      - chosen here because neither source says (marked "assumed")
+# The solicitation's own format rules always win; when the RFP sets a font, size or margin, change it for that solution only.
+# Colors are RRGGBB. A style left out of this file is not checked. "inherit" means the style takes the Normal text font.
+
+name = "proposal"
+description = "Full proposals (Fearless GDoc Proposal Template - 2026): Times New Roman 12, headings 11, purple and orange, a different first page, restriction notice in the footer"
+
+[page]
+width = 612            # Letter, in points
+height = 792
+margin = 72            # 1 inch on every side
+
+[named.NORMAL_TEXT]
+font = "Times New Roman"   # from the Fearless GDoc Proposal Template - 2026
+size = 12
+
+[named.HEADING_1]
+font = "inherit"
+size = 11              # from the Fearless GDoc Proposal Template - 2026
+bold = true
+color = "5C3977"       # Purple 100
+
+[named.HEADING_2]
+font = "inherit"
+size = 11              # from the Fearless GDoc Proposal Template - 2026
+bold = true
+color = "EE5340"       # Orange 100
+
+[named.HEADING_3]
+font = "inherit"
+size = 11              # from the Fearless GDoc Proposal Template - 2026
+bold = true
+color = "5C3977"
+
+[named.SUBTITLE]       # the scaffold style: requirement and instruction lines; removed from the FINAL
+size = 8
+color = "FF0000"
+
+[named.TITLE]
+size = 26              # assumed
+
+[layout]
+first_page_header_footer = true     # the cover page has its own (blank) header and footer
+header_text_required = true         # the running header is not empty
+footer_page_number = true           # the footer carries a page-number field
+
+[header]               # running header (not the cover page); the words are placeholders each solution fills in
+lines = ["Company name", "Solicitation title", "Date", "Document type"]   # observed: four lines
+size = 8               # assumed
+color = "5C3977"
+align = "right"
+
+[footer]
+text = "Use or disclosure of data contained on this sheet is subject to the restriction on the title page."   # observed on government responses; drop for commercial ones
+page_label = "Page"
+size = 8               # assumed
+color = "5C3977"
+align = "center"
+
+# Conventions seen in the Fearless RFI response form (IRS MIDS, converted from Word to a Google Doc). They are recorded here as the standard;
+# the checks do not enforce them yet. Google's API cannot create them, so a copy of a doc that already has them is the only way to get them.
+[numbering]
+headings = true                      # Heading 1-3 carry one multilevel decimal list: "1.", "1.1.", "1.1.1."
+[toc]
+present = true                       # a Google table of contents (Insert > Table of contents), with the numbers, links and page numbers
+page_number_tab = 600                # right tab stop in points; level-2 entries indent 18 points
+refresh = "manual"                   # the API cannot refresh it: after the headings change, click the table of contents and choose Update
+[tables]
+form_tables = "two columns, 117.75 and 348 points wide, header row shaded CCC4D5, cell padding 1.44 points"

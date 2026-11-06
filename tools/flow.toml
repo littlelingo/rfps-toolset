@@ -15,7 +15,7 @@ group = "Set up"
 title = "Solution folder created beside the source folders"
 command = "/rfps:new-engagement"
 check = "solution_exists"
-help = "Run /rfps:new-engagement <source folder> to create active-solution/ with its config, response skeleton, evidence register and report skeletons."
+help = "Run /rfps:new-engagement <source folder> to create 03 Solution/ with its config, response skeleton, evidence register and report skeletons."
 ask = "Which source (capture) folder is this solicitation in?"
 
 [[step]]

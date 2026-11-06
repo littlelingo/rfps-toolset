@@ -19,6 +19,8 @@ The template .docx is never modified. WIP output goes to the build dir; FINAL is
 """
 import argparse, csv, re, sys, pathlib, tomllib
 import docx
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import solution_dir as sd
 from docx.enum.text import WD_COLOR_INDEX
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
@@ -258,7 +260,7 @@ def build(template, response, out, mode, name, force, register=None, final_copy=
         words += sum(len(c.text.split()) for r in t.rows for c in r.cells)
     out = pathlib.Path(out); out.mkdir(parents=True, exist_ok=True)
     suffix = "WIP" if mode == "wip" else "FINAL"
-    path = out / f"{name}_{suffix}.docx"
+    path = out / (sd.wip_name(name) if mode == "wip" else f"{name}_{suffix}.docx")
     errors = []
     if mode == "final":
         if empty: errors.append("headings with no content: " + "; ".join(empty))
@@ -301,16 +303,17 @@ def build(template, response, out, mode, name, force, register=None, final_copy=
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 def pointer_path():
-    """The active-solution pointer lives in the user's project (current directory), never in the plugin folder."""
-    return pathlib.Path.cwd() / ".claude" / "active-solution"
+    """The active-solution pointer lives in the solution folder's .claude (the current directory when you work there), never in the plugin folder."""
+    return sd.pointer_here()
 
 def find_local_solution():
-    """A solution folder at or above the current directory (solution.toml here, or active-solution/solution.toml)."""
+    """A solution at or above the current directory (solution.toml here, or in 03 Solution/active-solution beside it), else the only one directly below it."""
     here = pathlib.Path.cwd().resolve()
     for p in (here, *here.parents):
-        if (p / "solution.toml").is_file(): return p
-        if (p / "active-solution" / "solution.toml").is_file(): return p / "active-solution"
-    return None
+        if sd.has_solution(p): return p
+        if sd.inside(p): return sd.inside(p)
+    below = [c for c in sorted(here.iterdir()) if c.is_dir() and sd.inside(c)] if here.is_dir() else []
+    return sd.inside(below[0]) if len(below) == 1 else None
 
 def resolve_solution(arg):
     """Folder holding solution.toml: explicit arg, else a solution found at or above the current directory, else the active-solution pointer file."""
@@ -322,9 +325,9 @@ def resolve_solution(arg):
     elif ptr.is_file():
         d = pathlib.Path(ptr.read_text().strip())
     else:
-        sys.exit("no solution given and no active solution set (use /rfps:new-engagement or /rfps:use-solution, or run from inside a solution folder)")
+        sys.exit("no solution given and no active solution set (use /rfps:new-engagement or /rfps:use-solution, or run from inside the 03 Solution folder)")
     d = d.resolve()
-    if (d / "active-solution" / "solution.toml").is_file(): d = d / "active-solution"   # a source folder was given
+    if not sd.has_solution(d) and sd.inside(d): d = sd.inside(d)   # a source folder was given
     if not (d / "solution.toml").is_file(): sys.exit(f"no solution.toml in {d}")
     return d
 
@@ -341,7 +344,7 @@ def load_engagement(path):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--solution", "--engagement", dest="solution", nargs="?", const="", default=None, help="active-solution folder (or its source folder) containing solution.toml; omit the value to use the active-solution pointer")
+    ap.add_argument("--solution", "--engagement", dest="solution", nargs="?", const="", default=None, help="solution folder (03 Solution/active-solution, or its source folder) containing solution.toml; omit the value to use the active-solution pointer")
     ap.add_argument("--template"); ap.add_argument("--response"); ap.add_argument("--out"); ap.add_argument("--name")
     ap.add_argument("--mode", choices=["wip", "final"], default="wip")
     ap.add_argument("--force", action="store_true", help="write FINAL even if unresolved items remain")

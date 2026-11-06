@@ -2,10 +2,10 @@
 # requires-python = ">=3.11"
 # dependencies = ["python-docx"]
 # ///
-"""Scaffold a new solicitation: create <source folder>/active-solution/ beside the numbered capture folders.
+"""Scaffold a new solicitation: create <source folder>/03 Solution/active-solution/ beside the other numbered capture folders.
 
-Creates in active-solution/:
-  solution.toml            config; paths relative to active-solution/ (template stays in 05 Draft Response)
+Creates in 03 Solution/active-solution/:
+  solution.toml            config; paths relative to `active-solution/` (template stays in 05 Draft Response)
   response/NN-*.md         one file per Heading 1 of the template docx, every heading in order, empty bodies
   response/resources.csv   roster of proposed roles and people (header only; filled by the resource planner)
   evidence/                register.csv (header only) and README.md
@@ -15,9 +15,11 @@ Creates in active-solution/:
   coverage-matrix.md, compliance-report.md, resource-plan.md   living report skeletons (rows added by the analysis skills; derived blocks by /rfps:refresh-reports)
   .gitignore               build/ and .state/text/
 and runs `git init` there when the folder is on a local disk (skipped on a Google Drive mount, where Drive's
-own version history applies). Sets the active-solution pointer (<current directory>/.claude/active-solution) so the build commands default to it.
+own version history applies). 
+Also writes the pointer 03 Solution/.claude/active-solution (beside active-solution/, not in the source folder's root, and outside the solution's git repo)
+so the build commands default to this solution when Claude Code is opened in 03 Solution.
 
-The template docx is only read. An existing active-solution/ is never overwritten.
+The template docx is only read. An existing solution is never overwritten.
 
 Usage: rfps-new-engagement --source "<source folder>" [--template "<docx>"] [--title "..."] [--slug x]
                                       [--name "Output name"] [--no-git] [--no-pointer]
@@ -26,6 +28,7 @@ import argparse, csv, os, pathlib, re, shutil, subprocess, sys, tomllib
 import docx
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import standard_template as st_tpl
+import solution_dir as sd
 
 COLUMNS = ["id", "claim", "client", "engagement", "date", "numbers", "source", "clearance", "verified", "basis", "superseded_by", "notes", "ban_phrases",
            "start", "end", "value_usd", "scope_tags", "reference_contact", "reference_confirmed", "approved_by", "approved_date", "approval_ref"]
@@ -60,8 +63,9 @@ def main():
     a = ap.parse_args()
     src = pathlib.Path(a.source).expanduser().resolve()
     if not src.is_dir(): sys.exit(f"source folder not found: {src}")
-    sol = src / "active-solution"
-    if sol.exists(): sys.exit(f"{sol} already exists; refusing to overwrite")
+    sol = sd.target_for(src)
+    if sd.has_solution(sol) or sd.inside(src): sys.exit(f"{sd.inside(src) or sol} already holds a solution; refusing to overwrite")
+    if sol.exists() and any(sol.iterdir()): sys.exit(f"{sol} is not empty; refusing to overwrite")
     if a.template: tpl = pathlib.Path(a.template).expanduser().resolve()
     else:
         c = find_template(src, a.draft_pattern, a.template_exclude)
@@ -83,8 +87,8 @@ def main():
     final = find_folder(src, a.final_pattern)
     pricing = find_folder(src, a.pricing_pattern)
     slug = a.slug or slug_of(src.name); name = a.name or tpl.stem
-    for sub in ("response", "evidence", "past-performance", "amendments"): (sol / sub).mkdir(parents=True)
-    lines = ["# Solution configuration. Paths are relative to this folder (active-solution/) unless absolute,",
+    for sub in ("response", "evidence", "past-performance", "amendments"): (sol / sub).mkdir(parents=True, exist_ok=True)
+    lines = ["# Solution configuration. Paths are relative to this folder (03 Solution/active-solution/) unless absolute,",
              "# so the folder works the same on a local disk or a synced Google Drive mount.",
              f'slug = "{slug}"', f'title = "{a.title or src.name}"',
              '# "rfp" (a bid) or "rfi" (a request for information: non-binding, no award; staffing and attachments become optional steps).', f'solicitation_type = "{a.type}"',
@@ -98,9 +102,9 @@ def main():
               "# Shared work-in-progress document: \"gdoc\" (Google Docs, the default) or \"docx\" (Word; the WIP skills also take --word).",
               "# wip_format = \"gdoc\"",
               "# Staffing and pricing workbook built from tools/templates/staffing-template.xlsx; create or refresh it with rfps-staffing."]
-    lines.append(f'staffing_xlsx = "{rel(pricing / "Staffing.xlsx", sol)}"' if pricing else '# staffing_xlsx = "../09 Pricing/Staffing.xlsx"')
+    lines.append(f'staffing_xlsx = "{rel(pricing / "Staffing.xlsx", sol)}"' if pricing else '# staffing_xlsx = "../../09 Pricing/Staffing.xlsx"')
     lines += ["# FINAL refuses a cleared evidence row that records no proof of the client's approval (approval_ref).", "# require_approval_ref = true",
-              "# Price list (csv with labor_category,rate): the price view checks the staffing workbook against it.", '# rate_sheet = "../09 Pricing/Rate Sheet.csv"',
+              "# Price list (csv with labor_category,rate): the price view checks the staffing workbook against it.", '# rate_sheet = "../../09 Pricing/Rate Sheet.csv"',
               "# Rules from the solicitation, read by the automated checks. These are tables, so keep them last.",
               "# [past_performance]", "# max_age_years = 5", "# min_value_usd = 1000000", "# min_references = 3", "# reference_max_age_days = 180",
               "# [final_gate]", "# exclude_pages = 1", "# max_mb = 10", '# required_text = ["Attachment B"]', "# margin_inches = 1.0", '# page_size = "letter"']
@@ -116,7 +120,7 @@ def main():
     sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent)); import resources as rs
     rs.write(sol / "response" / "resources.csv", [])
     (sol / "evidence" / "README.md").write_text((pathlib.Path(__file__).parent / "templates" / "evidence_README.md").read_text())
-    (sol / "past-performance" / "sources.toml").write_text('# Past-performance source locations (read in place, never copied). type = "local" | "drive".\n# [[source]]\n# type = "local"\n# path = "..."   (relative paths are relative to active-solution/; rfps-add-source writes them)\n# label = "..."\n')
+    (sol / "past-performance" / "sources.toml").write_text('# Past-performance source locations (read in place, never copied). type = "local" | "drive".\n# [[source]]\n# type = "local"\n# path = "..."   (relative paths are relative to `active-solution/`; rfps-add-source writes them)\n# label = "..."\n')
     (sol / ".state").mkdir(); (sol / ".state" / "integrated.json").write_text("{}\n")
     (sol / "external-sources.md").write_text("# Outside sources added\n\nThe tools work from the selected sources. If you approve looking anywhere else (web, an unlisted folder or drive), record it here.\n\n| Date | What was added | Why | Approved by |\n|------|----------------|-----|-------------|\n")
     (sol / "amendments" / "README.md").write_text((pathlib.Path(__file__).parent / "templates" / "amendments_README.md").read_text())
@@ -133,13 +137,13 @@ def main():
         else:
             subprocess.run(["git", "init", "-q", "-b", "main"], cwd=sol, check=True); git = "initialized (no commit yet)"
     if not a.no_pointer:
-        ptr = pathlib.Path.cwd() / ".claude" / "active-solution"; ptr.parent.mkdir(parents=True, exist_ok=True); ptr.write_text(str(sol) + "\n")
+        ptr = sd.pointer_in(sol); ptr.parent.mkdir(parents=True, exist_ok=True); ptr.write_text(str(sol) + "\n")
     print(f"Created {sol}")
     print(f"  template: {tpl} (stays in place)")
     print(f"  response/: {len(files)} file(s), {len(heads)} headings mirrored")
     print(f"  solicitation_dir: {solicitation or 'not found'}; final_copy_dir: {final or 'not found'}")
-    print(f"  git: {git}; active-solution pointer: {'not set' if a.no_pointer else 'set'}")
-    print("Next: run the analysis skills on the solicitation, add past-performance sources, write text under each heading, then /rfps:build-wip.")
+    print(f"  git: {git}; pointer: {'not set' if a.no_pointer else str(sd.pointer_in(sol))}")
+    print("Next: open Claude Code in the 03 Solution folder, run the analysis skills on the solicitation, add past-performance sources, write text under each heading, then /rfps:build-wip.")
 
 if __name__ == "__main__":
     main()

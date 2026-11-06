@@ -1,7 +1,7 @@
 ---
 name: build-wip
 description: Create or update the shared work-in-progress response document (a Google Doc by default, or Word with --word); approved changes go in as suggestions or tracked changes so other people's edits and comments are kept
-argument-hint: [--word] [--plain] [--folder <Drive link or id>] [active-solution folder or its source folder]
+argument-hint: [--word] [--plain] [--folder <Drive link or id>] [03 Solution/active-solution folder or its source folder]
 disable-model-invocation: true
 allowed-tools: Bash(rfps-collab:*), Bash(rfps-sync-gdoc:*), Bash(rfps-set-config:*), Bash(rfps-sync-docx:*), Bash(rfps-build-response:*), Bash(rfps-use-solution:*), Bash(rfps-open-items:*), Read, Write
 ---
@@ -25,8 +25,8 @@ If there is no active solution, tell the user to run `/rfps:new-engagement` or `
 
 **No document yet** (`rfps-sync-gdoc --url` says none is recorded):
 1. **Start from the style profile.** Run `rfps-sync-gdoc --template-id` and follow its exit code. The profile in `tools/templates/styles` is the standard; a Google Doc is only ever a copy of it, so it is checked and never trusted.
-   - **Exit 2, no master (the default):** make a fresh doc for this solution from the profile: Drive `create_file` (title "<solution title> - Response WIP", `contentMimeType` `text/html`, `textContent` `<html><body><p></p></body></html>`, in the folder from step 2), `read_doc`, then the two sends of `rfps-sync-gdoc --master-plan` (see `/rfps:make-gdoc-template`, route A). Nothing shared is involved, so nothing can drift. Tell the user to add the page number in the footer (Insert, Page numbers).
-   - **Exit 0, a master is registered:** copy it with Drive `copy_file` (same title and folder), read the copy, and run `rfps-sync-gdoc --template-check <file>`; stop on any DEVIATES and say which, because a copy of a drifted master would carry the drift.
+   - **Exit 2, no master (the default):** make a fresh doc for this solution from the profile: Drive `create_file` (title "SOLUTION - <solution title> - Response WIP", `contentMimeType` `text/html`, `textContent` `<html><body><p></p></body></html>`, in the folder from step 2), `read_doc`, then the two sends of `rfps-sync-gdoc --master-plan` (see `/rfps:make-gdoc-template`, route A). Nothing shared is involved, so nothing can drift. Tell the user to add the page number in the footer (Insert, Page numbers).
+   - **Exit 0, a master is registered:** copy it with Drive `copy_file` (same title, starting with "SOLUTION - ", and folder), read the copy, and run `rfps-sync-gdoc --template-check <file>`; stop on any DEVIATES and say which, because a copy of a drifted master would carry the drift.
    - **Exit 3, the master is stale (the profile changed since it was made):** do not copy it. Use the fresh route above for this solution and tell the user the master needs rebuilding with `/rfps:make-gdoc-template`.
    Then read the new doc, run `rfps-sync-gdoc --skeleton-plan <file>` and send `build/gdoc-skeleton.json` with `update_doc` as a direct edit: it writes the response template's headings, evaluation lines and placeholders, and applies the profile's fonts and colors as direct formatting (Heading 1 to 3, Subtitle for the scaffold lines). Form tables in the response template arrive as rows of text; tell the user to rebuild them in the doc. Only when the user passes `--plain`, run `rfps-sync-gdoc --html`, read `build/gdoc-create.html`, and create the doc from it with Drive `create_file`; it will have Google's default look and the final PDF will not match Fearless's.
 2. **Where it goes.** Use `wip_folder` from `solution.toml` (pass it as the `parentId` of `copy_file`/`create_file`). If there is none, ask the user for a Drive folder (a link or ID) and record it with `rfps-set-config wip_folder <link or id>` so it is asked once. If they give none, default to the capture folder's `05 Draft Response` folder in Drive (find it by title under the capture folder with `search_files`; confirm it with the user) and record that. Never create the copy in the Drive root; if no folder can be found, ask again. Confirm the connector's Google account is the one the user works in. Note the new file's ID.
@@ -49,10 +49,14 @@ Inserted text is plain, so bold from the markdown is not carried into a Google D
 ## Word (`--word`)
 
 1. Run `rfps-sync-docx --status` and show the per-section result. If any section was edited in the document, run the `/rfps:pull-wip --word` steps first. If nothing has changed, say so and stop.
-2. Tell the user what will change and ask for approval. Then run `rfps-sync-docx` (add `--dry-run` first if the user wants to see it). The WIP docx lives next to the template (`05 Draft Response`, or `wip_docx` in `solution.toml`) and changes go in as tracked changes by author "rfps". If Word's lock file shows the document is open, report that and do not use `--force` unless the user says to.
+2. Tell the user what will change and ask for approval. Then run `rfps-sync-docx` (add `--dry-run` first if the user wants to see it). The WIP docx is named `SOLUTION - <name>_WIP.docx` and lives next to the template (`05 Draft Response`, or `wip_docx` in `solution.toml`) and changes go in as tracked changes by author "rfps". If Word's lock file shows the document is open, report that and do not use `--force` unless the user says to.
 3. Report the changes pushed, any conflicts, the evidence warnings, and the path of the docx. Heading mismatches must be fixed: the headings in `response/*.md` must match the template exactly.
 4. `rfps-sync-docx --rebuild` regenerates the WIP and discards everyone's edits and comments (a backup goes to `build/`); run it only when the user explicitly asks.
 
 For a throwaway regeneration with the full build report, `rfps-build-response --solution --mode wip` writes to `build/` and never touches the shared document.
 
 Do not edit the template docx or any `response/*.md` or `evidence/register.csv` file as part of this command.
+
+## Response form (converted Word template)
+
+If the solicitation came with a response form (see "Response form" in `conventions.md`), do not build a skeleton. The WIP base is a Google conversion of the form, which keeps the numbered headings, the table of contents, the tables, the header and footer and the cover. Copy it with Drive `copy_file` into `wip_folder` (title "SOLUTION - <solution title> - Response WIP"), then in one direct `update_doc`: delete the form's empty tables and the "Text" placeholder paragraphs under the headings the response fills (highest index first), and correct the cover text. Read the copy (saved to a file), run `rfps-sync-gdoc --init <file> --doc-id <id>`, re-read after any further direct edit, then `--push`, send, `--commit`, and add the comments. Tell the user to refresh the table of contents (click it, Update table of contents). Never use `--clean-plan` on it.

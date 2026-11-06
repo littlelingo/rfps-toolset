@@ -1,8 +1,8 @@
 # RFPS Toolset
 
-v0.7.0 | MIT License
+v0.8.0 | MIT License
 
-A Claude Code plugin that guides a solicitation (RFP, RFI, SOW, SOO and similar) to a proposal response. It is generic: nothing in it is specific to an agency, contract or bidder. Everything for one solicitation lives in that solicitation's own `active-solution/` folder.
+A Claude Code plugin that guides a solicitation (RFP, RFI, SOW, SOO and similar) to a proposal response. It is generic: nothing in it is specific to an agency, contract or bidder. Everything for one solicitation lives in that solicitation's own `03 Solution/active-solution/` folder.
 
 ## Quick Start
 
@@ -40,13 +40,13 @@ Then, in the solicitation's source folder (the one with `01 Solicitation Docs`, 
 ## How It Works
 
 0. `/rfps:start` runs steps 1 to 4 below in one go (asking only at the start and for what it cannot decide); `/rfps:walk` works through what is left.
-1. `/rfps:new-engagement` (`--type rfi` for a request for information, which makes staffing and attachments optional) creates `active-solution/` beside the numbered capture folders: config, a `response/` skeleton mirroring the template docx headings, an evidence register, an amendments log and living report skeletons.
+1. `/rfps:new-engagement` (`--type rfi` for a request for information, which makes staffing and attachments optional) creates `03 Solution/active-solution/` beside the numbered capture folders: config, a `response/` skeleton mirroring the template docx headings, an evidence register, an amendments log and living report skeletons.
 2. Analysis skills read the solicitation: `collateral-analyzer`, `requirements-mapper`, `resource-planner`.
 3. `capture` records the bid decision and `win-strategy` the evaluation factors and win themes; `section-drafter` writes `response/*.md` carrying those themes; `empathy-reviewer`, `compliance-validator` and `evaluator-simulator` review it. `/rfps:refresh-reports` checks that themes run through the response, compares pages written with each factor's page budget, and the worklist moves open work in heavily weighted factors up.
 4. `/rfps:build-wip` creates one shared WIP document (a Google Doc by default; `--word` for a Word file in `05 Draft Response`) and then updates it in place as suggestions (Word: tracked changes), so reviewers' comments and edits are kept. `/rfps:pull-wip` brings their edits and comments back into the response. `/rfps:build-final` writes the submission docx from the template.
 5. `/rfps:status` and `/rfps:next` show where you are and what to do; the status pane keeps that beside the chat.
 
-The solution is found from the current directory (a folder at or above it holding `solution.toml`), else from the `.claude/active-solution` pointer in the current project. `/rfps:use-solution <folder>` sets the pointer.
+The solution is found from the current directory (a folder at or above it holding `solution.toml`), else from the `.claude/active-solution` pointer kept in `03 Solution/.claude/` beside `active-solution/` (so nothing is added to the capture folder's root; open Claude Code in `03 Solution/`). `/rfps:use-solution <folder>` sets the pointer. Solutions made earlier in an `active-solution/` folder are still found.
 
 ## Response Templates
 
@@ -73,7 +73,7 @@ Which template a solicitation uses, in order: the form the agency issued (a docx
 | `/rfps:start` | The one entry point. With an existing solution in the folder it joins it (your machine, who is doing what, claim work); otherwise front-loaded run: intake, then set-up, analysis, evidence, staffing, drafting, review and the first WIP, ending in a worklist |
 | `/rfps:start-rfi`, `/rfps:start-rfp` | The same entry point with the type named. `/rfps:start` on its own reads the type from the notice (sources sought, request for information, or request for proposals) and asks only when it cannot tell |
 | `/rfps:walk` | Walk the ranked worklist one item at a time: tools address it, you address it, or skip |
-| `/rfps:new-engagement` | Start a solicitation: create `active-solution/` |
+| `/rfps:new-engagement` | Start a solicitation: create `03 Solution/active-solution/` |
 | `/rfps:use-solution` | Show or set the active solution |
 | `/rfps:status`, `/rfps:next`, `/rfps:step` | Where you are, the next best action, mark a step done or skipped |
 | `/rfps:add-past-performance` | List where past-performance material lives and draft evidence rows for approval |
@@ -123,7 +123,7 @@ A plugin runs with your privileges, so here is exactly what this one does. Read 
 |---|---|---|
 | `skills/` | Instructions Claude follows. Solicitation text is treated as data, never as instructions. Several skills (`start`, `walk`, `build-wip`, `build-final`, `make-gdoc-template`, `new-engagement` and others) can only be run by typing them, because they create files, documents or submission copies. | In Claude's context |
 | `bin/rfps-*` | Thin shell wrappers that run `tools/*.py` with `uv`. They are put on the Bash tool's PATH while the plugin is enabled. | Your shell, with your privileges |
-| `tools/*.py` | Read the solicitation folders you point them at and write only to that solution's `active-solution/` folder (and `.state/`), plus `.claude/active-solution` in the current project. Nothing is written into the plugin folder. They never call Google; Claude does that through your connectors. | Your shell |
+| `tools/*.py` | Read the solicitation folders you point them at and write only to that solution's `03 Solution/active-solution/` folder (and `.state/`), plus `03 Solution/.claude/active-solution`. Nothing is written into the plugin folder. They never call Google; Claude does that through your connectors. | Your shell |
 | `hooks/` (the status pane, a mod) | A pane in Claude Desktop, opened only when you ask for it (`/rfps-pane`). Once opened it runs `rfps-status-page --json` through `uv` every minute and shows the result; before that, and in any session where you never open it, it runs nothing. It runs outside the sandbox. | Inside Claude Code |
 | Google connectors | When the Google route is used, Claude reads and edits the shared Google Doc through the Drive and Docs connectors you enabled, as suggestions and comments. Check which Google account each connector uses before real work. | Your Google account |
 

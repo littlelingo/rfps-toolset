@@ -4,7 +4,7 @@
 # ///
 """Add a past-performance source location to past-performance/sources.toml (read in place, never copied).
 
-A location inside the capture (source) folder is stored relative to active-solution/, the same base solution.toml
+A location inside the capture (source) folder is stored relative to `active-solution/`, the same base solution.toml
 uses, so the entry survives moving or syncing the folder. A location elsewhere is stored as an absolute path.
 An entry for the same location is not added twice.
 
@@ -16,11 +16,12 @@ Usage: rfps-add-source <folder or file> [<more> ...] [--label NAME] [--type loca
 """
 import argparse, os, pathlib, sys, tomllib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import solution_dir as sd
 import build_response as br
 
 def stored_path(target, sol):
     """Path as stored in sources.toml: relative to the solution folder when under the capture folder, else absolute."""
-    capture = sol.parent
+    capture = sd.source_of(sol)
     try:
         target.relative_to(capture)
     except ValueError:

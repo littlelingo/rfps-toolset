@@ -1,7 +1,7 @@
 ---
 name: status-page
 description: Write and open a local HTML status page for the active solution (steps, sections, open items, blockers, evidence, team)
-argument-hint: [active-solution folder]
+argument-hint: [03 Solution/active-solution folder]
 allowed-tools: Bash(rfps-status-page:*), Bash(rfps-flow-status:*), Read
 ---
 

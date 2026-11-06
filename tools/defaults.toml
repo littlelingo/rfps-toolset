@@ -5,6 +5,7 @@
 [folders]
 # Regular expressions matched against folder names inside a source (capture) folder.
 solicitation = '^0?1\b.*solicit'
+solution = '^0?3\b.*solution'
 draft_response = '^0?5\b.*draft'
 final_submission = '^11\b.*final'
 pricing = '^0?9\b.*(pric|cost)'

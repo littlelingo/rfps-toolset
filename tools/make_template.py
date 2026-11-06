@@ -16,6 +16,7 @@ Usage: rfps-make-template --outline FILE.json [--source <capture folder>] [--out
 """
 import argparse, json, pathlib, sys, tomllib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import solution_dir as sd
 import docx
 import build_response as br
 import new_engagement as ne
@@ -49,7 +50,7 @@ if __name__ == "__main__":
     else:
         src = pathlib.Path(a.source).expanduser().resolve() if a.source else None
         if src is None:
-            try: src = br.resolve_solution(None).parent
+            try: src = sd.source_of(br.resolve_solution(None))
             except SystemExit: sys.exit("give --source (the capture folder) or --out")
         folder = ne.find_folder(src, DEFAULTS["folders"]["draft_response"]) or (src / "05 Draft Response")
         out = folder / "Response Template.docx"

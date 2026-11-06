@@ -5,7 +5,7 @@
 """Working on one solution with other people: find out whether a solution exists, who you are, who is writing, who owns what.
 
   --resolve [FOLDER]          decide between starting and joining: looks in FOLDER (default: here) for a solution, at the folder, in
-                              active-solution/ inside it, and above it; prints JSON {"state": "none"|"found"|"many", ...}
+                              03 Solution/active-solution/ inside it, and above it; prints JSON {"state": "none"|"found"|"many", ...}
   --whoami [--set NAME]       the name used for claims and the lease, kept in ~/.config/rfps/user.toml on this machine (never shared)
   --lease status|acquire|release [--op NAME] [--force]
                               a small note in .state/lease.json saying who is running a command that writes shared files, so a second
@@ -17,6 +17,7 @@ Usage: rfps-collab --resolve [FOLDER] | --whoami [--set NAME] | --lease ACTION [
 import argparse, collections, csv, datetime, json, os, pathlib, re, sys, tomllib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import build_response as br
+import solution_dir as sd
 
 USER_FILE = pathlib.Path.home() / ".config" / "rfps" / "user.toml"
 STALE = datetime.timedelta(hours=2)
@@ -34,14 +35,14 @@ def resolve(folder=None):
     start = pathlib.Path(folder).expanduser().resolve() if folder else pathlib.Path.cwd().resolve()
     found = []
     for p in (start, *start.parents):
-        for c in (p, p / "active-solution"):
-            if (c / "solution.toml").is_file() and c not in found: found.append(c)
+        for c in (p, sd.inside(p)):
+            if c and (c / "solution.toml").is_file() and c not in found: found.append(c)
         if found: break
-    sub = [c for c in start.glob("*/active-solution") if (c / "solution.toml").is_file()] if not found else []
+    sub = [s for s in (sd.inside(c) for c in sorted(start.iterdir()) if c.is_dir()) if s] if not found and start.is_dir() else []
     found += sub
     if not found:
         files = [x for x in start.rglob("*") if x.is_file() and not x.name.startswith(".")][:5] if start.is_dir() else []
-        return dict(state="none", folder=str(start), looks_empty=not files, note="no solution.toml here, above, or in active-solution/")
+        return dict(state="none", folder=str(start), looks_empty=not files, note="no solution.toml here, above, or in 03 Solution/active-solution/")
     state = "found" if len(found) == 1 else "many"
     return dict(state=state, solution=str(found[0]), solutions=[str(f) for f in found], folder=str(start))
 
@@ -81,7 +82,7 @@ def duplicate_ids(sol, cfg):
     return dups
 
 def briefing(sol):
-    cfg = tomllib.loads((sol / "solution.toml").read_text()); out = [f"Solution: {cfg.get('title', sol.parent.name)} ({sol})"]
+    cfg = tomllib.loads((sol / "solution.toml").read_text()); out = [f"Solution: {cfg.get('title', sd.source_of(sol).name)} ({sol})"]
     out.append("Who you are on this machine: " + (whoami() or "not set (rfps-collab --whoami --set NAME)"))
     out.append("Writing now: " + lease(sol, "status")[1])
     wl = sol / ".state" / "worklist.json"

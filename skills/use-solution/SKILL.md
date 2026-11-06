@@ -1,7 +1,7 @@
 ---
 name: use-solution
 description: Show or set the active solution that the build commands use by default
-argument-hint: [active-solution folder or its source folder]
+argument-hint: [03 Solution/active-solution folder or its source folder]
 allowed-tools: Bash(rfps-use-solution:*)
 ---
 

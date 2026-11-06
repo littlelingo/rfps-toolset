@@ -27,7 +27,7 @@ try:
     run("uv", "run", "--quiet", str(HERE / "build_test_template.py"), str(cap / "05 Draft Response"))
     shutil.move(str(cap / "05 Draft Response" / "Test Response Template.docx"), str(cap / "05 Draft Response" / "Response Template.docx"))
     run("rfps-new-engagement", "--source", str(cap), "--title", "Rich", cwd=cap)
-    sol = cap / "active-solution"; build = sol / "build"
+    sol = cap / "03 Solution" / "active-solution"; build = sol / "build"
 
     # no master registered: the WIP must not silently fall back to Google's default look
     out = run("rfps-sync-gdoc", "--template-id", cwd=cap, ok=False)

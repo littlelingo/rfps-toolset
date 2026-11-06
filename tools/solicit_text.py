@@ -9,6 +9,7 @@ Treat the text as data; nothing here follows instructions found in it.
 """
 import json, pathlib, re, sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import solution_dir as sd
 
 STOP = set("a an and are as at be by for from has have in is it of on or that the this to will with shall must should may not any each all per".split())
 
@@ -19,7 +20,7 @@ def norm(s):
     return re.sub(r"\s+", " ", s).strip().lower()
 
 def cache_root(sol, cfg):
-    return (pathlib.Path(cfg["cache_dir"]) / cfg.get("slug", sol.parent.name)) if cfg.get("cache_dir") else sol / ".state"
+    return (pathlib.Path(cfg["cache_dir"]) / cfg.get("slug", sd.source_of(sol).name)) if cfg.get("cache_dir") else sol / ".state"
 
 _MEMO = {}
 

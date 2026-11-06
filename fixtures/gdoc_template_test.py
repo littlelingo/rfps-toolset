@@ -25,7 +25,7 @@ try:
     run("uv", "run", "--quiet", str(HERE / "build_test_template.py"), str(cap / "05 Draft Response"))
     shutil.move(str(cap / "05 Draft Response" / "Test Response Template.docx"), str(cap / "05 Draft Response" / "Response Template.docx"))
     run("rfps-new-engagement", "--source", str(cap), "--title", "Rich", cwd=cap)
-    sol = cap / "active-solution"; build = sol / "build"; dj = T / "doc.json"
+    sol = cap / "03 Solution" / "active-solution"; build = sol / "build"; dj = T / "doc.json"
     run("rfps-sync-gdoc", "--html", cwd=cap); html = (build / "gdoc-create.html").read_text()
     need("Instructions: limit this section to one page." in html and "Offeror" in html and "<h2>Data Migration</h2>" in html, "the HTML should carry the template's boilerplate, form table and second level", html[:600])
     doc = gdoc_sim.Doc.from_html(html); doc.save(dj)

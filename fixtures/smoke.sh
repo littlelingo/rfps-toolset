@@ -8,12 +8,14 @@ T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 uv run --quiet "$HERE/build_sample.py" "$T/capture" >/dev/null
 cd "$T/capture"
 rfps-new-engagement --source "$T/capture" --title "Sample" >/dev/null
+test -f "03 Solution/active-solution/solution.toml" && test -f "03 Solution/.claude/active-solution" && test ! -e "03 Solution/active-solution/.claude" && test ! -e active-solution && test ! -e .claude || { echo "FAIL: the solution and its .claude pointer belong in 03 Solution, nothing at the source root" >&2; exit 1; }
+ln -s "03 Solution/active-solution" active-solution   # shorthand for the checks below, which predate the 03 Solution folder; the tools only ever see the real folder
 printf 'wip_format = "docx"\n' >> active-solution/solution.toml   # this script tests the Word route; gdoc_test.py tests Google
 rfps-add-source "$T/capture/past-performance" --label notes >/dev/null
-grep -q 'path = "../past-performance"' active-solution/past-performance/sources.toml || { echo "FAIL: source path is not relative" >&2; exit 1; }
+grep -q 'path = "../../past-performance"' active-solution/past-performance/sources.toml || { echo "FAIL: source path is not relative" >&2; exit 1; }
 # shared WIP docx: created from the (still empty) template, then the seed text arrives as tracked changes
 rfps-sync-docx >/dev/null
-test -f "05 Draft Response/Response Template_WIP.docx"
+test -f "05 Draft Response/SOLUTION - Response Template_WIP.docx"
 # past-performance sources: scan for new and changed files, digest, Drive listing comparison, safe register rows
 out=$(rfps-scan-sources); echo "$out" | grep -q "1 new, 0 changed" || { echo "FAIL: first scan should find 1 new file: $out" >&2; exit 1; }
 grep -q "Permission wording" active-solution/past-performance/digest.md && grep -qi "approved" active-solution/past-performance/digest.md || { echo "FAIL: digest lacks the permission wording" >&2; exit 1; }
@@ -338,7 +340,7 @@ cfg["rate_sheet"] = "09/Missing.csv"
 assert "Open" in pricing.rate_checks(t, cfg)[0]
 PY
 rfps-sync-docx >/dev/null
-WIP="05 Draft Response/Response Template_WIP.docx"
+WIP="05 Draft Response/SOLUTION - Response Template_WIP.docx"
 uv run --quiet --with python-docx python3 - "$WIP" <<'PY'
 import sys, zipfile
 x = zipfile.ZipFile(sys.argv[1]).read("word/document.xml").decode()
@@ -440,7 +442,7 @@ cat > "$T/outline.json" <<'JSON'
 JSON
 mkdir -p "$T/gen/05 Draft Response" && rfps-make-template --outline "$T/outline.json" --source "$T/gen" | grep -q "4 sections" || { echo "FAIL: template not written" >&2; exit 1; }
 if rfps-make-template --outline "$T/outline.json" --source "$T/gen" >/dev/null 2>&1; then echo "FAIL: existing template was overwritten" >&2; exit 1; fi
-(cd "$T/gen" && rfps-new-engagement --source "$T/gen" --title Gen >/dev/null) && test -f "$T/gen/active-solution/response/02-technical-approach.md" || { echo "FAIL: engagement from a generated template" >&2; exit 1; }
+(cd "$T/gen" && rfps-new-engagement --source "$T/gen" --title Gen >/dev/null) && test -f "$T/gen/03 Solution/active-solution/response/02-technical-approach.md" || { echo "FAIL: engagement from a generated template" >&2; exit 1; }
 uv run --quiet --with python-docx python3 - "$T/gen/05 Draft Response/Response Template.docx" <<'PY'
 import sys, docx
 d = docx.Document(sys.argv[1])
@@ -476,14 +478,14 @@ cd "$T/capture"
 rfps-flow-status --json | python3 -c "import json,sys; h={s['id'] for s in json.load(sys.stdin)['optional_hidden']}; sys.exit(0 if 'resources' not in h else 1)" || { echo "FAIL: an RFP should show the resources step" >&2; exit 1; }
 uv run --quiet "$HERE/build_sample.py" "$T/rficap" >/dev/null
 rfps-new-engagement --source "$T/rficap" --title "Sample RFI" --type rfi --no-pointer >/dev/null
-grep -q '^solicitation_type = "rfi"' "$T/rficap/active-solution/solution.toml" || { echo "FAIL: type not recorded" >&2; exit 1; }
-rfps-flow-status --solution "$T/rficap/active-solution" --json | python3 -c "import json,sys; h={s['id'] for s in json.load(sys.stdin)['optional_hidden']}; sys.exit(0 if {'resources','attachments'} <= h else 1)" || { echo "FAIL: an RFI should hide resources and attachments" >&2; exit 1; }
-if rfps-set-config solicitation_type bogus --solution "$T/rficap/active-solution" >/dev/null 2>&1; then echo "FAIL: bad solicitation_type accepted" >&2; exit 1; fi
+grep -q '^solicitation_type = "rfi"' "$T/rficap/03 Solution/active-solution/solution.toml" || { echo "FAIL: type not recorded" >&2; exit 1; }
+rfps-flow-status --solution "$T/rficap/03 Solution/active-solution" --json | python3 -c "import json,sys; h={s['id'] for s in json.load(sys.stdin)['optional_hidden']}; sys.exit(0 if {'resources','attachments'} <= h else 1)" || { echo "FAIL: an RFI should hide resources and attachments" >&2; exit 1; }
+if rfps-set-config solicitation_type bogus --solution "$T/rficap/03 Solution/active-solution" >/dev/null 2>&1; then echo "FAIL: bad solicitation_type accepted" >&2; exit 1; fi
 # RFI sweep scope: the draft PWS binds a future contractor, so only what the synopsis asks of the respondent counts
 mkdir -p "$T/rfitext"
 printf '=== PAGE 1 ===\nSOURCES SOUGHT SYNOPSIS\n\n1. DISCLAIMER\nNO CONTRACT SHALL BE AWARDED FROM THIS SYNOPSIS.\n\n4. SUBMISSION REQUIREMENTS / REQUESTED INFORMATION\nInterested vendors should submit a capability statement (not to exceed 5 pages) addressing\nthe following:\n- Company Name, Address, and Website\n=== PAGE 2 ===\nSOURCES SOUGHT SYNOPSIS\n- Details of 3 similar past projects completed within the last\n5 years.\n\n5. SUBMISSION INSTRUCTIONS Submit all responses by email to the Contracting Officer by\nNovember 3, 2026. Include the Notice ID in the subject line.\n' > "$T/rfitext/synopsis.txt"
 printf 'C.5 The contractor shall provide monthly status reports.\nThe contractor shall submit a quarterly POC list to the Government.\nThe vendor shall lead requirements elicitation.\n' > "$T/rfitext/pws.txt"
-rfps-sweep --solution "$T/rficap/active-solution" --json --text-dir "$T/rfitext" | python3 -c "
+rfps-sweep --solution "$T/rficap/03 Solution/active-solution" --json --text-dir "$T/rfitext" | python3 -c "
 import json,sys
 u=json.load(sys.stdin)['unmapped']; t=' | '.join(r['text'] for r in u)
 bad=[w for w in ('contractor','AWARDED','vendor shall') if w in t]
@@ -509,8 +511,8 @@ rfps-standard-template --type rfi --make-plain >/dev/null
 rfps-standard-template --type rfi --show | grep -q "$T/tpl/rfi.docx" || { echo "FAIL: standard template not shown" >&2; exit 1; }
 if rfps-standard-template --type rfi --make-plain >/dev/null 2>&1; then echo "FAIL: standard overwritten without --force" >&2; exit 1; fi
 rfps-new-engagement --source "$T/nostd" --type rfi --no-pointer | grep -q "using your standard rfi template" || { echo "FAIL: standard template not used" >&2; exit 1; }
-ls "$T/nostd/active-solution/response" | grep -q "^01-company-profile-and-capability-overview.md$" || { echo "FAIL: standard headings not mirrored" >&2; exit 1; }
-if ls "$T/nostd/active-solution/response" | grep -q "feedback-on-the-draft"; then echo "FAIL: optional section included by default" >&2; exit 1; fi
+ls "$T/nostd/03 Solution/active-solution/response" | grep -q "^01-company-profile-and-capability-overview.md$" || { echo "FAIL: standard headings not mirrored" >&2; exit 1; }
+if ls "$T/nostd/03 Solution/active-solution/response" | grep -q "feedback-on-the-draft"; then echo "FAIL: optional section included by default" >&2; exit 1; fi
 cmp -s "$T/tpl/rfi.docx" "$T/nostd/05 Draft Response/"*-rfi-response-template.docx || { echo "FAIL: the solution's template should be a copy of the standard" >&2; exit 1; }
 unset RFPS_TEMPLATE_DIR
 echo "smoke test passed"

@@ -22,6 +22,7 @@ Usage: rfps-scan-sources                                   scan local sources, e
 """
 import argparse, collections, datetime, hashlib, json, os, pathlib, re, sys, tomllib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import solution_dir as sd
 import build_response as br
 import add_source as asrc
 import extract_docs as ex
@@ -36,7 +37,7 @@ def save_state(sol, st): state_file(sol).parent.mkdir(parents=True, exist_ok=Tru
 def cache_root(sol):
     """Where extracted text is kept: cache_dir/<slug> on this machine when solution.toml sets cache_dir (so it never syncs to Drive), else .state/."""
     cfg = tomllib.loads((sol / "solution.toml").read_text())
-    return (pathlib.Path(cfg["cache_dir"]) / cfg.get("slug", sol.parent.name)) if cfg.get("cache_dir") else sol / ".state"
+    return (pathlib.Path(cfg["cache_dir"]) / cfg.get("slug", sd.source_of(sol).name)) if cfg.get("cache_dir") else sol / ".state"
 def text_dir(sol, label): return cache_root(sol) / "text" / "past-performance" / label
 def sources(sol):
     f = sol / "past-performance" / "sources.toml"

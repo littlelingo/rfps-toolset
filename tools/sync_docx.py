@@ -27,6 +27,7 @@ import docx
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 import build_response as br
+import solution_dir as sd
 import sync_core
 import locator
 
@@ -169,7 +170,7 @@ def ensure_bookmarks(wip, rev):
 
 def wip_path(sol, cfg, template, name):
     if cfg.get("wip_docx"): return (sol / cfg["wip_docx"]).resolve()
-    return pathlib.Path(template).parent / f"{name}_WIP.docx"
+    return pathlib.Path(template).parent / sd.wip_name(name)
 
 def state_file(sol): return sol / ".state" / "docx-sync.json"
 
@@ -203,7 +204,7 @@ def create_wip(sol, e, path, report):
     out = pathlib.Path(e["out"]); out.mkdir(parents=True, exist_ok=True)
     with contextlib.redirect_stdout(io.StringIO()):   # the stateless build prints its own report; this tool reports below
         br.build(e["template"], e["response"], str(out), "wip", e["name"], False, e["register"], None, e["tcfg"])
-    built = out / f"{e['name']}_WIP.docx"
+    built = out / sd.wip_name(e["name"])
     path.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(built, path)
     wip = Wip(path, e["tcfg"])

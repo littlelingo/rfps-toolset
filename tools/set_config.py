@@ -18,6 +18,7 @@ Usage: rfps-set-config KEY [VALUE] [--solution [folder]]
 """
 import argparse, pathlib, re, sys, tomllib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import solution_dir as sd
 import build_response as br
 import tomlio
 
@@ -46,7 +47,7 @@ def main():
     if a.key == "cache_dir":
         p = pathlib.Path(v).expanduser().resolve()
         if "CloudStorage/GoogleDrive" in str(p) or "/Google Drive/" in str(p): sys.exit(f"{p} is inside Google Drive; the cache must be a folder on this machine outside Drive")
-        build = p / cfg.get("slug", sol.parent.name) / "build"; build.mkdir(parents=True, exist_ok=True)
+        build = p / cfg.get("slug", sd.source_of(sol).name) / "build"; build.mkdir(parents=True, exist_ok=True)
         put(f, "cache_dir", str(p)); put(f, "build_dir", str(build))
         print(f"cache_dir = {p}\nbuild_dir = {build}"); return
     put(f, a.key, v); print(f"{a.key} = {v}")

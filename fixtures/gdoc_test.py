@@ -25,7 +25,7 @@ T = pathlib.Path(tempfile.mkdtemp()); cap = T / "capture"
 try:
     run("uv", "run", "--quiet", str(HERE / "build_sample.py"), str(cap))
     run("rfps-new-engagement", "--source", str(cap), "--title", "Sample", cwd=cap)
-    sol = cap / "active-solution"; build = sol / "build"; docjson = T / "doc.json"
+    sol = cap / "03 Solution" / "active-solution"; build = sol / "build"; docjson = T / "doc.json"
     # 1. create the doc from the (empty) response and record it
     run("rfps-sync-gdoc", "--html", cwd=cap)
     doc = gdoc_sim.Doc.from_html((build / "gdoc-create.html").read_text()); doc.save(docjson)

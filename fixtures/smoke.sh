@@ -514,5 +514,21 @@ rfps-new-engagement --source "$T/nostd" --type rfi --no-pointer | grep -q "using
 ls "$T/nostd/03 Solution/active-solution/response" | grep -q "^01-company-profile-and-capability-overview.md$" || { echo "FAIL: standard headings not mirrored" >&2; exit 1; }
 if ls "$T/nostd/03 Solution/active-solution/response" | grep -q "feedback-on-the-draft"; then echo "FAIL: optional section included by default" >&2; exit 1; fi
 cmp -s "$T/tpl/rfi.docx" "$T/nostd/05 Draft Response/"*-rfi-response-template.docx || { echo "FAIL: the solution's template should be a copy of the standard" >&2; exit 1; }
+# choosing the template: list every option (draft folder, forms in the solicitation folder, the standard, generate) with one recommended, change nothing
+uv run --quiet "$HERE/build_sample.py" "$T/pick" >/dev/null
+cp "$T/pick/05 Draft Response/Response Template.docx" "$T/pick/01 Solicitation Docs/Attachment B - Response Form.docx"
+cp "$T/pick/05 Draft Response/Response Template.docx" "$T/pick/05 Draft Response/Key Personnel resume.docx"
+rfps-new-engagement --source "$T/pick" --type rfi --list-templates --json > "$T/pick.json"
+python3 - "$T/pick.json" <<'PY' || { echo "FAIL: template choices" >&2; exit 1; }
+import json, sys
+c = json.load(open(sys.argv[1])); kinds = [x["kind"] for x in c]
+assert sum(x["recommended"] for x in c) == 1 and c[0]["recommended"] and c[0]["path"].endswith("Response Template.docx"), c[0]
+assert {"draft", "solicitation", "standard", "generate"} <= set(kinds), kinds
+assert any(x["excluded"] and "resume" in x["path"] for x in c), "resume not marked excluded"
+assert not any(x["path"] and ("RFP " in x["path"] or "Amendment" in x["path"]) for x in c), "solicitation itself offered as a template"
+PY
+test ! -e "$T/pick/03 Solution/active-solution" || { echo "FAIL: --list-templates created a solution" >&2; exit 1; }
+rfps-new-engagement --source "$T/pick" --type rfi --template standard --no-pointer | grep -q "using your standard rfi template" || { echo "FAIL: --template standard" >&2; exit 1; }
+ls "$T/pick/03 Solution/active-solution/response" | grep -q "^01-company-profile-and-capability-overview.md$" || { echo "FAIL: --template standard did not mirror the standard" >&2; exit 1; }
 unset RFPS_TEMPLATE_DIR
 echo "smoke test passed"

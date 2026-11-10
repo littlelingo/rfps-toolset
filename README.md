@@ -50,7 +50,7 @@ The solution is found from the current directory (a folder at or above it holdin
 
 ## Response Templates
 
-Which template a solicitation uses, in order: the form the agency issued (a docx in `05 Draft Response`), else your standard for the type, else one generated from the notice. Your standard RFI (or RFP) template is your branded docx (cover, proprietary legend, header and footer, styles) kept on your machine: `rfps-standard-template --type rfi --set my-template.docx` stores it in `~/.config/rfps/templates/` (never shared), and `rfps-new-engagement` copies it into each new capture folder. Without one, `rfps-standard-template --type rfi --make-plain` writes a plain one from the plugin's RFI outline (`tools/templates/outlines/rfi.json`). The RFP standard is not defined yet.
+You pick which template a solicitation uses: `/rfps:start` and `/rfps:new-engagement` list the choices (`rfps-new-engagement --list-templates`) with their headings, recommended first: a docx in `05 Draft Response`, a response form issued in `01 Solicitation Docs`, your standard for the type (`--template standard`), or one generated from the notice. The recommendation, in order: the form the agency issued, else your standard, else a generated one. Your standard RFI (or RFP) template is your branded docx (cover, proprietary legend, header and footer, styles) kept on your machine: `rfps-standard-template --type rfi --set my-template.docx` stores it in `~/.config/rfps/templates/` (never shared), and `rfps-new-engagement` copies it into each new capture folder. Without one, `rfps-standard-template --type rfi --make-plain` writes a plain one from the plugin's RFI outline (`tools/templates/outlines/rfi.json`). The RFP standard is not defined yet.
 
 ## Working With Google Drive
 

@@ -13,7 +13,7 @@ import ast, json, pathlib, re, sys
 ROOT = pathlib.Path(__file__).resolve().parent
 SKIP = {"resources.py", "solicit_text.py", "strategy.py", "validated.py", "evidence_checks.py", "pricing.py"}   # helper module imported by other tools, not run on its own
 HINTS = {
-    "new_engagement.py": ("Starting a new solicitation", "/rfps:new-engagement"),
+    "new_engagement.py": ("Starting a new solicitation; --list-templates shows the response templates to choose from", "/rfps:new-engagement"),
     "worklist.py": ("One ranked list of markers, requirement gaps and compliance failures left after the first WIP, with the choice made on each", "/rfps:walk"),
     "decode_b64.py": ("Turning a base64 download saved from the Drive connector into a real .docx/.xlsx/.pdf (never retype base64 by hand)", "/rfps:new-engagement, /rfps:start"),
     "set_config.py": ("Setting where the shared WIP and the FINAL copy go, and a machine-local cache folder that never syncs to Drive", "/rfps:start, /rfps:build-wip, /rfps:build-final"),

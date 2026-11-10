@@ -21,10 +21,16 @@ so the build commands default to this solution when Claude Code is opened in 03 
 
 The template docx is only read. An existing solution is never overwritten.
 
-Usage: rfps-new-engagement --source "<source folder>" [--template "<docx>"] [--title "..."] [--slug x]
+Which template: --template FILE uses that docx; --template standard copies your standard for the type (rfps-standard-template) into
+05 Draft Response; with no --template the one docx in 05 Draft Response is used, else your standard when that folder has none.
+--list-templates [--json] only lists the choices (docx files in 05 Draft Response, likely response forms in 01 Solicitation Docs,
+your standard, generating one from the notice) with their headings and a recommendation, and changes nothing.
+
+Usage: rfps-new-engagement --source "<source folder>" [--template "<docx>"|standard] [--title "..."] [--slug x]
                                       [--name "Output name"] [--no-git] [--no-pointer]
+       rfps-new-engagement --source "<source folder>" --list-templates [--json] [--type rfi|rfp]
 """
-import argparse, csv, os, pathlib, re, shutil, subprocess, sys, tomllib
+import argparse, csv, json, os, pathlib, re, shutil, subprocess, sys, tomllib
 import docx
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import standard_template as st_tpl
@@ -48,6 +54,61 @@ def find_template(src, draft_pattern, exclude):
         cands += [p for p in f.glob("*.docx") if not p.name.startswith("~$") and not re.search(exclude, p.name, re.I)]
     return cands
 
+# A docx in the solicitation folder is offered as a template only when its name reads like a response form.
+FORM_NAME = re.compile(r"respon|template|\bform\b|attachment|questionnaire|volume", re.I)
+NOT_FORM = re.compile(r"amendment|q ?& ?a|questions and answers|^~\$", re.I)
+
+def headings(path):
+    try: d = docx.Document(str(path))
+    except Exception: return None
+    hp = DEFAULTS["docx"]["heading_prefix"]
+    return [q.text.strip() for q in d.paragraphs if q.style.name.startswith(hp) and q.text.strip()]
+
+def template_candidates(src, a):
+    """Every response template the user could pick, best first, one marked recommended. Reads only."""
+    out = []
+    def add(kind, path, note, excluded=False):
+        h = headings(path) if path else None
+        out.append({"kind": kind, "path": str(path) if path else None, "headings": len(h) if h is not None else None,
+                    "first_headings": (h or [])[:4], "note": note, "excluded": excluded, "recommended": False})
+    for f in [p for p in sorted(src.iterdir()) if p.is_dir() and re.search(a.draft_pattern, p.name, re.I)]:
+        for p in sorted(f.glob("*.docx")):
+            if p.name.startswith("~$"): continue
+            ex = bool(re.search(a.template_exclude, p.name, re.I))
+            add("draft", p, f"in {f.name}" + (" (name looks like a resume, evidence or old copy, so not picked by default)" if ex else ""), ex)
+    sol_dir = find_folder(src, a.solicitation_pattern)
+    if sol_dir:
+        for p in sorted(sol_dir.rglob("*.docx")):
+            if FORM_NAME.search(p.name) and not NOT_FORM.search(p.name):
+                add("solicitation", p, f"in {sol_dir.name}: a form issued with the solicitation")
+    std = st_tpl.path(a.type)
+    if std.is_file(): add("standard", std, f"your standard {a.type} template (copied into the draft-response folder if picked)")
+    out.append({"kind": "generate", "path": None, "headings": None, "first_headings": [], "excluded": False, "recommended": False,
+                "note": "make one from the solicitation's response instructions (/rfps:generate-template; you approve the outline first)"})
+    usable = [c for c in out if c["kind"] in ("draft", "solicitation") and not c["excluded"] and c["headings"]]
+    pick = max(usable, key=lambda c: (c["kind"] == "draft", c["headings"])) if usable else next(c for c in out if c["kind"] in ("standard", "generate"))
+    pick["recommended"] = True
+    for c in out:
+        if c["headings"] == 0: c["note"] += "; no Heading 1-3 paragraphs, so nothing to mirror"
+    out.sort(key=lambda c: not c["recommended"])
+    return out
+
+def print_candidates(cands, as_json):
+    if as_json: print(json.dumps(cands, indent=2)); return
+    for i, c in enumerate(cands, 1):
+        tag = " (recommended)" if c["recommended"] else ""
+        what = c["path"] or "generate a template"
+        hs = f"; {c['headings']} headings: " + " | ".join(c["first_headings"]) + (" ..." if (c["headings"] or 0) > 4 else "") if c["headings"] else ""
+        print(f"{i}. [{c['kind']}]{tag} {what}\n   {c['note']}{hs}")
+
+def copy_standard(src, a, why="Template"):
+    std = st_tpl.path(a.type)
+    if not std.is_file(): sys.exit(f"no standard {a.type} template of yours (rfps-standard-template --type {a.type} --set FILE.docx, or --make-plain)")
+    folder = find_folder(src, a.draft_pattern) or (src / "05 Draft Response"); folder.mkdir(exist_ok=True)
+    tpl = folder / f"{slug_of(src.name)}-{a.type}-response-template.docx"
+    if tpl.exists(): sys.exit(f"{tpl} already exists; pass it with --template")
+    shutil.copyfile(std, tpl); print(f"{why}: using your standard {a.type} template (copied to {tpl})."); return tpl
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--source", required=True); ap.add_argument("--template")
@@ -60,24 +121,24 @@ def main():
     ap.add_argument("--final-pattern", default=F["final_submission"], help="regex for the final submission folder")
     ap.add_argument("--pricing-pattern", default=F["pricing"], help="regex for the pricing folder (holds Staffing.xlsx)")
     ap.add_argument("--template-exclude", default=F["template_exclude"], help="regex of template file names to ignore when auto-detecting")
+    ap.add_argument("--list-templates", action="store_true", help="list the templates to choose from, with a recommendation; changes nothing")
+    ap.add_argument("--json", action="store_true", help="with --list-templates: print JSON")
     a = ap.parse_args()
     src = pathlib.Path(a.source).expanduser().resolve()
     if not src.is_dir(): sys.exit(f"source folder not found: {src}")
+    if a.list_templates: print_candidates(template_candidates(src, a), a.json); return
     sol = sd.target_for(src)
     if sd.has_solution(sol) or sd.inside(src): sys.exit(f"{sd.inside(src) or sol} already holds a solution; refusing to overwrite")
     if sol.exists() and any(sol.iterdir()): sys.exit(f"{sol} is not empty; refusing to overwrite")
-    if a.template: tpl = pathlib.Path(a.template).expanduser().resolve()
+    if a.template == "standard": tpl = copy_standard(src, a)
+    elif a.template: tpl = pathlib.Path(a.template).expanduser().resolve()
     else:
         c = find_template(src, a.draft_pattern, a.template_exclude)
         if len(c) == 1: tpl = c[0].resolve()
         elif not c:
-            std = st_tpl.path(a.type)
-            if not std.is_file(): sys.exit(f"no response template .docx found in a folder matching --draft-pattern, and no standard {a.type} template of yours (rfps-standard-template); pass --template, or make one with /rfps:generate-template")
-            folder = find_folder(src, a.draft_pattern) or (src / "05 Draft Response"); folder.mkdir(exist_ok=True)
-            tpl = folder / f"{slug_of(src.name)}-{a.type}-response-template.docx"
-            if tpl.exists(): sys.exit(f"{tpl} already exists; pass it with --template")
-            shutil.copyfile(std, tpl); print(f"No template in {folder.name}: using your standard {a.type} template (copied to {tpl}).")
-        else: sys.exit("several candidate templates; pass --template:\n  " + "\n  ".join(str(p) for p in c))
+            if not st_tpl.path(a.type).is_file(): sys.exit(f"no response template .docx found in a folder matching --draft-pattern, and no standard {a.type} template of yours (rfps-standard-template); pass --template, or make one with /rfps:generate-template. See the choices with --list-templates")
+            tpl = copy_standard(src, a, "No template in the draft-response folder")
+        else: sys.exit("several candidate templates; pass --template (see --list-templates for their headings):\n  " + "\n  ".join(str(p) for p in c))
     if not tpl.is_file(): sys.exit(f"template not found: {tpl}")
     d = docx.Document(str(tpl))
     hp = DEFAULTS["docx"]["heading_prefix"]

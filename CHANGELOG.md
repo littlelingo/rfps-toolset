@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.9.0 (2026-11-10)
+
 - **Pick the response template**: `rfps-new-engagement --list-templates [--json]` lists every template a solution could use, best first with one recommended: docx files in the draft-response folder (files named like resumes or old copies marked, not hidden), response forms issued in the solicitation folder (names like Attachment, Response, Form, Template, Volume; never the RFP or an amendment), your standard for the type, and generating one. Each shows its heading count and first headings. `/rfps:start` and `/rfps:new-engagement` now always put the choice to the user instead of picking silently, and `--template standard` uses your standard even when the draft-response folder has other files. New smoke checks.
 
 - **Empathy rewrites add no new claims**: `empathy-reviewer` now says a suggested rewrite changes how a paragraph says something, never what it claims. It may reorder, cut, name the actor and use the client's words, but must not add a capability, timing, number, outcome or commitment the original lacks (even tagged `[ASSERTION]`); gaps get a placeholder or `[OPEN: ...]`, and flagged unsupported claims become `[EVIDENCE NEEDED: ...]`. The skill's own example rewrite no longer adds a claim. Found by the first full eval baseline (2026-11-10), where a paragraph-4 rewrite invented a same-day missed-appointment alert; `empathy-flags-planted-defects` went from 2 of 3 to 5 of 6 passing.

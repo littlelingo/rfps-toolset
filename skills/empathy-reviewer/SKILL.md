@@ -78,9 +78,13 @@ Keep the original text intact, including any colored icon in front of a `[ASSERT
 
 For substantive issues (VENDOR-CENTRIC, GENERIC, VOCABULARY-MISMATCH), provide a specific suggested rewrite — not just "make this more client-centric" but an actual alternative sentence or paragraph that demonstrates the fix.
 
+**A rewrite changes how the paragraph says it, never what it claims.** It may reorder, cut, switch to active voice, name who acts (the client's own roles from the brief, or a `[NAME]` placeholder for our people), and swap in the client's vocabulary. It must not add a capability, feature, timing, frequency, number, outcome or commitment that the original does not already state, even tagged `[ASSERTION]`: that is new content for the drafter and the evidence register, not a tone fix. Where the fix needs a fact the original lacks (who escalates, how often reports go out), leave a bracketed placeholder or an `[OPEN: ...]` marker naming the gap instead of filling it in. A claim the review flags as unsupported (a number, a superlative) is dropped or replaced with `[EVIDENCE NEEDED: ...]`, never restated.
+
+Check each rewrite against its original before writing it down: every claim in the rewrite must trace to the original or to the brief.
+
 **Example:**
 
-> Our team brings over 15 years of experience in cloud infrastructure management. [REVIEW: VENDOR-CENTRIC — This opens with the vendor. Rewrite to open with the client's need: "The Department's migration from on-premises infrastructure to FedRAMP-authorized cloud services requires a team experienced with federal compliance requirements and complex legacy system transitions. Our team has led [N] comparable migrations, including [named example]."]
+> Our team brings over 15 years of experience in cloud infrastructure management. [REVIEW: VENDOR-CENTRIC — This opens with the vendor. Rewrite to open with the client's need: "The Department's migration from on-premises infrastructure to FedRAMP-authorized cloud services requires a team experienced with federal compliance requirements and complex legacy system transitions. Our team brings over 15 years of cloud infrastructure management to that move. [EVIDENCE NEEDED: comparable federal migrations, if the drafter has them]"]
 
 ### Step 5: Produce the Reviewed Files
 
@@ -133,7 +137,7 @@ Write `review-notes.md` summarizing:
 
 **Why it fails:** Who deploys? Who trains? Who resolves? The evaluator needs to know that specific people are accountable for specific outcomes. Passive voice creates ambiguity about responsibility.
 
-**The fix:** Active voice with named actors: "Our deployment team, led by [Name], will..." / "Our training specialist will conduct..."
+**The fix:** Active voice with named actors: "Our deployment team, led by [Name], will..." / "Our training specialist will conduct...". Name the actor for what the original already says; do not add steps, timings or features the original lacks (see Step 4).
 
 ### Flattery Without Substance
 

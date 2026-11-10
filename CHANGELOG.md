@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Empathy rewrites add no new claims**: `empathy-reviewer` now says a suggested rewrite changes how a paragraph says something, never what it claims. It may reorder, cut, name the actor and use the client's words, but must not add a capability, timing, number, outcome or commitment the original lacks (even tagged `[ASSERTION]`); gaps get a placeholder or `[OPEN: ...]`, and flagged unsupported claims become `[EVIDENCE NEEDED: ...]`. The skill's own example rewrite no longer adds a claim. Found by the first full eval baseline (2026-11-10), where a paragraph-4 rewrite invented a same-day missed-appointment alert; `empathy-flags-planted-defects` went from 2 of 3 to 5 of 6 passing.
+
 ## 0.8.0 (2026-11-06)
 
 - **Solution lives in `03 Solution`**: `rfps-new-engagement` now creates `active-solution/` inside the numbered `03 Solution` folder (an existing folder matching `[folders] solution` in `defaults.toml`, else `03 Solution`), and keeps the `.claude/active-solution` pointer in `03 Solution/.claude/` beside it, so nothing is added to the capture folder's root and the pointer stays out of the solution's git repo (open Claude Code in `03 Solution`). Every command resolves the new location; solutions made with `active-solution/` directly in the capture folder are still found. The shared WIP is prefixed `SOLUTION-` on both routes: Google Doc `SOLUTION - <title> - Response WIP`, Word file `SOLUTION - <name>_WIP.docx`. New `tools/solution_dir.py` holds the location and naming rules.
